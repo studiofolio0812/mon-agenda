@@ -312,6 +312,11 @@
   .day-cell.drop-hover { background: var(--accent-soft); }
   .mday-head { padding: 5px 6px 0; pointer-events: none; }
   .mday-head .cell-add { pointer-events: auto; }
+  /* le numéro du jour ouvre la création ; le reste de la case ouvre la vue Jour */
+  .mday-head .day-num { pointer-events: auto; cursor: pointer; }
+  .mday-head .day-num:hover { background: var(--accent-soft); color: var(--accent); }
+  .mday-head.today .day-num:hover { background: var(--accent); color: #fff; }
+  .day-cell { cursor: pointer; }
   /* numéro (+ bouton ＋ au survol) à GAUCHE, points d'habitude collés à DROITE */
   .mday-numwrap { display: flex; align-items: center; gap: 2px; flex: none; }
   .mday-head .mday-habits { pointer-events: auto; }
@@ -341,16 +346,16 @@
     font-size: 14px; line-height: 1.6; color: var(--text); }
   .note-body:focus { outline: none; border-color: var(--accent); }
   .note-body ul { padding-left: 22px; margin: 6px 0; }
-  /* zone encadrée / surlignée dans une note */
-  .note-body .note-box { border: 1.5px solid var(--border-strong); border-radius: 6px; padding: 1px 6px; }
-  /* liste à cocher */
-  .note-body .note-todo { list-style: none; padding-left: 2px; margin: 6px 0; }
-  .note-body .note-todo li { position: relative; padding-left: 26px; margin: 3px 0; }
-  .note-body .note-todo li::before { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px;
+  /* zone encadrée / surlignée dans une note (éditeur ET tuile) */
+  .note-box { border: 1.5px solid var(--border-strong); border-radius: 6px; padding: 1px 6px; }
+  /* liste à cocher — styles partagés par l'éditeur et les tuiles de l'espace Notes */
+  .note-todo { list-style: none; padding-left: 2px; margin: 6px 0; }
+  .note-todo li { position: relative; padding-left: 26px; margin: 3px 0; }
+  .note-todo li::before { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px;
     border: 1.5px solid var(--border-strong); border-radius: 4px; background: var(--surface); }
-  .note-body .note-todo li.done::before { content: '✓'; background: var(--accent); border-color: var(--accent);
+  .note-todo li.done::before { content: '✓'; background: var(--accent); border-color: var(--accent);
     color: #fff; font-size: 12px; line-height: 15px; text-align: center; }
-  .note-body .note-todo li.done { color: var(--text-faint); text-decoration: line-through; }
+  .note-todo li.done { color: var(--text-faint); text-decoration: line-through; }
   /* étoile favori (en-tête d'éditeur, cartes, listes) */
   .note-fav-btn { font-size: 18px; color: var(--text-faint); }
   .note-fav-btn.on { color: #e6b800; }
@@ -461,6 +466,17 @@
   .note-card:hover { background: var(--surface); }
   .note-card-title { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
   .note-card-preview { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; max-height: 66px; overflow: hidden; }
+  /* aperçu de la note AVEC sa mise en forme, limité à ~10 lignes puis fondu */
+  .note-card-body { font-size: 12.5px; color: var(--text-soft); line-height: 1.55; max-height: 15.5em;
+    overflow: hidden; position: relative; -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 78%, transparent 100%); }
+  .note-card-body > *:first-child { margin-top: 0; }
+  .note-card-body p { margin: 3px 0; }
+  .note-card-body ul, .note-card-body ol { padding-left: 18px; margin: 4px 0; }
+  .note-card-body img { max-width: 100%; }
+  /* les cases à cocher restent cliquables depuis la tuile */
+  .note-card-body .note-todo li { cursor: pointer; }
+  .note-card-empty { color: var(--text-faint); font-style: italic; }
 
   /* ---- Vue agenda (liste) ---- */
   .agenda { max-width: 720px; margin: 0 auto; padding: 8px 20px 48px; }
@@ -1120,6 +1136,9 @@
     .main { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
     /* le tiroir passe au-dessus de la barre du bas */
     .sidebar { z-index: 60; }
+
+    /* sur téléphone il n'y a pas de survol : le ＋ doit rester visible */
+    .cell-add { opacity: 1; }
 
     /* --- confort tactile : cibles un peu plus grandes --- */
     .icon-btn { width: 38px; height: 38px; }
@@ -2572,7 +2591,8 @@ function renderMonth() {
     days.forEach((d, i) => {
       const other = d.getMonth() !== cursor.getMonth();
       html += `<div class="day-cell ${other ? 'other-month' : ''}" data-date="${ymd(d)}"
-        style="grid-column:${i + 1};grid-row:1/-1" ondblclick="quickAdd('${ymd(d)}')"></div>`;
+        style="grid-column:${i + 1};grid-row:1/-1" onclick="goToDay('${ymd(d)}')"
+        title="Ouvrir cette journée"></div>`;
     });
 
     // numéros de jour
@@ -2581,7 +2601,7 @@ function renderMonth() {
       html += `<div class="mday-head ${other ? 'other-month' : ''} ${isToday(d) ? 'today' : ''}"
         style="grid-column:${i + 1};grid-row:1">
         <div class="cell-head">
-          <div class="mday-numwrap"><div class="day-num">${d.getDate()}</div><button class="cell-add" title="Ajouter ce jour" onclick="quickAdd('${ymd(d)}',event)">＋</button></div>
+          <div class="mday-numwrap"><div class="day-num" onclick="quickAdd('${ymd(d)}',event)" title="Ajouter un événement ce jour-là">${d.getDate()}</div><button class="cell-add" title="Ajouter ce jour" onclick="quickAdd('${ymd(d)}',event)">＋</button></div>
           ${habitDotsHtml(d, ymd(d))}
         </div></div>`;
     });
@@ -3907,7 +3927,7 @@ function noteCardHtml(n) {
   return `<div class="note-card" style="border-top:3px solid ${dotOf(n.color || '#eae8e4')}" onclick="openNote('${n.id}')">
       <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
       <div class="note-card-title">${esc(n.title || 'Sans titre')}</div>
-      <div class="note-card-preview">${esc(notePreview(n.body).slice(0, 140)) || 'Note vide'}</div>
+      <div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>
       <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="note-card-date">${esc(noteDateLabel(n))}</span></div>
     </div>`;
 }
@@ -5180,10 +5200,10 @@ function renderPage() {
   const masked = fields.filter(f => hidden.includes(f.key));
 
   $('pageProps').innerHTML = visible.map(f => {
-    const ico = f.prop ? (propIco[f.kind] || '') : (BUILTIN_ICO[f.kind] || '');
     const ctrl = f.prop ? customField(coll, rec, f.prop) : builtinField(coll, rec, f);
+    // pas de petit sigle devant le nom : plus sobre (choix de Clémence)
     return `<div class="prop-row ${f.kind === 'longtext' ? 'tall' : ''}">
-      <div class="prop-key"><span class="prop-type-ico">${ico}</span>${esc(f.label)}</div>
+      <div class="prop-key">${esc(f.label)}</div>
       <div class="prop-val">${ctrl}</div>
       <button class="prop-eye" onclick="togglePageProp('${coll}','${f.key}')" title="Masquer cette propriété">${ICON_EYE}</button>
     </div>`;
@@ -6566,6 +6586,20 @@ $('sidebarToggle').onclick = () => {
 };
 $('drawerBackdrop').onclick = closeDrawer;
 $$('#tabbar .tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
+
+/* Cocher une case directement depuis une tuile de note (liste de courses au supermarché…).
+   En phase de capture pour intercepter le clic AVANT l'ouverture de la note. */
+document.addEventListener('click', e => {
+  const li = e.target.closest && e.target.closest('.note-card-body .note-todo li');
+  if (!li) return;
+  const r = li.getBoundingClientRect();
+  if (e.clientX - r.left > 26) return;        // clic sur le texte → on laisse ouvrir la note
+  e.stopPropagation(); e.preventDefault();
+  li.classList.toggle('done');
+  const box = li.closest('.note-card-body');
+  const n = state.notes.find(x => x.id === box.dataset.note);
+  if (n) { n.body = sanitizeNoteHtml(box.innerHTML); n.updated = Date.now(); save(); }
+}, true);
 // synchro : badge + fenêtre de connexion
 $('syncBadge').onclick = () => { if (auth) openSettings(); else openLogin(); };
 $('signinBtn').onclick = () => doLogin(false);
