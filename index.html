@@ -289,8 +289,10 @@
      ou un événement de plusieurs jours de s'afficher en une barre continue,
      au lieu d'être répété dans chaque case. */
   .month-grid { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; height: 100%; min-height: 560px; }
-  .mrow-dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); flex: none; }
-  .mweek { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); flex: 1; min-height: 112px; }
+  /* minmax(0,1fr) : sans ça, une colonne refuse de rétrécir sous la largeur de son
+     contenu et les derniers jours sortent de l'écran (constaté sur téléphone). */
+  .mrow-dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border); flex: none; }
+  .mweek { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border); flex: 1; min-height: 112px; min-width: 0; }
   .dow { background: var(--surface); padding: 9px 12px; font-size: 12px; font-weight: 700; color: var(--text-soft); text-align: left; }
   /* la case du jour ne sert plus que de fond et de cible de dépôt : le contenu est posé par-dessus */
   .day-cell { background: var(--surface); transition: background .12s; }
@@ -506,7 +508,9 @@
   .more-link { font-size: 11px; color: var(--text-soft); font-weight: 600; padding: 1px 7px; cursor: pointer; }
 
   /* ----- Week / Day time grid ----- */
-  .time-grid { display: grid; height: 100%; min-height: 900px; }
+  /* align-content:start → les rangées (en-tête / bandeau journée / grille) gardent
+     leur hauteur naturelle et ne s'étirent jamais pour remplir le vide. */
+  .time-grid { display: grid; height: 100%; min-height: 900px; align-content: start; }
   .tg-head { display: grid; position: sticky; top: -18px; background: var(--bg); z-index: 5; }
   .tg-head .corner { }
   .tg-col-head { text-align: center; padding: 8px 4px; border-left: 1px solid var(--border); }
@@ -2418,6 +2422,8 @@ function renderAllDayRow(days, colTemplate) {
     lanes[lane].push([it.s, it.en]);
     it.lane = lane;
   });
+  // rien à afficher → pas de bandeau du tout (il ne doit pas manger l'écran pour rien)
+  if (!items.length) return '';
   const laneCount = Math.max(1, lanes.length);
 
   const cells = days.map((d, i) =>
@@ -2493,7 +2499,8 @@ function renderTimeGrid(nDays) {
   // seule la vue Semaine se cale sur le début de semaine ; les autres partent du jour courant
   const start = state.view === 'week' ? startOfWeek(cursor) : new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
   const days = [...Array(nDays)].map((_,i) => addDays(start, i));
-  const colTemplate = `64px repeat(${nDays}, 1fr)`;
+  // minmax(0,1fr) : les colonnes-jours doivent pouvoir rétrécir (sinon débordement sur petit écran)
+  const colTemplate = `64px repeat(${nDays}, minmax(0, 1fr))`;
 
   // en-tête
   let head = `<div class="tg-head" style="grid-template-columns:${colTemplate}"><div class="corner"></div>`;
