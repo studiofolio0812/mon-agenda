@@ -511,6 +511,29 @@
   .note-props { display: flex; gap: 20px; margin-top: 14px; align-items: flex-start; flex-wrap: wrap; }
   .note-props > div { flex: 1; min-width: 160px; }
   .note-props label { display: block; margin-bottom: 6px; }
+
+  /* ---- Note « en grand » : la fenêtre devient une page, façon document ----
+     Le cadre occupe tout l'écran, mais le texte reste dans une colonne étroite
+     centrée : c'est ce qui donne l'impression d'une feuille plutôt que d'un écran. */
+  #noteOverlay.doc { padding: 0; }
+  #noteOverlay.doc .note-modal { max-width: none !important; width: 100%; height: 100%; max-height: none;
+    border-radius: 0; overflow: hidden; display: flex; flex-direction: column; }
+  #noteOverlay.doc .modal-head,
+  #noteOverlay.doc .modal-foot { width: 100%; max-width: 880px; margin: 0 auto; flex: none; }
+  #noteOverlay.doc .modal-head { padding: 16px 30px 6px; }
+  #noteOverlay.doc .note-title-input { font-size: 25px; padding: 2px 6px; }
+  #noteOverlay.doc .modal-body { flex: 1; overflow-y: auto; width: 100%; max-width: 880px; margin: 0 auto; padding: 4px 30px 60px; }
+  #noteOverlay.doc .note-body { max-height: none; min-height: 58vh; border: none; padding: 0;
+    font-size: 15.5px; line-height: 1.75; }
+  #noteOverlay.doc .note-body:focus { border-color: transparent; }
+  #noteOverlay.doc .note-props { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 34px; }
+  /* ---- Aperçu : plus rien autour du texte, mais on peut toujours écrire ---- */
+  #noteOverlay.reading .note-hint,
+  #noteOverlay.reading .note-props,
+  #noteOverlay.reading .modal-foot { display: none; }
+  #noteOverlay.reading .note-body { border-color: transparent; }
+  #noteOverlay.reading .modal-body { padding-bottom: 40px; }
+  #noteReadBtn.on, #noteZoomBtn.on { color: var(--accent); background: var(--accent-soft); }
   .note-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 8px 0 4px; }
   .note-card { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; cursor: pointer; min-height: 90px; }
   .note-card:hover { background: var(--surface); }
@@ -1507,6 +1530,8 @@
     <div class="modal-head">
       <button class="icon-btn note-fav-btn" id="noteFavBtn" title="Mettre en favori">☆</button>
       <input id="noteTitle" class="note-title-input" placeholder="Titre de la note" autocomplete="off">
+      <button class="icon-btn" id="noteReadBtn" title="Aperçu"></button>
+      <button class="icon-btn" id="noteZoomBtn" title="Ouvrir en grand"></button>
       <button class="icon-btn" data-close>✕</button>
     </div>
     <div class="modal-body">
@@ -1929,6 +1954,9 @@ const defaultState = () => ({
   catCollapsed: [],
   // affichage d'une page : 'modal' (fenêtre) ou 'side' (panneau latéral)
   pageMode: 'modal',
+  // note ouverte en grand (façon document) et/ou en aperçu (sans les réglages autour)
+  noteDoc: false,
+  noteRead: false,
   colOrder: {},   // ordre des colonnes par table
   colHidden: {},  // colonnes masquées par table (ID comprise)
   customColors: [],
@@ -4124,7 +4152,66 @@ function toggleNoteFav(id, ev) {
 }
 window.toggleNoteFav = toggleNoteFav;
 
+/* ---------- Note en grand / aperçu ----------
+   Deux réglages indépendants, retenus d'une fois sur l'autre :
+   · « en grand »  : la fenêtre devient une page pleine, texte en colonne centrée ;
+   · « aperçu »    : on masque la ligne d'aide, les réglages et le pied de fenêtre,
+                     mais le texte reste modifiable — c'est un décor en moins, pas
+                     un mode lecture seule (elle veut pouvoir corriger au passage). */
+const ICON_EXPAND = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10V4h6"/><path d="M4 4l6.5 6.5"/><path d="M20 14v6h-6"/><path d="M20 20l-6.5-6.5"/></svg>';
+const ICON_SHRINK = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v6H4"/><path d="M10.5 10.5L4 4"/><path d="M14 20v-6h6"/><path d="M13.5 13.5L20 20"/></svg>';
+function applyNoteMode() {
+  const o = $('noteOverlay');
+  o.classList.toggle('doc', !!state.noteDoc);
+  o.classList.toggle('reading', !!state.noteRead);
+  $('noteZoomBtn').innerHTML = state.noteDoc ? ICON_SHRINK : ICON_EXPAND;
+  $('noteZoomBtn').title = state.noteDoc ? 'Revenir à la petite fenêtre' : 'Ouvrir en grand, comme un document';
+  $('noteZoomBtn').classList.toggle('on', !!state.noteDoc);
+  $('noteReadBtn').innerHTML = ICON_EYE;
+  $('noteReadBtn').title = state.noteRead ? 'Réafficher les réglages et le bouton Enregistrer' : 'Aperçu : rien que la note';
+  $('noteReadBtn').classList.toggle('on', !!state.noteRead);
+}
+function toggleNoteDoc() { state.noteDoc = !state.noteDoc; save(); applyNoteMode(); }
+function toggleNoteRead() {
+  state.noteRead = !state.noteRead;
+  // en quittant l'aperçu on repasse par une sauvegarde : le pied de fenêtre réapparaît « à jour »
+  noteAutosave(true);
+  save(); applyNoteMode();
+}
+
+/* Sauvegarde automatique : indispensable depuis que l'aperçu masque le bouton
+   « Enregistrer ». Différée d'une seconde pour ne pas écrire à chaque frappe, et
+   elle ne retouche JAMAIS le contenu de la zone d'écriture (sinon le curseur saute).
+   Une note vraiment vide (ni titre ni texte) n'est pas créée pour rien. */
+let noteSaveTimer = null;
+function noteAutosave(now) {
+  clearTimeout(noteSaveTimer);
+  const faire = () => {
+    if (!$('noteOverlay').classList.contains('show')) return;
+    const title = $('noteTitle').value.trim();
+    const body = sanitizeNoteHtml($('noteBody').innerHTML);
+    if (!editingNote && !title && !notePreview(body)) return;   // rien à enregistrer
+    noteRecordFromForm(title, body);
+    save();
+    renderNotes();                     // la liste latérale suit, l'éditeur n'est pas retouché
+    if (state.view === 'notes') renderNotesSpace();
+  };
+  if (now) faire(); else noteSaveTimer = setTimeout(faire, 1000);
+}
+// écrit (ou crée) l'enregistrement de la note à partir du formulaire
+function noteRecordFromForm(title, body) {
+  const data = { title, body, color: noteDraftColor,
+    folderId: noteDraftFolder || '',
+    projectId: noteDraftLink.startsWith('p:') ? noteDraftLink.slice(2) : '',
+    eventId: noteDraftLink.startsWith('e:') ? noteDraftLink.slice(2) : '',
+    fav: noteDraftFav, updated: Date.now() };
+  if (editingNote) Object.assign(state.notes.find(x => x.id === editingNote) || {}, data);
+  else { const id = uid(); state.notes.push({ id, ...data }); editingNote = id; $('deleteNoteBtn').classList.remove('hidden'); }
+  return data;
+}
+
 function openNote(id, presetFolder) {
+  clearTimeout(noteSaveTimer);
   editingNote = id || null;
   const n = id ? state.notes.find(x => x.id === id) : null;
   $('deleteNoteBtn').classList.toggle('hidden', !id);
@@ -4136,6 +4223,7 @@ function openNote(id, presetFolder) {
   noteDraftFav = n ? !!n.fav : false;
   renderNoteColorPicker();
   updateNoteFieldButtons();
+  applyNoteMode();
   $('noteOverlay').classList.add('show');
   setTimeout(() => $(n ? 'noteBody' : 'noteTitle').focus(), 50);
 }
@@ -4352,15 +4440,8 @@ function sanitizeNoteHtml(html) {
 }
 
 function saveNote() {
-  const title = $('noteTitle').value.trim();
-  const body = sanitizeNoteHtml($('noteBody').innerHTML);
-  const data = { title, body, color: noteDraftColor,
-    folderId: noteDraftFolder || '',
-    projectId: noteDraftLink.startsWith('p:') ? noteDraftLink.slice(2) : '',
-    eventId: noteDraftLink.startsWith('e:') ? noteDraftLink.slice(2) : '',
-    fav: noteDraftFav, updated: Date.now() };
-  if (editingNote) Object.assign(state.notes.find(x => x.id === editingNote), data);
-  else state.notes.push({ id: uid(), ...data });
+  clearTimeout(noteSaveTimer);
+  noteRecordFromForm($('noteTitle').value.trim(), sanitizeNoteHtml($('noteBody').innerHTML));
   save(); closeModals(); render();
 }
 
@@ -5416,6 +5497,10 @@ function navigate(dir) {
 function closeModals() {
   closeStyledMenu();
   hideBubble(); hideSlashMenu();
+  /* La note s'enregistre en se fermant (croix, Échap, clic à côté) : depuis que
+     l'aperçu masque le bouton « Enregistrer », rien ne doit dépendre d'un clic.
+     Une note supprimée n'est pas ressuscitée : son enregistrement n'existe plus. */
+  if ($('noteOverlay').classList.contains('show') && !reopenNoteAfterFolder) noteAutosave(true);
   $$('.overlay').forEach(o => o.classList.remove('show'));
   // fenêtre dossier ouverte depuis une note, puis annulée → on rouvre la note
   if (reopenNoteAfterFolder) { reopenNoteAfterFolder = false; $('noteOverlay').classList.add('show'); }
@@ -5577,9 +5662,10 @@ function renderPage() {
         `<button class="page-hidden-chip" onclick="togglePageProp('${coll}','${f.key}')" title="Afficher cette propriété">${ICON_EYE_OFF} ${esc(f.label)}</button>`).join('')
     : '';
 
-  // extra : projet → avancement + tâches ; tâche → ses sous-tâches
+  // extra : projet → avancement + tâches ; tâche → ses sous-tâches ; événement → ses notes
   $('pageExtra').innerHTML = (coll === 'projects') ? projectPageExtra(rec)
-                           : (coll === 'tasks')    ? taskPageExtra(rec) : '';
+                           : (coll === 'tasks')    ? taskPageExtra(rec)
+                           : (coll === 'events')   ? eventPageExtra(rec) : '';
 }
 function projectPageExtra(p) {
   const st = projStats(p);
@@ -5635,16 +5721,24 @@ function projectPageExtra(p) {
       }).join('')
       : `<div class="hint-txt">Aucune tâche dans ce projet pour l'instant.</div>`}
     <button class="btn-ghost" style="margin-top:14px" onclick="addTaskToProject('${p.id}')">${ICON_PLUS} Ajouter une tâche</button>
-    ${notesSectionHtml(p.id)}`;
+    ${notesSectionHtml('p', p.id)}`;
 }
+// un événement n'a pas de sous-éléments : sa page se prolonge juste de ses notes
+function eventPageExtra(e) { return notesSectionHtml('e', e.id); }
 
 /* Notes en rapport avec un projet : soit rattachées directement (note→projet),
    soit rangées dans un dossier lui-même lié à ce projet. */
 const notesForProject = pid => (state.notes || []).filter(n =>
     n.projectId === pid || (n.folderId && (folderById(n.folderId) || {}).projectId === pid))
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
-function notesSectionHtml(pid) {
-  const notes = notesForProject(pid);
+/* Notes d'un événement : rattachement direct uniquement (un dossier vise un projet,
+   pas un événement). Même section, même bouton — seule la source change. */
+const notesForEvent = eid => (state.notes || []).filter(n => n.eventId === eid)
+  .sort((a, b) => (b.updated || 0) - (a.updated || 0));
+// `cible` : 'p' pour un projet, 'e' pour un événement
+function notesSectionHtml(cible, id) {
+  const notes = cible === 'e' ? notesForEvent(id) : notesForProject(id);
+  const vide = cible === 'e' ? 'Aucune note rattachée à cet événement.' : 'Aucune note rattachée à ce projet.';
   return `<div class="page-section-title">Notes</div>`
     + (notes.length ? notes.map(n => `<div class="pd-note" onclick="openNoteFromPage('${n.id}')">
         <span class="pd-note-ico">${folderById(n.folderId) ? folderSvg(folderById(n.folderId).color, folderById(n.folderId).icon, 18) : `<span class="pill-dot" style="background:${dotOf(n.color || '#eae8e4')}"></span>`}</span>
@@ -5653,21 +5747,25 @@ function notesSectionHtml(pid) {
           <div class="pd-note-preview">${esc(notePreview(n.body).slice(0, 90)) || 'Note vide'}</div>
         </div>
       </div>`).join('')
-      : `<div class="hint-txt">Aucune note rattachée à ce projet.</div>`)
-    + `<button class="btn-ghost" style="margin-top:14px" onclick="addNoteToProject('${pid}')">${ICON_PLUS} Ajouter une note</button>`;
+      : `<div class="hint-txt">${vide}</div>`)
+    + `<button class="btn-ghost" style="margin-top:14px" onclick="addNoteTo('${cible}','${id}')">${ICON_PLUS} Ajouter une note</button>`;
 }
-// ouvre une note depuis une page (projet…) et y revient en fermant
+// ouvre une note depuis une page (projet, événement…) et y revient en fermant
 function openNoteFromPage(id) {
   if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
   openNote(id);
 }
 window.openNoteFromPage = openNoteFromPage;
-function addNoteToProject(pid) {
+/* Nouvelle note déjà rattachée à ce qu'on regarde : on arme le retour à la page,
+   puis on pré-remplit le champ « Rattacher à ». */
+function addNoteTo(cible, id) {
   if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
   openNote(null);
-  noteDraftLink = 'p:' + pid;
+  noteDraftLink = cible + ':' + id;
   updateNoteFieldButtons();
 }
+window.addNoteTo = addNoteTo;
+const addNoteToProject = pid => addNoteTo('p', pid);
 window.addNoteToProject = addNoteToProject;
 /* ---------- Sélecteur d'icône ---------- */
 let iconCtx = null;   // { coll, id }
@@ -7074,6 +7172,13 @@ $('habitIconBtn').onclick = () => openIconPicker('habitDraft', null);
 $('addNoteBtn').onclick = e => { e.stopPropagation(); openNote(); };
 $('saveNoteBtn').onclick = saveNote;
 $('deleteNoteBtn').onclick = () => { if (editingNote) deleteNote(editingNote); };
+$('noteZoomBtn').onclick = toggleNoteDoc;
+$('noteReadBtn').onclick = toggleNoteRead;
+// sauvegarde automatique différée pendant la frappe (titre et corps)
+$('noteTitle').addEventListener('input', () => noteAutosave());
+$('noteBody').addEventListener('input', () => noteAutosave());
+// une case cochée dans l'éditeur est un vrai changement (pas une frappe) : on enregistre aussi
+$('noteBody').addEventListener('click', e => { if (e.target.closest('.note-todo li')) noteAutosave(); });
 // barre de mise en forme : chaque bouton porte sa commande. onmousedown preventDefault
 // pour ne PAS perdre la sélection dans la zone d'écriture au moment du clic.
 /* ---------- Barre flottante à la sélection (façon Notion) ---------- */
