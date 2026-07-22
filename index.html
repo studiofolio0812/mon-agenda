@@ -455,7 +455,9 @@
   .note-hint { font-size: 11.5px; color: var(--text-faint); margin: 0 0 8px; }
   .note-bubble { position: fixed; z-index: 80; background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.16); padding: 4px; }
+  /* la barre porte 14 outils : elle passe sur deux rangées quand l'écran est étroit */
   .note-bubble .nb-main, .note-bubble .nb-link { display: flex; align-items: center; gap: 2px; }
+  .note-bubble .nb-main { flex-wrap: wrap; max-width: min(94vw, 470px); justify-content: center; }
   .nb-btn { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 7px; border: none; background: none;
     color: var(--text); font-size: 13px; display: grid; place-items: center; cursor: pointer; }
   .nb-btn:hover { background: var(--surface-2); }
@@ -512,21 +514,26 @@
   .note-props > div { flex: 1; min-width: 160px; }
   .note-props label { display: block; margin-bottom: 6px; }
 
-  /* ---- Note « en grand » : la fenêtre devient une page, façon document ----
-     Le cadre occupe tout l'écran, mais le texte reste dans une colonne étroite
-     centrée : c'est ce qui donne l'impression d'une feuille plutôt que d'un écran. */
-  #noteOverlay.doc { padding: 0; }
+  /* ---- Note « en grand » : une vraie feuille posée sur le bureau ----
+     La barre du titre reste en haut de l'écran (comme la barre d'outils d'un
+     traitement de texte) ; en dessous, une zone qui défile où flotte une page
+     blanche avec de la marge au-dessus, sur les côtés et en dessous. */
+  #noteOverlay.doc { padding: 0; background: var(--bg); }
   #noteOverlay.doc .note-modal { max-width: none !important; width: 100%; height: 100%; max-height: none;
-    border-radius: 0; overflow: hidden; display: flex; flex-direction: column; }
-  #noteOverlay.doc .modal-head,
-  #noteOverlay.doc .modal-foot { width: 100%; max-width: 880px; margin: 0 auto; flex: none; }
-  #noteOverlay.doc .modal-head { padding: 16px 30px 6px; }
-  #noteOverlay.doc .note-title-input { font-size: 25px; padding: 2px 6px; }
-  #noteOverlay.doc .modal-body { flex: 1; overflow-y: auto; width: 100%; max-width: 880px; margin: 0 auto; padding: 4px 30px 60px; }
-  #noteOverlay.doc .note-body { max-height: none; min-height: 58vh; border: none; padding: 0;
+    background: transparent; border-radius: 0; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; }
+  #noteOverlay.doc .modal-head { flex: none; background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 22px; }
+  #noteOverlay.doc .note-title-input { font-size: 19px; }
+  #noteOverlay.doc .modal-body { flex: 1; overflow-y: auto; padding: 26px 20px 44px; }
+  #noteOverlay.doc .note-hint { max-width: 820px; margin: 0 auto 14px; text-align: center; }
+  /* la page elle-même */
+  #noteOverlay.doc .note-body { max-width: 820px; margin: 0 auto; max-height: none;
+    min-height: calc(100vh - 230px); padding: 62px 74px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 3px 18px rgba(0,0,0,.08);
     font-size: 15.5px; line-height: 1.75; }
-  #noteOverlay.doc .note-body:focus { border-color: transparent; }
-  #noteOverlay.doc .note-props { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 34px; }
+  #noteOverlay.doc .note-body:focus { border-color: var(--border); }
+  #noteOverlay.doc .note-props { max-width: 820px; margin: 26px auto 0; }
+  #noteOverlay.doc .modal-foot { flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 22px; }
+  #noteOverlay.doc .modal-foot .btn-primary { max-width: 820px; margin: 0 auto; }
   /* ---- Aperçu : plus rien autour du texte, mais on peut toujours écrire ---- */
   #noteOverlay.reading .note-hint,
   #noteOverlay.reading .note-props,
@@ -1180,6 +1187,13 @@
     .overlay .modal { max-width: calc(100vw - 20px) !important; width: calc(100vw - 20px); max-height: 92dvh; margin-top: 12px; }
     .note-modal { max-width: calc(100vw - 20px) !important; }
     .note-body { max-height: 40vh; }
+    /* couleur / dossier / rattacher chacun sur sa ligne : sinon la colonne couleur
+       est trop étroite et les 5 pastilles repassent sur deux rangées */
+    .note-props > div { min-width: 100%; }
+    /* feuille du mode document : marges réduites, sinon il ne reste rien pour écrire */
+    #noteOverlay.doc .modal-body { padding: 12px 10px 30px; }
+    #noteOverlay.doc .note-body { padding: 26px 20px; min-height: calc(100vh - 190px); border-radius: 6px; }
+    #noteOverlay.doc .modal-head { padding: 10px 12px; }
     /* page (fiche) en panneau : pleine largeur sur mobile */
     #pageOverlay.side .page-panel, #pageOverlay .modal { max-width: calc(100vw - 20px) !important; }
 
@@ -1608,6 +1622,11 @@
     <button type="button" class="nb-btn" id="nbColor" title="Couleur du texte"><span class="nb-a">A</span></button>
     <button type="button" class="nb-btn" id="nbHilite" title="Surligner"><span class="nb-hl">A</span></button>
     <span class="nb-sep"></span>
+    <button type="button" class="nb-btn" data-cmd="justifyLeft" title="Aligner à gauche"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M4 11h10M4 16h14M4 21h8"/></svg></button>
+    <button type="button" class="nb-btn" data-cmd="justifyCenter" title="Centrer"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M7 11h10M5 16h14M8 21h8"/></svg></button>
+    <button type="button" class="nb-btn" data-cmd="justifyRight" title="Aligner à droite"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M10 11h10M6 16h14M12 21h8"/></svg></button>
+    <button type="button" class="nb-btn" data-cmd="justifyFull" title="Justifier"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M4 11h16M4 16h16M4 21h16"/></svg></button>
+    <span class="nb-sep"></span>
     <button type="button" class="nb-btn" id="nbLink" title="Ajouter un lien">🔗</button>
     <button type="button" class="nb-btn" id="nbBox" title="Encadrer">▢</button>
     <button type="button" class="nb-btn" data-cmd="removeFormat" title="Enlever la mise en forme">⌫</button>
@@ -1960,6 +1979,8 @@ const defaultState = () => ({
   colOrder: {},   // ordre des colonnes par table
   colHidden: {},  // colonnes masquées par table (ID comprise)
   customColors: [],
+  // les 5 dernières couleurs utilisées : c'est ce que montrent les sélecteurs
+  recentColors: PALETTE.slice(0, 5),
   categories: [
     { id: 'c1', name: 'Agenda de travail', color: '#cfe2f2' },
     { id: 'c2', name: 'Agenda perso',      color: '#d3e8cf' },
@@ -3829,7 +3850,7 @@ window.toggleHabitDow = dow => {
   renderHabitDows();
 };
 function renderHabitColor() { $('habitColorPicker').innerHTML = paletteHtml(habitDraft.color, 'pickHabitColor', 'habit'); }
-window.pickHabitColor = c => { habitDraft.color = c; renderHabitColor(); };
+window.pickHabitColor = c => { habitDraft.color = c; rememberColor(c); renderHabitColor(); syncHabitIcon(); };
 function syncHabitIcon() {
   $('habitIconBtn').innerHTML = habitDraft.icon
     ? `${iconSvg(habitDraft.icon, 16, dotOf(habitDraft.color))} Changer`
@@ -4422,7 +4443,7 @@ function applyBlock(kind) {
 window.applyBlock = applyBlock;
 
 function renderNoteColorPicker() { $('noteColorPicker').innerHTML = paletteHtml(noteDraftColor, 'pickNoteColor', 'note'); }
-window.pickNoteColor = c => { noteDraftColor = c; renderNoteColorPicker(); };
+window.pickNoteColor = c => { noteDraftColor = c; rememberColor(c); renderNoteColorPicker(); };
 
 /* Nettoyage léger : un copier-coller depuis le web pourrait amener un script ou
    un gestionnaire d'événement. L'app est locale, mais autant ne rien réinjecter
@@ -4472,7 +4493,7 @@ let reopenNoteAfterFolder = false;
 // aperçu du dossier (grande icône colorée, façon Google Drive)
 function renderFolderPreview() { $('folderPreview').innerHTML = folderSvg(folderDraftColor, folderDraftIcon, 96); }
 function renderFolderColor() { $('folderColorPicker').innerHTML = paletteHtml(folderDraftColor, 'pickFolderColor', 'folder'); }
-window.pickFolderColor = c => { folderDraftColor = c; renderFolderColor(); renderFolderPreview(); };
+window.pickFolderColor = c => { folderDraftColor = c; rememberColor(c); renderFolderColor(); renderFolderPreview(); };
 function renderFolderIconGrid() {
   $('folderIconGrid').innerHTML = `<button type="button" class="${!folderDraftIcon ? 'sel' : ''}" title="Aucune" onclick="pickFolderIcon('')">∅</button>`
     + ICON_NAMES.map(n => `<button type="button" class="${n === folderDraftIcon ? 'sel' : ''}" title="${n}" onclick="pickFolderIcon('${n}')">${iconSvg(n, 20)}</button>`).join('');
@@ -4618,7 +4639,7 @@ function openProjModal(id) {
 function editProject(id, ev) { ev && ev.stopPropagation(); openProjModal(id); }
 window.editProject = editProject;
 function renderProjPicker() { $('projColorPicker').innerHTML = paletteHtml(projDraftColor, 'pickProjColor', 'proj'); }
-function pickProjColor(c) { projDraftColor = c; renderProjPicker(); }
+function pickProjColor(c) { projDraftColor = c; rememberColor(c); renderProjPicker(); }
 window.pickProjColor = pickProjColor;
 function saveProj() {
   const name = $('projName').value.trim();
@@ -4855,24 +4876,43 @@ function fillProjSelect() {
     state.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
 }
 function allColors(base) { return (base || PALETTE).concat(state.customColors || []); }
+
+/* ---------- Les 5 dernières couleurs utilisées ----------
+   Les sélecteurs n'affichent plus toute la collection (ça débordait sur 5 rangées) :
+   seulement les 5 dernières couleurs choisies — dans une note, un événement, un
+   agenda, peu importe — plus le ＋ pour aller en chercher une autre. Une ligne. */
+const RECENT_MAX = 5;
+const normColor = s => String(s || '').toLowerCase();
+function rememberColor(c) {
+  if (!c) return;
+  const reste = (state.recentColors || []).filter(x => normColor(x) !== normColor(c));
+  state.recentColors = [c, ...reste].slice(0, RECENT_MAX);
+  save();
+}
+// la couleur en cours figure toujours dans la ligne, même si elle est plus ancienne
+function recentColors(selected) {
+  let list = (state.recentColors && state.recentColors.length ? state.recentColors : PALETTE).slice(0, RECENT_MAX);
+  if (selected && !list.some(c => normColor(c) === normColor(selected))) list = [selected, ...list].slice(0, RECENT_MAX);
+  return list;
+}
 // palette : liste de couleurs à proposer (par défaut les teintes de tag). Le swatch affiche la
 // pastille "dot" plus soutenue (comme dans le design system), mais la valeur choisie reste le pastel.
 function paletteHtml(selected, pickFn, ctx, palette) {
-  const norm = s => String(s).toLowerCase();
-  const list = allColors(palette);
+  // `palette` imposée (l'accent des réglages) : on la montre en entier ; sinon, les récentes
+  const list = palette ? allColors(palette) : recentColors(selected);
   return list.map(c =>
-    `<div class="dot ${norm(c)===norm(selected)?'sel':''}" style="background:${dotOf(c)}" onclick="${pickFn}('${c}')"></div>`).join('')
-    + `<div class="dot add-dot" title="Couleur personnalisée (code hex)" onclick="addCustomColor('${ctx}')">＋</div>`;
+    `<div class="dot ${normColor(c)===normColor(selected)?'sel':''}" style="background:${dotOf(c)}" onclick="${pickFn}('${c}')"></div>`).join('')
+    + `<div class="dot add-dot" title="Une autre couleur (nuancier)" onclick="addCustomColor('${ctx}')">＋</div>`;
 }
 function renderColorPicker() { $('colorPicker').innerHTML = paletteHtml(draft.color, 'pickColor', 'item'); }
-function pickColor(c) { draft.color = c; renderColorPicker(); }
+function pickColor(c) { draft.color = c; rememberColor(c); renderColorPicker(); }
 window.pickColor = pickColor;
 
 /* ---- Couleur personnalisée via le sélecteur natif (code hex) ---- */
 let colorCtx = 'item';
 function addCustomColor(ctx) {
   colorCtx = ctx;
-  const cur = ctx === 'item' ? draft.color : ctx === 'cat' ? catDraftColor : ctx === 'proj' ? projDraftColor
+  const cur = ctx === 'item' ? draft.color : ctx === 'cat' ? catDraft.color : ctx === 'proj' ? projDraftColor
             : ctx === 'habit' ? habitDraft.color : ctx === 'note' ? noteDraftColor : ctx === 'folder' ? folderDraftColor : state.accent;
   const hx = $('hexInput');
   hx.value = /^#[0-9a-fA-F]{6}$/.test(cur) ? cur : DEFAULT_ACCENT;
@@ -5236,7 +5276,7 @@ function renderCatPicker() {
   $('catColorPicker').classList.toggle('hidden', !!catDraft.inherit);
   $('catColorPicker').innerHTML = paletteHtml(catDraft.color, 'pickCatColor', 'cat');
 }
-function pickCatColor(c) { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
+function pickCatColor(c) { catDraft.color = c; catDraft.inherit = false; rememberColor(c); renderCatPicker(); syncCatIcon(); }
 window.pickCatColor = pickCatColor;
 // couleur affichée pour l'icône : celle du parent si la liste en hérite
 function catDraftColorNow() {
@@ -7091,6 +7131,7 @@ document.querySelector('.sidebar').addEventListener('click', e => {
 $('hexInput').onchange = e => {
   const c = e.target.value;
   if (!state.customColors.includes(c)) state.customColors.push(c);
+  if (colorCtx !== 'accent') rememberColor(c);   // la couleur choisie au nuancier rejoint la ligne
   save();
   if (colorCtx === 'item') { draft.color = c; renderColorPicker(); }
   else if (colorCtx === 'cat') { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
