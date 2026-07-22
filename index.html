@@ -623,7 +623,9 @@
 
   .trow { display: flex; align-items: center; gap: 11px; padding: 10px 6px; border-bottom: 1px solid var(--border); }
   .trow:hover { background: var(--surface-2); }
-  .trow .t-name { flex: 1; font-size: 14px; line-height: 1.35; word-break: break-word; cursor: pointer; }
+  /* min-width:0 + coupure « seulement si nécessaire » : sans ça, dans une ligne
+     serrée, le titre se casse à chaque lettre (constaté sur téléphone). */
+  .trow .t-name { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; cursor: pointer; }
   .trow.is-done .t-name { text-decoration: line-through; color: var(--text-faint); }
   /* sous-tâches : décalage, chevron de repli, compteur d'avancement */
   .trow.sub { padding-left: 30px; }
@@ -1089,6 +1091,15 @@
     .note-body { max-height: 40vh; }
     /* page (fiche) en panneau : pleine largeur sur mobile */
     #pageOverlay.side .page-panel, #pageOverlay .modal { max-width: calc(100vw - 20px) !important; }
+
+    /* --- listes de tâches : le titre d'abord, les étiquettes en dessous ---
+       Sur écran étroit, pastille de projet + date accaparaient toute la largeur
+       et le titre se retrouvait écrasé (une lettre par ligne). */
+    .trow { flex-wrap: wrap; row-gap: 3px; }
+    .trow .t-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trow .proj-pill, .trow .cat-pill { max-width: 45vw; overflow: hidden; text-overflow: ellipsis; }
+    .trow .t-due { margin-left: auto; }
+    .task-item .task-name { overflow-wrap: anywhere; }
 
     /* --- confort tactile : cibles un peu plus grandes --- */
     .icon-btn { width: 38px; height: 38px; }
