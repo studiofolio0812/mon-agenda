@@ -2,8 +2,15 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Mon Agenda</title>
+<!-- application installable (écran d'accueil, plein écran, hors ligne) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#fbfaf7">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mon Agenda">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap');
 
@@ -1678,6 +1685,9 @@
       </select>
       <label style="margin-top:20px;">Compte & synchronisation</label>
       <div id="accountBox"></div>
+
+      <label style="margin-top:20px;">Application</label>
+      <div id="installBox"></div>
 
       <label style="margin-top:20px;">Données</label>
       <div class="row-2">
@@ -4768,6 +4778,7 @@ function openSettings() {
   $('weekStart').value = state.weekStart;
   $('logoClearBtn').classList.toggle('hidden', !state.logo);
   renderAccountBox();
+  renderInstallBox();
   $('settingsOverlay').classList.add('show');
 }
 function setAccent(c) { state.accent = c; save(); render(); openSettings(); }
@@ -4869,6 +4880,48 @@ async function doLogin(creating) {
     $('loginError').textContent = /invalid/i.test(e.message) ? 'E-mail ou mot de passe incorrect.' : e.message;
   }
 }
+
+/* ============================================================
+   APPLICATION INSTALLABLE (PWA)
+   ------------------------------------------------------------
+   • Le service worker garde une copie de l'app → elle s'ouvre même sans réseau.
+   • « beforeinstallprompt » permet de proposer l'installation depuis les Réglages.
+   ============================================================ */
+let deferredInstall = null;
+const isInstalled = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  // chemin relatif : fonctionne aussi bien en local que sur github.io/mon-agenda/
+  navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service worker non enregistré', e));
+}
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;      // on garde la main pour proposer l'installation au bon moment
+  renderInstallBox();
+});
+window.addEventListener('appinstalled', () => { deferredInstall = null; renderInstallBox(); });
+
+function renderInstallBox() {
+  const box = $('installBox'); if (!box) return;
+  if (isInstalled()) {
+    box.innerHTML = `<p class="hint-txt" style="margin-top:0">✓ L'application est installée sur cet appareil.</p>`;
+  } else if (deferredInstall) {
+    box.innerHTML = `<button class="btn-primary" style="width:100%" onclick="doInstall()">Installer l'application</button>
+      <p class="hint-txt">Elle aura sa propre icône sur ton écran d'accueil et s'ouvrira en plein écran.</p>`;
+  } else {
+    box.innerHTML = `<p class="hint-txt" style="margin-top:0">Pour l'installer : ouvre le menu de ton navigateur (⋮) puis
+      « Ajouter à l'écran d'accueil » / « Installer l'application ».</p>`;
+  }
+}
+async function doInstall() {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice;
+  deferredInstall = null;
+  renderInstallBox();
+}
+window.doInstall = doInstall;
 
 /* ---------- Export / Import ---------- */
 function exportData() {
@@ -6613,7 +6666,8 @@ document.addEventListener('keydown', e => {
 
 /* ---------- Go ---------- */
 render();
-initCloud();   // synchro : reprend la session, va chercher les changements de l'autre appareil
+initCloud();            // synchro : reprend la session, va chercher les changements de l'autre appareil
+registerServiceWorker(); // app installable + fonctionnement hors ligne
 </script>
 </body>
 </html>
