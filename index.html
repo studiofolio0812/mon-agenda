@@ -223,6 +223,19 @@
   .cat-eye:hover { color: var(--text); background: var(--surface); }
   .cat-row.muted .swatch { opacity: .35; }
   .cat-row.muted .name { color: var(--text-faint); }
+  .cat-row.muted .cat-ico { opacity: .35; }
+  /* sous-agendas : chevron de repli, décalage, ajout rapide d'une liste */
+  .cat-chev { display: grid; place-items: center; width: 14px; flex-shrink: 0; color: var(--text-faint); transition: transform .15s; }
+  .cat-chev.open { transform: rotate(90deg); }
+  .cat-chev:hover { color: var(--text); }
+  .cat-chev-gap { width: 14px; flex-shrink: 0; }
+  .cat-row.cat-sub { margin-left: 20px; }
+  .cat-ico { display: grid; place-items: center; width: 14px; height: 14px; flex-shrink: 0; }
+  .cat-add { opacity: 0; color: var(--text-soft); font-size: 13px; flex-shrink: 0; line-height: 1; }
+  .cat-row:hover .cat-add { opacity: 1; }
+  .cat-add:hover { color: var(--accent); }
+  .cat-count { font-size: 11px; color: var(--text-faint); flex-shrink: 0; }
+  .cat-eye[disabled] { opacity: .3; cursor: default; }
 
   /* projets */
   .proj-row { padding: 7px 8px; border-radius: 10px; cursor: pointer; margin-bottom: 3px; transition: background .12s; }
@@ -1181,6 +1194,8 @@
     .icon-btn { width: 38px; height: 38px; }
     .nav-item { padding: 12px 10px; }
     .cat-row, .proj-row, .note-row, .habit-row { padding: 10px 8px; }
+    /* pas de survol au doigt : le ＋ « ajouter une liste » reste visible */
+    .cat-add { opacity: 1; }
   }
 </style>
 </head>
@@ -1471,8 +1486,13 @@
     <div class="modal-body">
       <label>Nom</label>
       <input id="catName" placeholder="Ex : Agenda de travail, Client…" autocomplete="off">
-      <label>Couleur</label>
+      <label style="margin-top:16px">Rangé dans</label>
+      <button type="button" class="styled-select" id="catParentBtn"></button>
+      <label style="margin-top:16px">Couleur</label>
+      <label class="check-row hidden" id="catInheritRow" style="margin:0 0 8px"><input type="checkbox" id="catInherit"> Même couleur que l'agenda</label>
       <div class="color-picker" id="catColorPicker"></div>
+      <label style="margin-top:16px">Icône</label>
+      <button class="btn-ghost" id="catIconBtn" style="display:inline-flex;align-items:center;gap:8px">Choisir…</button>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost btn-danger hidden" id="deleteCatBtn">Supprimer</button>
@@ -1905,6 +1925,8 @@ const defaultState = () => ({
   navOpen: { tasks: true, projects: false, cats: false, habits: false },
   // agendas masqués du calendrier (ids) — l'œil de la barre latérale les bascule
   hiddenCats: [],
+  // agendas dont les listes sont repliées dans la barre latérale (ids)
+  catCollapsed: [],
   // affichage d'une page : 'modal' (fenêtre) ou 'side' (panneau latéral)
   pageMode: 'modal',
   colOrder: {},   // ordre des colonnes par table
@@ -2376,8 +2398,28 @@ function renderPeriodTitle() {
 /* ---------- Données par jour ---------- */
 const catById = id => state.categories.find(c => c.id === id);
 const projById = id => state.projects.find(p => p.id === id);
-// un élément est visible si son agenda n'est pas masqué (les éléments sans agenda restent toujours visibles)
-const catVisible = catId => !catId || !(state.hiddenCats || []).includes(catId);
+/* ---------- Sous-agendas (hiérarchie à 2 niveaux) ----------
+   Un « sous-agenda » (ou liste) est simplement un agenda qui a un `parentId` :
+   pas de deuxième notion inventée, comme les sous-tâches. On s'arrête à 2 niveaux
+   volontairement — un agenda déjà rangé dans un autre ne peut pas en accueillir. */
+const catParent = c => (c && c.parentId) ? catById(c.parentId) : null;
+const subCats = id => state.categories.filter(c => c.parentId === id);
+const hasSubCats = id => state.categories.some(c => c.parentId === id);
+// agendas de premier niveau (un parent disparu = l'agenda remonte à la racine)
+const topCats = () => state.categories.filter(c => !catParent(c));
+// couleur effective : la sienne, sinon celle de l'agenda qui le contient
+const catColor = c => (c && (c.color || (catParent(c) || {}).color)) || PALETTE[0];
+// libellé complet « Parent › Liste », pour les sélecteurs et les fiches
+const catPath = c => { const p = catParent(c); return p ? `${p.name} › ${c.name}` : (c ? c.name : ''); };
+/* Un élément est visible si son agenda n'est pas masqué (les éléments sans agenda
+   restent toujours visibles). Masquer un agenda parent masque aussi ses listes. */
+const catVisible = catId => {
+  if (!catId) return true;
+  const hid = state.hiddenCats || [];
+  if (hid.includes(catId)) return false;
+  const c = catById(catId);
+  return !(c && c.parentId && hid.includes(c.parentId));
+};
 /* Un événement occupe une plage de jours (date → endDate). Il va dans le bandeau
    « toute la journée » s'il est marqué sans créneau, ou s'il s'étale sur plusieurs jours. */
 const evStart = e => e.date;
@@ -2425,7 +2467,7 @@ function eventLook(e) {
   }
   // sinon la couleur vient de l'agenda choisi ; à défaut, de la couleur propre de l'événement
   const cat = e.catId ? catById(e.catId) : null;
-  const col = cat ? cat.color : e.color;
+  const col = cat ? catColor(cat) : e.color;
   // l'encre (texte ET icône) s'adapte à la teinte : claire sur fond foncé, foncée sur pastel
   const ink = inkOn(col);
   return { style: `background:${col};border-left:3px solid ${dotOf(col)};color:${ink}`, dot: dotOf(col), ink, isProject: false };
@@ -2433,7 +2475,7 @@ function eventLook(e) {
 // couleur de la bande d'une tâche : son agenda, sinon son projet
 function taskStripe(t) {
   const c = catById(t.catId);
-  if (c) return dotOf(c.color);
+  if (c) return dotOf(catColor(c));
   const p = t.projectId ? projById(t.projectId) : null;
   return p ? dotOf(p.color) : 'var(--text-faint)';
 }
@@ -3071,7 +3113,7 @@ function renderTasksSpace() {
         ${retards ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}
         ${pr ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}
         ${(p && !hideProjPill) ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
-        ${c ? `<span class="cat-pill" style="background:${c.color};color:${inkOn(c.color)}"><span class="pill-dot" style="background:${dotOf(c.color)}"></span>${esc(c.name)}</span>` : ''}
+        ${c ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>` : ''}
         <span class="t-due ${late ? 'late' : ''}">${esc(taskDueText(t))}</span>
       </div>`;
     };
@@ -3299,7 +3341,7 @@ const taskIsBar = t => !!(t.start && t.due && t.due > t.start);
 // couleur de base d'une tâche : son agenda, sinon son projet, sinon un gris neutre
 function taskColor(t) {
   const c = catById(t.catId);
-  if (c) return c.color;
+  if (c) return catColor(c);
   const p = t.projectId ? projById(t.projectId) : null;
   return p ? p.color : '#eae8e4';
 }
@@ -3562,7 +3604,7 @@ function renderTasks() {
           ${dueTxt?`<span> ${dueTxt}</span>`:''}
           ${pr?`<span class="sub-prog">${pr.done}/${pr.total}</span>`:''}
           ${!projectFilter && p?`<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>`:''}
-          ${c?`<span class="cat-pill" style="background:${c.color};color:${inkOn(c.color)}"><span class="pill-dot" style="background:${dotOf(c.color)}"></span>${esc(c.name)}</span>`:''}
+          ${c?`<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>`:''}
         </div>
       </div>
     </div>`;
@@ -3642,18 +3684,47 @@ function toggleNavSection(key) {
 
 const ICON_EYE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.5 3.4M6.6 6.6A18.6 18.6 0 0 0 2 12s3.5 7 10 7a10.8 10.8 0 0 0 5.4-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
-function renderCategories() {
+/* Une ligne d'agenda. `sub` = c'est une liste rangée dans un agenda parent :
+   elle est décalée, n'a pas de chevron et hérite du masquage de son parent. */
+function catRowHtml(c, sub) {
   const hidden = state.hiddenCats || [];
-  $('catList').innerHTML = state.categories.map(c => {
-    const off = hidden.includes(c.id);
-    return `<div class="cat-row ${off?'muted':''}">
-      <button class="cat-eye" onclick="toggleCatVisible('${c.id}',event)" title="${off?'Afficher dans le calendrier':'Masquer du calendrier'}">${off?ICON_EYE_OFF:ICON_EYE}</button>
-      <div class="swatch" style="background:${dotOf(c.color)}"></div>
-      <div class="name" onclick="openPage('cats','${c.id}')" title="Ouvrir la page de cet agenda">${esc(c.name)}</div>
-      <button class="del" onclick="deleteCat('${c.id}')" title="Supprimer">✕</button>
-    </div>`;
+  const off = !catVisible(c.id);
+  const parentOff = sub && hidden.includes(c.parentId);
+  const enfants = sub ? [] : subCats(c.id);
+  const replie = (state.catCollapsed || []).includes(c.id);
+  const chev = enfants.length
+    ? `<button class="cat-chev ${replie ? '' : 'open'}" onclick="toggleCatCollapse('${c.id}',event)" title="${replie ? 'Déplier les listes' : 'Replier les listes'}">${ICON_CHEV}</button>`
+    : `<span class="cat-chev-gap"></span>`;
+  // une liste peut porter une icône ; à défaut, la pastille de couleur habituelle
+  const marque = (c.icon && ICON_LIB[c.icon])
+    ? `<span class="cat-ico">${iconSvg(c.icon, 15, dotOf(catColor(c)))}</span>`
+    : `<div class="swatch" style="background:${dotOf(catColor(c))}"></div>`;
+  return `<div class="cat-row ${off ? 'muted' : ''} ${sub ? 'cat-sub' : ''}">
+    ${sub ? '' : chev}
+    <button class="cat-eye" ${parentOff ? 'disabled title="Son agenda est masqué"' : `title="${off ? 'Afficher dans le calendrier' : 'Masquer du calendrier'}"`} onclick="toggleCatVisible('${c.id}',event)">${off ? ICON_EYE_OFF : ICON_EYE}</button>
+    ${marque}
+    <div class="name" onclick="openPage('cats','${c.id}')" title="Ouvrir la page de cet agenda">${esc(c.name)}</div>
+    ${(!sub && replie && enfants.length) ? `<span class="cat-count" title="${enfants.length} liste${enfants.length > 1 ? 's' : ''}">${enfants.length}</span>` : ''}
+    ${sub ? '' : `<button class="cat-add" onclick="openCatModal(null,'${c.id}',event)" title="Ajouter une liste dans cet agenda">＋</button>`}
+    <button class="del" onclick="deleteCat('${c.id}')" title="Supprimer">✕</button>
+  </div>`;
+}
+function renderCategories() {
+  $('catList').innerHTML = topCats().map(c => {
+    const replie = (state.catCollapsed || []).includes(c.id);
+    const listes = replie ? [] : subCats(c.id);
+    return catRowHtml(c, false) + listes.map(s => catRowHtml(s, true)).join('');
   }).join('');
 }
+// replie/déplie les listes d'un agenda dans la barre latérale
+function toggleCatCollapse(id, ev) {
+  ev && ev.stopPropagation();
+  if (!state.catCollapsed) state.catCollapsed = [];
+  const i = state.catCollapsed.indexOf(id);
+  if (i >= 0) state.catCollapsed.splice(i, 1); else state.catCollapsed.push(id);
+  save(); renderCategories();
+}
+window.toggleCatCollapse = toggleCatCollapse;
 // bascule l'affichage d'un agenda dans le calendrier (comme Google Agenda)
 function toggleCatVisible(id, ev) {
   ev && ev.stopPropagation();
@@ -4688,9 +4759,15 @@ function wireEventResize() {
 /* ============================================================
    MODALE ÉVÉNEMENT / TÂCHE
    ============================================================ */
+/* Les agendas sont proposés par famille : l'agenda principal, puis ses listes
+   regroupées dessous (comme les dossiers d'un sélecteur de fichiers). */
 function fillCatSelect() {
-  $('fCat').innerHTML = '<option value="">— Aucun —</option>' +
-    state.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  $('fCat').innerHTML = '<option value="">— Aucun —</option>' + topCats().map(c => {
+    const listes = subCats(c.id);
+    if (!listes.length) return `<option value="${c.id}">${esc(c.name)}</option>`;
+    return `<optgroup label="${esc(c.name)}"><option value="${c.id}">${esc(c.name)} (tout l'agenda)</option>` +
+      listes.map(s => `<option value="${s.id}">　${esc(s.name)}</option>`).join('') + '</optgroup>';
+  }).join('');
 }
 function fillProjSelect() {
   $('fProj').innerHTML = '<option value="">— Aucun —</option>' +
@@ -4749,7 +4826,7 @@ function syncEventColorField() {
   }
   const proj = $('fProj').value ? projById($('fProj').value) : null;
   const cat = $('fCat').value ? catById($('fCat').value) : null;
-  const source = proj ? `du projet « ${proj.name} »` : cat ? `de l'agenda « ${cat.name} »` : null;
+  const source = proj ? `du projet « ${proj.name} »` : cat ? `de l'agenda « ${catPath(cat)} »` : null;
   $('colorField').classList.toggle('hidden', !!source);
   hint.classList.toggle('hidden', !source);
   if (source) hint.textContent = `La couleur vient ${source}. Retire-le pour choisir une couleur libre.`;
@@ -5021,45 +5098,120 @@ window.goToDay = goToDay;
 /* ============================================================
    CATÉGORIES
    ============================================================ */
-let catDraftColor = PALETTE[1];
+/* Brouillon d'agenda en cours d'édition : rangement, couleur et icône.
+   `inherit` = la liste prend la couleur de l'agenda qui la contient (color vide). */
+let catDraft = { parentId: '', color: PALETTE[1], icon: '', inherit: false };
 let editingCat = null;
-function openCatModal(id) {
+function openCatModal(id, parentId, ev) {
+  ev && ev.stopPropagation();
   editingCat = id || null;
   const isEdit = !!id;
-  $('catModalTitle').textContent = isEdit ? "Modifier l'agenda" : 'Nouvel agenda';
+  const c = isEdit ? catById(id) : null;
+  const par = c ? (c.parentId || '') : (parentId || '');
+  const parRec = catById(par);
+  $('catModalTitle').textContent = isEdit ? (par ? 'Modifier la liste' : "Modifier l'agenda")
+                                         : (par ? 'Nouvelle liste' : 'Nouvel agenda');
   $('saveCatBtn').textContent = isEdit ? 'Enregistrer' : 'Ajouter';
   $('deleteCatBtn').classList.toggle('hidden', !isEdit);
-  if (isEdit) {
-    const c = catById(id);
-    $('catName').value = c.name; catDraftColor = c.color;
-  } else {
-    catDraftColor = allColors()[Math.floor(Math.random()*PALETTE.length)];
-    $('catName').value = '';
-  }
-  renderCatPicker();
+  catDraft = {
+    parentId: par,
+    // une nouvelle liste part de la couleur de son agenda ; un nouvel agenda tire au sort
+    color: (c && c.color) || (parRec ? parRec.color : '') || allColors()[Math.floor(Math.random()*PALETTE.length)],
+    icon: (c && c.icon) || '',
+    inherit: c ? (!!par && !c.color) : !!par,
+  };
+  $('catName').value = c ? c.name : '';
+  syncCatParent(); renderCatPicker(); syncCatIcon();
   $('catOverlay').classList.add('show');
   setTimeout(() => $('catName').focus(), 50);
 }
+window.openCatModal = openCatModal;
 function editCat(id) { openCatModal(id); }
 window.editCat = editCat;
-function renderCatPicker() { $('catColorPicker').innerHTML = paletteHtml(catDraftColor, 'pickCatColor', 'cat'); }
-function pickCatColor(c) { catDraftColor = c; renderCatPicker(); }
+
+/* ---- Rangement : dans quel agenda cette liste vit-elle ? ----
+   Seuls les agendas de premier niveau peuvent en accueillir : on s'arrête à
+   2 niveaux, comme TickTick. Un agenda qui contient déjà des listes ne peut donc
+   pas être rangé ailleurs (sinon on créerait un 3e niveau). */
+function catParentGroups() {
+  const items = [{ value: '', label: 'Aucun (agenda principal)', dot: '' }].concat(
+    topCats().filter(c => c.id !== editingCat)
+      .map(c => ({ value: c.id, label: c.name, dot: dotOf(catColor(c)) })));
+  return [{ items }];
+}
+function syncCatParent() {
+  const btn = $('catParentBtn');
+  const bloque = !!editingCat && hasSubCats(editingCat);
+  const p = catById(catDraft.parentId);
+  btn.textContent = bloque ? 'Contient des listes' : (p ? p.name : 'Aucun (agenda principal)');
+  btn.disabled = bloque;
+  btn.title = bloque ? "Un agenda qui contient des listes ne peut pas être rangé dans un autre (2 niveaux maximum)." : '';
+}
+function renderCatPicker() {
+  const par = catById(catDraft.parentId);
+  if (!par) catDraft.inherit = false;
+  $('catInheritRow').classList.toggle('hidden', !par);
+  $('catInherit').checked = !!catDraft.inherit;
+  $('catColorPicker').classList.toggle('hidden', !!catDraft.inherit);
+  $('catColorPicker').innerHTML = paletteHtml(catDraft.color, 'pickCatColor', 'cat');
+}
+function pickCatColor(c) { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
 window.pickCatColor = pickCatColor;
+// couleur affichée pour l'icône : celle du parent si la liste en hérite
+function catDraftColorNow() {
+  const par = catById(catDraft.parentId);
+  return (catDraft.inherit && par) ? catColor(par) : catDraft.color;
+}
+function syncCatIcon() {
+  $('catIconBtn').innerHTML = catDraft.icon
+    ? `${iconSvg(catDraft.icon, 16, dotOf(catDraftColorNow()))} Changer`
+    : 'Choisir…';
+}
 function saveCat() {
   const name = $('catName').value.trim();
   if (!name) { $('catName').focus(); return; }
+  const par = (catDraft.parentId && catById(catDraft.parentId)) ? catDraft.parentId : '';
+  const champs = {
+    name, parentId: par,
+    color: (par && catDraft.inherit) ? '' : catDraft.color,   // vide = hérite du parent
+    icon: catDraft.icon || '',
+  };
   if (editingCat) {
     const c = catById(editingCat);
-    if (c) { c.name = name; c.color = catDraftColor; }
+    if (c) Object.assign(c, champs);
   } else {
-    state.categories.push({ id: uid(), name, color: catDraftColor });
+    state.categories.push(Object.assign({ id: uid() }, champs));
+    if (par) {   // on déplie l'agenda d'accueil pour voir la liste qu'on vient de créer
+      state.catCollapsed = (state.catCollapsed || []).filter(x => x !== par);
+    }
   }
   save(); closeModals(); render();
 }
+/* Suppression : un agenda qui contient des listes pose la question, comme une phase
+   à sous-tâches — on garde les listes (elles remontent au premier niveau) ou tout part. */
 function deleteCat(id) {
+  const enfants = subCats(id);
+  if (enfants.length) {
+    const c = catById(id);
+    askChoice('Supprimer cet agenda ?',
+      `« ${c ? c.name : ''} » contient ${enfants.length} liste${enfants.length > 1 ? 's' : ''}.`,
+      'Garder les listes', 'Tout supprimer',
+      choix => {
+        if (choix === 'one') enfants.forEach(s => { s.parentId = ''; if (!s.color) s.color = catColor(c); });
+        else enfants.forEach(s => removeCat(s.id));
+        removeCat(id);
+      });
+    return;
+  }
+  removeCat(id);
+}
+// retrait effectif d'un agenda + nettoyage des références (catId)
+function removeCat(id) {
   state.categories = state.categories.filter(c => c.id !== id);
   state.events.forEach(e => { if (e.catId === id) e.catId = ''; });
   state.tasks.forEach(t => { if (t.catId === id) t.catId = ''; });
+  state.hiddenCats = (state.hiddenCats || []).filter(x => x !== id);
+  state.catCollapsed = (state.catCollapsed || []).filter(x => x !== id);
   save(); render();
 }
 window.deleteCat = deleteCat;
@@ -5291,7 +5443,7 @@ const PAGE_BUILTINS = {
   events:   [['date','Date','date'],['endDate','Dernier jour','date'],['allDay','Journée entière','check'],['start','Début','time'],['end','Fin','time'],['catId','Agenda','cat'],['projectId','Projet','proj'],['people','Personnes','people'],['color','Couleur','color'],['note','Note','longtext']],
   tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext']],
   projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color']],
-  cats:     [['color','Couleur','color']],
+  cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color']],
 };
 const BUILTIN_ICO = { date:'--:--', time:'--:--', color:'◉', text:'Aa', longtext:'Aa', check:'✓', cat:'◉', proj:'⇄', prio:'◉', task:'⇄', people:'@' };
 /* Liste des tâches pouvant servir de parent : ni la tâche elle-même, ni ses descendantes
@@ -5316,6 +5468,10 @@ function builtinField(c, rec, f) {
   if (f.kind === 'color') return `<input type="color" value="${v||PALETTE[0]}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'check') return `<input type="checkbox" ${v?'checked':''} onchange="updDataR(${b},this.checked)">`;
   if (f.kind === 'cat')   return `<select onchange="updDataR(${b},this.value)">${optsCats(v)}</select>`;
+  // agenda d'accueil d'une liste : uniquement des agendas de 1er niveau, jamais lui-même
+  if (f.kind === 'catparent') return hasSubCats(rec.id)
+    ? `<span style="color:var(--text-soft);font-size:13px">Contient des listes</span>`
+    : `<select onchange="updDataR(${b},this.value)">${optsCatParents(v, rec.id)}</select>`;
   if (f.kind === 'proj')  return `<select onchange="updDataR(${b},this.value)">${optsProjs(v)}</select>`;
   if (f.kind === 'task')  return `<select onchange="updDataR(${b},this.value)">${optsParent(v, rec.id)}</select>`;
   if (f.kind === 'people') return peopleFieldHtml(c, rec);
@@ -5517,8 +5673,10 @@ window.addNoteToProject = addNoteToProject;
 let iconCtx = null;   // { coll, id }
 function openIconPicker(coll, id) {
   iconCtx = { coll, id };
-  // « habitDraft » : on édite le brouillon d'habitude, pas un enregistrement stocké
-  const cur = coll === 'habitDraft' ? habitDraft.icon : (collArr(coll).find(x => x.id === id) || {}).icon;
+  // « habitDraft » / « catDraft » : on édite un brouillon, pas un enregistrement stocké
+  const cur = coll === 'habitDraft' ? habitDraft.icon
+            : coll === 'catDraft'   ? catDraft.icon
+            : (collArr(coll).find(x => x.id === id) || {}).icon;
   $('iconGrid').innerHTML = ICON_NAMES.map(n =>
     `<button type="button" class="${n === cur ? 'sel' : ''}" title="${n}" onclick="pickIcon('${n}')">${iconSvg(n, 20)}</button>`).join('');
   $('iconOverlay').classList.add('show');
@@ -5531,6 +5689,12 @@ function pickIcon(name) {
     habitDraft.icon = name;
     $('iconOverlay').classList.remove('show');
     syncHabitIcon();
+    return;
+  }
+  if (iconCtx.coll === 'catDraft') {   // idem pour la fenêtre d'agenda
+    catDraft.icon = name;
+    $('iconOverlay').classList.remove('show');
+    syncCatIcon();
     return;
   }
   const rec = collArr(iconCtx.coll).find(x => x.id === iconCtx.id);
@@ -5799,7 +5963,15 @@ function openCtxMenu(x, y, coll, id) {
 function closeCtxMenu() { $('ctxMenu').classList.add('hidden'); ctxTarget = null; }
 
 // briques d'inputs (champs intégrés)
-const optsCats = sel => '<option value="">—</option>' + state.categories.map(c => `<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('');
+// agendas pouvant accueillir une liste : 1er niveau uniquement, et jamais elle-même
+const optsCatParents = (sel, selfId) => '<option value="">— Aucun —</option>' + topCats()
+  .filter(c => c.id !== selfId)
+  .map(c => `<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('');
+// listes décalées sous leur agenda (les <optgroup> ne conviennent pas aux tableaux étroits)
+const optsCats = sel => '<option value="">—</option>' + topCats().map(c =>
+  [c].concat(subCats(c.id)).map(x =>
+    `<option value="${x.id}" ${x.id===sel?'selected':''}>${x.parentId ? '　› ' : ''}${esc(x.name)}</option>`).join('')
+).join('');
 const optsProjs = sel => '<option value="">—</option>' + state.projects.map(p => `<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.name)}</option>`).join('');
 const dTxt  = (c,id,f,v) => `<input value="${esc(v||'')}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dDate = (c,id,f,v) => `<input type="date" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
@@ -5995,6 +6167,7 @@ function iconOf(rec, coll, size = 15) {
   const col = coll === 'projects' ? dotOf(rec.color)
             : coll === 'events'   ? eventLook(rec).ink
             : coll === 'habits'   ? dotOf(rec.color || '#eae8e4')
+            : coll === 'cats'     ? dotOf(catColor(rec))
             : taskStripe(rec);
   return iconSvg(rec.icon, size, col);
 }
@@ -6059,7 +6232,7 @@ const BUILTIN_KIND = {
   events:   { title:'text', date:'date', endDate:'date', allDay:'checkbox', start:'text', end:'text', catId:'cat', color:'text', note:'text' },
   tasks:    { title:'text', done:'checkbox', due:'date', dueTime:'text', dueEnd:'text', prio:'prio', catId:'cat', projectId:'proj', note:'text' },
   projects: { name:'text', start:'date', end:'date', color:'text', tasksCount:'number' },
-  cats:     { name:'text', color:'text' },
+  cats:     { name:'text', color:'text', parentId:'cat' },
 };
 function kindOf(c, key) {
   const prop = schemaOf(c).find(p => p.id === key);
@@ -6255,6 +6428,9 @@ function builtinCols(c) {
     { key:'tasksCount', label:'Tâches', cell: p => { const pr = projProgress(p.id); return `<td><span class="cid">${pr.done}/${pr.total}</span></td>`; } }];
   if (c === 'cats') return [idCol,
     { key:'name',  label:'Nom',    cell: a => `<td>${dTxt(c,a.id,'name',a.name)}</td>` },
+    { key:'parentId', label:'Rangé dans', cell: a => `<td>${hasSubCats(a.id)
+        ? '<span class="cid">contient des listes</span>'
+        : `<select onchange="updData('${c}','${a.id}','parentId',this.value)">${optsCatParents(a.parentId, a.id)}</select>`}</td>` },
     { key:'color', label:'Couleur',cell: a => `<td>${dColor(c,a.id,'color',a.color)}</td>` }];
   return [idCol,  // table personnalisée
     { key:'title', label:'Nom',    cell: r => `<td>${dTxt(c,r.id,'title',r.title)}</td>` }];
@@ -6819,7 +6995,7 @@ $('hexInput').onchange = e => {
   if (!state.customColors.includes(c)) state.customColors.push(c);
   save();
   if (colorCtx === 'item') { draft.color = c; renderColorPicker(); }
-  else if (colorCtx === 'cat') { catDraftColor = c; renderCatPicker(); }
+  else if (colorCtx === 'cat') { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
   else if (colorCtx === 'proj') { projDraftColor = c; renderProjPicker(); }
   else if (colorCtx === 'habit') { habitDraft.color = c; renderHabitColor(); syncHabitIcon(); }
   else if (colorCtx === 'note') { noteDraftColor = c; renderNoteColorPicker(); }
@@ -6838,6 +7014,7 @@ $('logoInput').onchange = e => { loadLogoFile(e.target.files[0]); e.target.value
 $('iconClearBtn').onclick = () => {
   if (!iconCtx) return;
   if (iconCtx.coll === 'habitDraft') { habitDraft.icon = ''; $('iconOverlay').classList.remove('show'); syncHabitIcon(); return; }
+  if (iconCtx.coll === 'catDraft')   { catDraft.icon = '';   $('iconOverlay').classList.remove('show'); syncCatIcon();   return; }
   const rec = collArr(iconCtx.coll).find(x => x.id === iconCtx.id);
   if (rec) { delete rec.icon; save(); render(); }
   closeModals();
@@ -6874,6 +7051,16 @@ $$('.nav-item').forEach(btn => {
 $('addCatBtn').onclick = e => { e.stopPropagation(); if (!state.navOpen.cats) toggleNavSection('cats'); openCatModal(); };
 $('saveCatBtn').onclick = saveCat;
 $('deleteCatBtn').onclick = () => { if (editingCat) { deleteCat(editingCat); closeModals(); } };
+$('catIconBtn').onclick = () => openIconPicker('catDraft', null);
+$('catInherit').onchange = e => { catDraft.inherit = e.target.checked; renderCatPicker(); syncCatIcon(); };
+$('catParentBtn').onclick = () => {
+  openStyledMenu($('catParentBtn'), catParentGroups(), catDraft.parentId, v => {
+    catDraft.parentId = v;
+    // en entrant dans un agenda, la liste prend sa couleur par défaut
+    if (v && !editingCat) catDraft.inherit = true;
+    syncCatParent(); renderCatPicker(); syncCatIcon();
+  });
+};
 
 $('addProjBtn').onclick = e => { e.stopPropagation(); if (!state.navOpen.projects) toggleNavSection('projects'); openProjModal(); };
 $('saveProjBtn').onclick = saveProj;
