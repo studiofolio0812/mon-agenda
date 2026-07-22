@@ -438,6 +438,43 @@
   .ev-people { font-size: 10.5px; margin-top: 1px; display: flex; align-items: center; gap: 3px; opacity: .85;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ev-people-ico { display: inline-flex; flex: none; }
+  /* ---- bulle de mise en forme flottante ---- */
+  .note-hint { font-size: 11.5px; color: var(--text-faint); margin: 0 0 8px; }
+  .note-bubble { position: fixed; z-index: 80; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.16); padding: 4px; }
+  .note-bubble .nb-main, .note-bubble .nb-link { display: flex; align-items: center; gap: 2px; }
+  .nb-btn { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 7px; border: none; background: none;
+    color: var(--text); font-size: 13px; display: grid; place-items: center; cursor: pointer; }
+  .nb-btn:hover { background: var(--surface-2); }
+  .nb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; }
+  .nb-a { border-bottom: 3px solid #c0564f; line-height: .85; }
+  .nb-hl { background: #f6dfb5; padding: 0 3px; border-radius: 2px; }
+  .note-bubble .nb-link input { width: 210px; height: 30px; font-size: 13px; padding: 0 8px; }
+  .note-bubble .nb-link .btn-primary { padding: 5px 12px; font-size: 12px; }
+
+  /* ---- menu « / » ---- */
+  .slash-menu { position: fixed; z-index: 80; background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.16); padding: 5px; width: 250px;
+    max-height: 300px; overflow-y: auto; }
+  .sl-item { padding: 7px 10px; border-radius: 7px; cursor: pointer; }
+  .sl-item.on, .sl-item:hover { background: var(--accent-soft); }
+  .sl-n { display: block; font-size: 13px; color: var(--text); }
+  .sl-h { display: block; font-size: 11px; color: var(--text-faint); }
+
+  /* ---- blocs disponibles dans une note (éditeur ET tuiles) ---- */
+  .note-body h1, .note-card-body h1 { font-size: 1.6em; font-weight: 600; margin: 12px 0 4px; }
+  .note-body h2, .note-card-body h2 { font-size: 1.32em; font-weight: 600; margin: 10px 0 4px; }
+  .note-body h3, .note-card-body h3 { font-size: 1.14em; font-weight: 600; margin: 8px 0 3px; }
+  .note-body blockquote, .note-card-body blockquote { margin: 6px 0; padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--border-strong); color: var(--text-soft); }
+  .note-body pre, .note-card-body pre { background: var(--surface-2); border-radius: 6px; padding: 8px 10px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; white-space: pre-wrap; margin: 6px 0; }
+  .note-body hr, .note-card-body hr { border: none; border-top: 1px solid var(--border-strong); margin: 12px 0; }
+  .note-callout { background: var(--surface-2); border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
+  .note-toggle { margin: 6px 0; }
+  .note-toggle > summary { cursor: pointer; font-weight: 500; }
+  .note-body a, .note-card-body a { color: var(--accent); text-decoration: underline; cursor: pointer; }
   .nt-swatch-btn { font-size: 12px; gap: 0; }
   .nt-hl-ico { display: inline-block; padding: 0 2px; background: #f6dfb5; border-radius: 2px; color: #7a5a1e; }
   .hb-ico { display: inline-flex; width: 16px; justify-content: center; flex: none; }
@@ -1453,23 +1490,7 @@
       <button class="icon-btn" data-close>✕</button>
     </div>
     <div class="modal-body">
-      <div class="note-toolbar">
-        <button type="button" class="nt-btn" data-cmd="bold" title="Gras"><b>G</b></button>
-        <button type="button" class="nt-btn" data-cmd="italic" title="Italique"><i>I</i></button>
-        <button type="button" class="nt-btn" data-cmd="underline" title="Souligné"><u>S</u></button>
-        <button type="button" class="nt-btn" data-cmd="strikeThrough" title="Barré"><s>B</s></button>
-        <span class="nt-sep"></span>
-        <button type="button" class="nt-btn" data-cmd="insertUnorderedList" title="Liste à puces">•—</button>
-        <button type="button" class="nt-btn" id="ntChecklist" title="Liste à cocher">☑</button>
-        <span class="nt-sep"></span>
-        <span class="nt-colors" id="noteTextColors"></span>
-        <button type="button" class="nt-btn nt-swatch-btn" id="ntTextColorMore" title="Couleur de texte personnalisée"><span style="border-bottom:3px solid currentColor;line-height:.8">A</span>＋</button>
-        <button type="button" class="nt-btn" id="ntHighlight" title="Surligner"><span class="nt-hl-ico">✎</span></button>
-        <button type="button" class="nt-btn" id="ntBox" title="Encadrer">▢</button>
-        <button type="button" class="nt-btn" data-cmd="removeFormat" title="Effacer la mise en forme">⌫</button>
-        <span style="flex:1"></span>
-        <span class="nt-hint">Emoji : Win + .</span>
-      </div>
+      <p class="note-hint">Tape <b>/</b> pour insérer un bloc · sélectionne du texte pour le mettre en forme · emoji : Win + .</p>
       <input type="color" id="ntFontColorInput" class="hidden" value="#c0564f">
       <input type="color" id="ntHiliteInput" class="hidden" value="#f6dfb5">
       <div id="noteBody" class="note-body" contenteditable="true" spellcheck="true"></div>
@@ -1530,6 +1551,31 @@
 
 <!-- menu déroulant stylé (réutilisable) posé au niveau du body -->
 <div id="styledMenu" class="styled-menu hidden"></div>
+
+<!-- barre de mise en forme flottante : apparaît quand du texte est sélectionné dans une note -->
+<div id="noteBubble" class="note-bubble hidden">
+  <div class="nb-main">
+    <button type="button" class="nb-btn" data-cmd="bold" title="Gras"><b>G</b></button>
+    <button type="button" class="nb-btn" data-cmd="italic" title="Italique"><i>I</i></button>
+    <button type="button" class="nb-btn" data-cmd="underline" title="Souligné"><u>S</u></button>
+    <button type="button" class="nb-btn" data-cmd="strikeThrough" title="Barré"><s>B</s></button>
+    <span class="nb-sep"></span>
+    <button type="button" class="nb-btn" id="nbColor" title="Couleur du texte"><span class="nb-a">A</span></button>
+    <button type="button" class="nb-btn" id="nbHilite" title="Surligner"><span class="nb-hl">A</span></button>
+    <span class="nb-sep"></span>
+    <button type="button" class="nb-btn" id="nbLink" title="Ajouter un lien">🔗</button>
+    <button type="button" class="nb-btn" id="nbBox" title="Encadrer">▢</button>
+    <button type="button" class="nb-btn" data-cmd="removeFormat" title="Enlever la mise en forme">⌫</button>
+  </div>
+  <div class="nb-link hidden">
+    <input type="url" id="nbLinkInput" placeholder="https://…" autocomplete="off">
+    <button type="button" class="btn-primary" id="nbLinkOk">OK</button>
+    <button type="button" class="nb-btn" id="nbLinkDel" title="Retirer le lien">✕</button>
+  </div>
+</div>
+
+<!-- menu « / » : insertion de blocs façon Notion -->
+<div id="slashMenu" class="slash-menu hidden"></div>
 
 <!-- ============ MODAL: HABIT ============ -->
 <div class="overlay" id="habitOverlay">
@@ -4018,8 +4064,6 @@ function openNote(id, presetFolder) {
   noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : '') : '';
   noteDraftFav = n ? !!n.fav : false;
   renderNoteColorPicker();
-  $('noteTextColors').innerHTML = NOTE_TEXT_COLORS.map(c =>
-    `<button type="button" class="nt-color" style="background:${c}" title="Couleur du texte" onmousedown="event.preventDefault()" onclick="noteTextColor('${c}')"></button>`).join('');
   updateNoteFieldButtons();
   $('noteOverlay').classList.add('show');
   setTimeout(() => $(n ? 'noteBody' : 'noteTitle').focus(), 50);
@@ -4058,6 +4102,166 @@ function insertNoteChecklist() {
   document.execCommand('insertHTML', false,
     '<ul class="note-todo"><li>&#8203;</li></ul><p>&#8203;</p>');
 }
+/* ============================================================
+   BULLE DE MISE EN FORME (apparaît à la sélection, façon Notion)
+   ============================================================ */
+let savedRange = null;
+function currentRange() {
+  const s = window.getSelection();
+  return (s.rangeCount && $('noteBody').contains(s.anchorNode)) ? s.getRangeAt(0).cloneRange() : null;
+}
+function restoreRange() {
+  if (!savedRange) return;
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange);
+  $('noteBody').focus();
+}
+function hideBubble() {
+  const b = $('noteBubble');
+  b.classList.add('hidden');
+  b.querySelector('.nb-main').classList.remove('hidden');
+  b.querySelector('.nb-link').classList.add('hidden');
+}
+function showBubble() {
+  const bub = $('noteBubble');
+  const s = window.getSelection();
+  if (!s.rangeCount || s.isCollapsed || !$('noteBody').contains(s.anchorNode)) { hideBubble(); return; }
+  const r = s.getRangeAt(0).getBoundingClientRect();
+  if (!r.width && !r.height) { hideBubble(); return; }
+  bub.classList.remove('hidden');
+  bub.querySelector('.nb-main').classList.remove('hidden');
+  bub.querySelector('.nb-link').classList.add('hidden');
+  const b = bub.getBoundingClientRect();
+  let left = Math.max(8, Math.min(r.left + r.width / 2 - b.width / 2, innerWidth - b.width - 8));
+  let top = r.top - b.height - 8;
+  if (top < 8) top = r.bottom + 8;          // pas de place au-dessus → on passe dessous
+  bub.style.left = left + 'px';
+  bub.style.top = top + 'px';
+}
+// lien contenant la sélection, s'il y en a un
+function linkInSelection() {
+  const s = window.getSelection();
+  if (!s.rangeCount) return null;
+  let n = s.anchorNode;
+  while (n && n !== $('noteBody')) { if (n.tagName === 'A') return n; n = n.parentNode; }
+  return null;
+}
+function openLinkEditor() {
+  savedRange = currentRange();
+  const a = linkInSelection();
+  $('nbLinkInput').value = a ? (a.getAttribute('href') || '') : '';
+  $('noteBubble').querySelector('.nb-main').classList.add('hidden');
+  $('noteBubble').querySelector('.nb-link').classList.remove('hidden');
+  setTimeout(() => $('nbLinkInput').focus(), 30);
+}
+function applyLink() {
+  let url = $('nbLinkInput').value.trim();
+  if (!url) { hideBubble(); return; }
+  if (!/^(https?:|mailto:)/i.test(url)) url = 'https://' + url;   // on complète si elle tape juste « site.com »
+  restoreRange();
+  document.execCommand('createLink', false, url);
+  const a = linkInSelection();
+  if (a) { a.target = '_blank'; a.rel = 'noopener'; }
+  hideBubble();
+}
+
+/* ============================================================
+   MENU « / » : insertion de blocs
+   ============================================================ */
+const SLASH_BLOCKS = [
+  { k: 'p',       n: 'Texte',            h: 'Paragraphe simple' },
+  { k: 'h1',      n: 'Titre 1',          h: 'Grand titre' },
+  { k: 'h2',      n: 'Titre 2',          h: 'Titre moyen' },
+  { k: 'h3',      n: 'Titre 3',          h: 'Petit titre' },
+  { k: 'ul',      n: 'Liste à puces',    h: 'Liste simple' },
+  { k: 'ol',      n: 'Liste numérotée',  h: '1, 2, 3…' },
+  { k: 'todo',    n: 'Liste de tâches',  h: 'Cases à cocher' },
+  { k: 'quote',   n: 'Citation',         h: 'Texte mis en retrait' },
+  { k: 'callout', n: 'Encadré',          h: 'Bloc mis en évidence' },
+  { k: 'code',    n: 'Code',             h: 'Police à chasse fixe' },
+  { k: 'hr',      n: 'Séparateur',       h: 'Trait de séparation' },
+  { k: 'toggle',  n: 'Menu dépliant',    h: 'Contenu repliable' },
+];
+let slashIdx = 0, slashItems = [];
+// « / » suivi éventuellement de lettres, juste avant le curseur
+function slashContext() {
+  const s = window.getSelection();
+  if (!s.rangeCount || !s.isCollapsed) return null;
+  const node = s.anchorNode;
+  if (!node || node.nodeType !== 3 || !$('noteBody').contains(node)) return null;
+  const m = node.textContent.slice(0, s.anchorOffset).match(/\/([\p{L}0-9]*)$/u);
+  return m ? { node, start: s.anchorOffset - m[0].length, len: m[0].length, query: m[1] } : null;
+}
+function caretBlockRect() {
+  const s = window.getSelection();
+  if (!s.rangeCount) return null;
+  let n = s.anchorNode;
+  if (n && n.nodeType === 3) n = n.parentNode;
+  return n && n.getBoundingClientRect ? n.getBoundingClientRect() : null;
+}
+function hideSlashMenu() { $('slashMenu').classList.add('hidden'); slashItems = []; }
+function showSlashMenu(ctx) {
+  const q = (ctx.query || '').toLowerCase();
+  slashItems = SLASH_BLOCKS.filter(b => !q || b.n.toLowerCase().includes(q));
+  if (!slashItems.length) { hideSlashMenu(); return; }
+  slashIdx = 0;
+  const m = $('slashMenu');
+  m.innerHTML = slashItems.map((b, i) =>
+    `<div class="sl-item ${i === 0 ? 'on' : ''}" data-k="${b.k}"><span class="sl-n">${esc(b.n)}</span><span class="sl-h">${esc(b.h)}</span></div>`).join('');
+  m.classList.remove('hidden');
+  const r = caretBlockRect();
+  if (r) {
+    const mr = m.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(r.left, innerWidth - mr.width - 8)) + 'px';
+    m.style.top = (r.bottom + 6 + mr.height > innerHeight ? Math.max(8, r.top - mr.height - 6) : r.bottom + 6) + 'px';
+  }
+}
+function markSlashActive() {
+  const items = $$('#slashMenu .sl-item');
+  items.forEach((el, i) => el.classList.toggle('on', i === slashIdx));
+  const on = items[slashIdx];
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}
+/* Applique un bloc au niveau du curseur (en supprimant d'abord le « /… » tapé). */
+function applyBlock(kind) {
+  const ctx = slashContext();
+  if (ctx) {
+    const r = document.createRange();
+    r.setStart(ctx.node, ctx.start);
+    r.setEnd(ctx.node, ctx.start + ctx.len);
+    r.deleteContents();
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  hideSlashMenu();
+  $('noteBody').focus();
+  const fb = t => document.execCommand('formatBlock', false, t);
+  switch (kind) {
+    case 'p': fb('<p>'); break;
+    case 'h1': fb('<h1>'); break;
+    case 'h2': fb('<h2>'); break;
+    case 'h3': fb('<h3>'); break;
+    case 'ul': document.execCommand('insertUnorderedList'); break;
+    case 'ol': document.execCommand('insertOrderedList'); break;
+    case 'todo': insertNoteChecklist(); break;
+    case 'quote': fb('<blockquote>'); break;
+    case 'code': fb('<pre>'); break;
+    case 'hr': document.execCommand('insertHTML', false, '<hr><p>&#8203;</p>'); break;
+    // encadré : on transforme le bloc courant en <div> puis on lui pose la classe.
+    // (insertHTML d'un <div> dans un <p> était converti en <span> avec styles en dur)
+    case 'callout': {
+      fb('<div>');
+      const s2 = window.getSelection();
+      let n = s2.anchorNode;
+      if (n && n.nodeType === 3) n = n.parentNode;
+      while (n && n.parentNode && n.parentNode !== $('noteBody')) n = n.parentNode;
+      if (n && n.classList) n.classList.add('note-callout');
+      break;
+    }
+    case 'toggle': document.execCommand('insertHTML', false,
+      '<details class="note-toggle" open><summary>Titre</summary><div>&#8203;</div></details><p>&#8203;</p>'); break;
+  }
+}
+window.applyBlock = applyBlock;
+
 function renderNoteColorPicker() { $('noteColorPicker').innerHTML = paletteHtml(noteDraftColor, 'pickNoteColor', 'note'); }
 window.pickNoteColor = c => { noteDraftColor = c; renderNoteColorPicker(); };
 
@@ -5059,6 +5263,7 @@ function navigate(dir) {
 /* ---------- Divers ---------- */
 function closeModals() {
   closeStyledMenu();
+  hideBubble(); hideSlashMenu();
   $$('.overlay').forEach(o => o.classList.remove('show'));
   // fenêtre dossier ouverte depuis une note, puis annulée → on rouvre la note
   if (reopenNoteAfterFolder) { reopenNoteAfterFolder = false; $('noteOverlay').classList.add('show'); }
@@ -6684,17 +6889,59 @@ $('saveNoteBtn').onclick = saveNote;
 $('deleteNoteBtn').onclick = () => { if (editingNote) deleteNote(editingNote); };
 // barre de mise en forme : chaque bouton porte sa commande. onmousedown preventDefault
 // pour ne PAS perdre la sélection dans la zone d'écriture au moment du clic.
-document.querySelectorAll('.note-toolbar .nt-btn').forEach(b => {
-  // onmousedown preventDefault : ne pas perdre la sélection dans la zone d'écriture
+/* ---------- Barre flottante à la sélection (façon Notion) ---------- */
+document.querySelectorAll('#noteBubble .nb-btn, #noteBubble button').forEach(b => {
+  // ne pas perdre la sélection au moment du clic
   b.addEventListener('mousedown', e => e.preventDefault());
-  if (b.dataset.cmd) b.onclick = () => noteCmd(b.dataset.cmd);   // boutons à commande simple
 });
-$('ntChecklist').onclick = insertNoteChecklist;
-$('ntBox').onclick = () => noteWrap('note-box');
-$('ntTextColorMore').onclick = () => { $('noteBody').focus(); $('ntFontColorInput').click(); };
-$('ntHighlight').onclick = () => { $('noteBody').focus(); $('ntHiliteInput').click(); };
-$('ntFontColorInput').onchange = e => noteTextColor(e.target.value);
-$('ntHiliteInput').onchange = e => noteHighlight(e.target.value);
+document.querySelectorAll('#noteBubble .nb-btn[data-cmd]').forEach(b => {
+  b.onclick = () => { noteCmd(b.dataset.cmd); showBubble(); };
+});
+$('nbColor').onclick = () => { savedRange = currentRange(); $('ntFontColorInput').click(); };
+$('nbHilite').onclick = () => { savedRange = currentRange(); $('ntHiliteInput').click(); };
+$('nbBox').onclick = () => { noteWrap('note-box'); hideBubble(); };
+$('ntFontColorInput').onchange = e => { restoreRange(); noteTextColor(e.target.value); };
+$('ntHiliteInput').onchange = e => { restoreRange(); noteHighlight(e.target.value); };
+$('nbLink').onclick = () => openLinkEditor();
+$('nbLinkOk').onclick = () => applyLink();
+$('nbLinkDel').onclick = () => { restoreRange(); document.execCommand('unlink'); hideBubble(); };
+$('nbLinkInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+  if (e.key === 'Escape') hideBubble();
+});
+// la sélection pilote l'affichage de la bulle
+document.addEventListener('selectionchange', () => {
+  if (!$('noteOverlay').classList.contains('show')) return;
+  if ($('noteBubble').querySelector('.nb-link:not(.hidden)')) return;   // en train de saisir un lien
+  showBubble();
+});
+
+/* ---------- Menu « / » ---------- */
+$('noteBody').addEventListener('input', () => {
+  const ctx = slashContext();
+  if (ctx) showSlashMenu(ctx); else hideSlashMenu();
+});
+$('noteBody').addEventListener('keydown', e => {
+  if ($('slashMenu').classList.contains('hidden')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); slashIdx = (slashIdx + 1) % slashItems.length; markSlashActive(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); slashIdx = (slashIdx - 1 + slashItems.length) % slashItems.length; markSlashActive(); }
+  else if (e.key === 'Enter') { e.preventDefault(); applyBlock(slashItems[slashIdx].k); }
+  else if (e.key === 'Escape') { e.preventDefault(); hideSlashMenu(); }
+});
+$('slashMenu').addEventListener('mousedown', e => e.preventDefault());   // garder le curseur dans la note
+$('slashMenu').onclick = e => { const it = e.target.closest('.sl-item'); if (it) applyBlock(it.dataset.k); };
+
+/* Liens cliquables : dans l'éditeur (Ctrl/⌘ + clic) et dans les tuiles (clic simple). */
+$('noteBody').addEventListener('click', e => {
+  const a = e.target.closest('a[href]');
+  if (a && (e.ctrlKey || e.metaKey)) { e.preventDefault(); window.open(a.href, '_blank', 'noopener'); }
+});
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('.note-card-body a[href]');
+  if (!a) return;
+  e.stopPropagation(); e.preventDefault();          // ne pas ouvrir la note
+  window.open(a.href, '_blank', 'noopener');
+}, true);
 // favori, dossier, rattachement (sélecteurs stylés)
 $('noteFavBtn').onclick = () => { noteDraftFav = !noteDraftFav; updateNoteFieldButtons(); };
 $('noteFolderBtn').onclick = () => openStyledMenu($('noteFolderBtn'), folderMenuGroups(), noteDraftFolder, v => {
