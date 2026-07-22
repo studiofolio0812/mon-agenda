@@ -1021,6 +1021,64 @@
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
+
+  /* fond du tiroir : invisible/inactif tant que le tiroir est fermé */
+  .drawer-backdrop { display: none; }
+
+  /* =========================================================
+     MOBILE / TÉLÉPHONE (≤ 640px)
+     La barre latérale devient un tiroir coulissant ; la barre d'outils
+     se réorganise ; les fenêtres passent en pleine largeur.
+     ========================================================= */
+  @media (max-width: 640px) {
+    html, body { overflow-x: hidden; }
+    .app { height: 100dvh; }   /* tient compte de la barre d'adresse mobile */
+
+    /* --- barre latérale en tiroir --- */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: min(86vw, 320px); z-index: 60;
+      transform: translateX(-100%); transition: transform .24s ease; box-shadow: 0 0 40px rgba(0,0,0,.18);
+    }
+    #app.drawer-open .sidebar { transform: none; }
+    #app.sidebar-collapsed .sidebar { margin-left: 0; }   /* on ignore le repli desktop */
+    #app.drawer-open .drawer-backdrop {
+      display: block; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 55;
+    }
+
+    /* --- barre d'outils sur deux lignes --- */
+    .toolbar { height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
+    .toolbar .spacer { display: none; }
+    .period-title { font-size: 16px; margin-left: 2px; order: 2; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .today-btn { padding: 6px 11px; font-size: 13px; }
+    .view-switch { order: 4; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .view-switch button { white-space: nowrap; }
+    #dayBlockPick { order: 5; }
+
+    /* --- zone principale & vues --- */
+    .space { padding: 14px 12px 40px; max-width: none; }
+    .month-grid { min-height: 0; }
+    .mweek { min-height: 76px; }
+    .dow { padding: 6px 6px; font-size: 11px; }
+    .chip, .mbar { font-size: 11px; }
+    /* grille horaire : colonnes un peu plus larges, défilement horizontal si besoin */
+    .canvas { overflow-x: auto; }
+    .agenda { padding: 8px 12px 40px; }
+    .ag-date { width: 44px; }
+    .folder-tiles { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+
+    /* --- fenêtres en (presque) plein écran --- */
+    .overlay { padding: 10px; align-items: flex-start; }
+    .overlay .modal { max-width: calc(100vw - 20px) !important; width: calc(100vw - 20px); max-height: 92dvh; margin-top: 12px; }
+    .note-modal { max-width: calc(100vw - 20px) !important; }
+    .note-body { max-height: 40vh; }
+    /* page (fiche) en panneau : pleine largeur sur mobile */
+    #pageOverlay.side .page-panel, #pageOverlay .modal { max-width: calc(100vw - 20px) !important; }
+
+    /* --- confort tactile : cibles un peu plus grandes --- */
+    .icon-btn { width: 38px; height: 38px; }
+    .nav-item { padding: 12px 10px; }
+    .cat-row, .proj-row, .note-row, .habit-row { padding: 10px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -1112,6 +1170,8 @@
       </div>
     </nav>
   </aside>
+  <!-- fond sombre quand le tiroir de la barre latérale est ouvert (mobile) -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
   <!-- ============ MAIN ============ -->
   <main class="main">
@@ -6103,7 +6163,17 @@ $('propTargetProp').onchange = () => { rollupDraft.targetProp = $('propTargetPro
 $('propAgg').onchange = () => { rollupDraft.agg = $('propAgg').value; };
 $('savePropBtn').onclick = savePropDef;
 $('deletePropBtn').onclick = deletePropDef;
-$('sidebarToggle').onclick = () => { state.sidebarCollapsed = !state.sidebarCollapsed; save(); render(); };
+const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
+function closeDrawer() { $('app').classList.remove('drawer-open'); }
+$('sidebarToggle').onclick = () => {
+  if (isMobile()) { $('app').classList.toggle('drawer-open'); return; }   // mobile : tiroir coulissant
+  state.sidebarCollapsed = !state.sidebarCollapsed; save(); render();      // desktop : repli classique
+};
+$('drawerBackdrop').onclick = closeDrawer;
+// sur mobile, choisir un élément de la barre latérale referme le tiroir
+document.querySelector('.sidebar').addEventListener('click', e => {
+  if (isMobile() && e.target.closest('.nav-label, .cat-row, .proj-row, .note-row, .habit-row, .filter-tabs, .mini-day')) closeDrawer();
+});
 $('hexInput').onchange = e => {
   const c = e.target.value;
   if (!state.customColors.includes(c)) state.customColors.push(c);
