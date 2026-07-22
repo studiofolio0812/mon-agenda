@@ -266,6 +266,11 @@
     height: 62px; flex-shrink: 0; border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 14px; padding: 0 20px; background: var(--surface);
   }
+  /* pastille d'état de la synchronisation, dans la barre d'outils */
+  .sync-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface); font-size: 11.5px; color: var(--text-soft); cursor: pointer; flex: none; }
+  .sync-badge:hover { background: var(--surface-2); }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: none; }
   .nav-btns { display: flex; align-items: center; gap: 4px; }
   .icon-btn {
     width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
@@ -1181,6 +1186,7 @@
   <main class="main">
     <div class="toolbar">
       <button class="icon-btn" id="sidebarToggle" title="Replier / afficher le panneau">☰</button>
+      <button class="sync-badge" id="syncBadge" title="Synchronisation"><span class="sync-dot"></span><span class="sync-txt"></span></button>
       <div class="nav-btns">
         <button class="today-btn" id="todayBtn">Aujourd'hui</button>
         <button class="icon-btn" id="prevBtn">‹</button>
@@ -1395,6 +1401,25 @@
     <div class="modal-foot">
       <button class="btn-ghost btn-danger hidden" id="deleteNoteBtn">Supprimer</button>
       <button class="btn-primary" id="saveNoteBtn">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: CONNEXION / SYNCHRO ============ -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head"><h2 id="loginTitle">Se connecter</h2><button class="icon-btn" data-close>✕</button></div>
+    <div class="modal-body">
+      <p class="hint-txt" style="margin-top:0">Connecte-toi avec le même compte sur ton ordinateur et ton téléphone : ton agenda sera le même partout.</p>
+      <label>Adresse e-mail</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="toi@exemple.com">
+      <label>Mot de passe</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="au moins 6 caractères">
+      <p class="hint-txt" id="loginError" style="color:#c0564f"></p>
+    </div>
+    <div class="modal-foot" style="gap:8px">
+      <button class="btn-ghost" id="signupBtn">Créer un compte</button>
+      <button class="btn-primary" id="signinBtn">Se connecter</button>
     </div>
   </div>
 </div>
@@ -1651,6 +1676,9 @@
         <option value="1">Lundi</option>
         <option value="0">Dimanche</option>
       </select>
+      <label style="margin-top:20px;">Compte & synchronisation</label>
+      <div id="accountBox"></div>
+
       <label style="margin-top:20px;">Données</label>
       <div class="row-2">
         <button class="btn-ghost" id="exportBtn" style="flex:1;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Exporter</button>
@@ -1835,6 +1863,7 @@ function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
     storageWarned = false;
+    cloudMarkDirty();          // synchro : signale un changement à envoyer
   } catch (e) {
     console.error('Enregistrement impossible', e);
     if (!storageWarned) {
@@ -1846,6 +1875,172 @@ function save() {
   }
 }
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+/* ============================================================
+   SYNCHRONISATION PC ↔ TÉLÉPHONE (Supabase, en simples appels fetch)
+   ------------------------------------------------------------
+   Aucune bibliothèque externe : l'app reste un fichier autonome.
+   • Sans clé ou sans connexion → tout fonctionne en local, comme avant.
+   • Connectée → l'état part en ligne après chaque modification (différé de 1,5 s)
+     et revient à l'ouverture de l'app et au retour sur l'onglet.
+   • Conflit (modifs des deux côtés) → on demande quoi garder, jamais d'écrasement muet.
+   ============================================================ */
+const SUPA_URL = 'https://euvoisxasejtiynwxeiw.supabase.co';
+const SUPA_KEY = 'sb_publishable_83APgcfawYHHD1N57zdQmg_FlTWQnzj';   // clé publique (protégée par la sécurité RLS + ton mot de passe)
+const AUTH_KEY = 'mon-agenda-auth';
+const SYNC_KEY = 'mon-agenda-sync';
+
+const cloudReady = () => !!(SUPA_URL && SUPA_KEY);
+let auth = null;                                  // session (jetons) de l'utilisatrice
+let syncMeta = { lastSyncedAt: 0, dirty: false };  // dernière synchro réussie + modifs en attente
+let syncState = 'off';                             // off | idle | syncing | error | offline
+let applyingRemote = false;                        // évite de renvoyer ce qu'on vient de recevoir
+let pushTimer = null;
+
+function loadAuth() { try { auth = JSON.parse(localStorage.getItem(AUTH_KEY)) || null; } catch (e) { auth = null; } }
+function saveAuth() { auth ? localStorage.setItem(AUTH_KEY, JSON.stringify(auth)) : localStorage.removeItem(AUTH_KEY); }
+function loadSyncMeta() { try { syncMeta = Object.assign({ lastSyncedAt: 0, dirty: false }, JSON.parse(localStorage.getItem(SYNC_KEY)) || {}); } catch (e) {} }
+function saveSyncMeta() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(syncMeta)); } catch (e) {} }
+
+/* ---------- appels bruts ---------- */
+async function supaAuthCall(path, body) {
+  const r = await fetch(`${SUPA_URL}/auth/v1/${path}`, {
+    method: 'POST', headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error_description || j.msg || j.message || `Erreur ${r.status}`);
+  return j;
+}
+function setSession(j, email) {
+  auth = {
+    access_token: j.access_token, refresh_token: j.refresh_token,
+    expires_at: Date.now() + ((j.expires_in || 3600) * 1000),
+    email: (j.user && j.user.email) || email || (auth && auth.email) || '',
+    user_id: (j.user && j.user.id) || (auth && auth.user_id),
+  };
+  saveAuth();
+}
+// renvoie un jeton valide (rafraîchi si besoin)
+async function ensureToken() {
+  if (!auth) return null;
+  if (Date.now() < auth.expires_at - 60000) return auth.access_token;
+  const j = await supaAuthCall('token?grant_type=refresh_token', { refresh_token: auth.refresh_token });
+  setSession(j);
+  return auth.access_token;
+}
+async function supaRest(method, { query = '', headers = {}, body } = {}) {
+  const token = await ensureToken();
+  const r = await fetch(`${SUPA_URL}/rest/v1/agenda${query}`, {
+    method,
+    headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...headers },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(`Erreur ${r.status}`);
+  const t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+
+/* ---------- connexion / inscription ---------- */
+async function cloudSignIn(email, password) {
+  const j = await supaAuthCall('token?grant_type=password', { email, password });
+  setSession(j, email);
+  syncMeta = { lastSyncedAt: 0, dirty: false }; saveSyncMeta();
+  await cloudSyncNow();
+}
+async function cloudSignUp(email, password) {
+  const j = await supaAuthCall('signup', { email, password });
+  // pas de jeton = Supabase attend une confirmation par e-mail
+  if (!j.access_token) {
+    try { await cloudSignIn(email, password); return; }
+    catch (e) {
+      throw new Error("Compte créé, mais il attend une confirmation par e-mail. "
+        + "Ouvre le lien reçu par e-mail, puis reviens te connecter "
+        + "(ou désactive « Confirm email » dans Supabase → Authentication).");
+    }
+  }
+  setSession(j, email);
+  syncMeta = { lastSyncedAt: 0, dirty: true }; saveSyncMeta();   // premier envoi : on pousse l'agenda local
+  await cloudSyncNow();
+}
+function cloudSignOut() {
+  auth = null; saveAuth();
+  syncMeta = { lastSyncedAt: 0, dirty: false }; saveSyncMeta();
+  setSyncState('off');
+  renderAccountBox();
+}
+
+/* ---------- envoi / réception ---------- */
+function setSyncState(s) { syncState = s; renderSyncBadge(); }
+function cloudMarkDirty() {
+  if (!cloudReady() || !auth || applyingRemote) return;
+  syncMeta.dirty = true; saveSyncMeta();
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => cloudPush().catch(cloudOnError), 1500);
+}
+async function cloudPush() {
+  if (!cloudReady() || !auth || !syncMeta.dirty) return;
+  setSyncState('syncing');
+  const now = new Date().toISOString();
+  await supaRest('POST', {
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: { user_id: auth.user_id, data: state, updated_at: now },
+  });
+  syncMeta.lastSyncedAt = Date.parse(now); syncMeta.dirty = false; saveSyncMeta();
+  setSyncState('idle');
+}
+// remplace l'état local par celui reçu, sans déclencher un renvoi
+function adoptRemote(data, remoteTime) {
+  applyingRemote = true;
+  state = Object.assign(defaultState(), data);
+  save();
+  applyingRemote = false;
+  syncMeta.lastSyncedAt = remoteTime; syncMeta.dirty = false; saveSyncMeta();
+  notesOpenFolder = null;
+  render();
+}
+async function cloudSyncNow() {
+  if (!cloudReady() || !auth) return;
+  setSyncState('syncing');
+  const rows = await supaRest('GET', { query: '?select=data,updated_at&limit=1' });
+  const row = rows && rows[0];
+  if (!row) { syncMeta.dirty = true; saveSyncMeta(); await cloudPush(); return; }   // rien en ligne → on envoie
+  const remoteTime = Date.parse(row.updated_at);
+  if (remoteTime > syncMeta.lastSyncedAt) {
+    if (syncMeta.dirty) {
+      // modifs des deux côtés : on laisse le choix plutôt que d'écraser en silence
+      setSyncState('idle');
+      askChoice('Deux versions différentes',
+        "Cet appareil a des modifications non envoyées, et une version plus récente existe en ligne (faite sur un autre appareil). Laquelle veux-tu garder ?",
+        'Garder cet appareil', 'Récupérer la version en ligne',
+        choix => {
+          if (choix === 'one') cloudPush().catch(cloudOnError);
+          else adoptRemote(row.data, remoteTime);
+        });
+      return;
+    }
+    adoptRemote(row.data, remoteTime);
+  } else if (syncMeta.dirty) {
+    await cloudPush();
+  }
+  setSyncState('idle');
+}
+function cloudOnError(e) {
+  console.error('Synchro', e);
+  setSyncState(navigator.onLine ? 'error' : 'offline');
+}
+// à l'ouverture et au retour sur l'onglet : on va chercher les changements de l'autre appareil
+function initCloud() {
+  loadAuth(); loadSyncMeta();
+  if (!cloudReady()) { setSyncState('off'); renderAccountBox(); return; }
+  setSyncState(auth ? 'idle' : 'off');
+  renderAccountBox();
+  if (auth) cloudSyncNow().catch(cloudOnError);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && auth) cloudSyncNow().catch(cloudOnError);
+  });
+  window.addEventListener('online', () => { if (auth) cloudSyncNow().catch(cloudOnError); });
+  window.addEventListener('offline', () => setSyncState('offline'));
+}
 
 let state = load();
 if (colorsMigrated) save();       // persiste la migration de couleurs une bonne fois pour toutes
@@ -4572,6 +4767,7 @@ function openSettings() {
   $('accentPicker').innerHTML = paletteHtml(state.accent, 'setAccent', 'accent', ACCENT_PALETTE);
   $('weekStart').value = state.weekStart;
   $('logoClearBtn').classList.toggle('hidden', !state.logo);
+  renderAccountBox();
   $('settingsOverlay').classList.add('show');
 }
 function setAccent(c) { state.accent = c; save(); render(); openSettings(); }
@@ -4614,6 +4810,64 @@ function applyFavicon() {
   let fav = document.querySelector('link[rel="icon"]');
   if (!fav) { fav = document.createElement('link'); fav.rel = 'icon'; document.head.appendChild(fav); }
   if (fav.href !== state.logo) fav.href = state.logo;
+}
+
+/* ---------- Affichage de l'état de synchro ---------- */
+const SYNC_LOOK = {
+  off:     { c: 'var(--text-faint)', t: 'Local' },
+  idle:    { c: '#7ba36f',           t: 'Synchronisé' },
+  syncing: { c: '#cfa055',           t: 'Synchro…' },
+  error:   { c: '#c0564f',           t: 'Erreur' },
+  offline: { c: '#94918a',           t: 'Hors ligne' },
+};
+function renderSyncBadge() {
+  const b = $('syncBadge'); if (!b) return;
+  // synchro possible mais pas encore connectée → on invite à se connecter
+  const look = (cloudReady() && !auth && syncState === 'off')
+    ? { c: 'var(--text-faint)', t: 'Non connectée' }
+    : (SYNC_LOOK[syncState] || SYNC_LOOK.off);
+  b.querySelector('.sync-dot').style.background = look.c;
+  b.querySelector('.sync-txt').textContent = look.t;
+  b.title = auth ? `${look.t} · ${auth.email}` : (cloudReady() ? 'Non connecté — clique pour synchroniser' : 'Synchronisation non configurée');
+}
+// bloc « compte » des réglages : état, connexion, déconnexion
+function renderAccountBox() {
+  const box = $('accountBox'); if (!box) return;
+  if (!cloudReady()) {
+    box.innerHTML = `<p class="hint-txt" style="margin-top:0">La synchronisation n'est pas encore configurée. Tes données restent sur cet appareil.</p>`;
+    return;
+  }
+  box.innerHTML = auth
+    ? `<p class="hint-txt" style="margin-top:0">Connectée en tant que <b>${esc(auth.email)}</b>. Tes données se synchronisent entre tes appareils.</p>
+       <div class="row-2">
+         <button class="btn-ghost" style="flex:1" onclick="cloudSyncNow().catch(cloudOnError)">Synchroniser maintenant</button>
+         <button class="btn-ghost btn-danger" style="flex:1" onclick="cloudSignOut()">Se déconnecter</button>
+       </div>`
+    : `<p class="hint-txt" style="margin-top:0">Connecte-toi pour retrouver ton agenda sur ton téléphone et ton ordinateur.</p>
+       <button class="btn-primary" style="width:100%" onclick="openLogin()">Se connecter / créer un compte</button>`;
+}
+window.cloudSyncNow = cloudSyncNow; window.cloudOnError = cloudOnError; window.cloudSignOut = cloudSignOut;
+
+function openLogin() {
+  if (!cloudReady()) { alert("La synchronisation n'est pas encore configurée."); return; }
+  $('loginError').textContent = '';
+  $('loginEmail').value = (auth && auth.email) || '';
+  $('loginPass').value = '';
+  $('loginOverlay').classList.add('show');
+  setTimeout(() => $('loginEmail').focus(), 50);
+}
+window.openLogin = openLogin;
+async function doLogin(creating) {
+  const email = $('loginEmail').value.trim(), pass = $('loginPass').value;
+  if (!email || !pass) { $('loginError').textContent = 'Renseigne ton e-mail et ton mot de passe.'; return; }
+  $('loginError').textContent = 'Connexion…';
+  try {
+    if (creating) await cloudSignUp(email, pass); else await cloudSignIn(email, pass);
+    closeModals();
+    renderAccountBox(); renderSyncBadge();
+  } catch (e) {
+    $('loginError').textContent = /invalid/i.test(e.message) ? 'E-mail ou mot de passe incorrect.' : e.message;
+  }
 }
 
 /* ---------- Export / Import ---------- */
@@ -6177,6 +6431,11 @@ $('sidebarToggle').onclick = () => {
   state.sidebarCollapsed = !state.sidebarCollapsed; save(); render();      // desktop : repli classique
 };
 $('drawerBackdrop').onclick = closeDrawer;
+// synchro : badge + fenêtre de connexion
+$('syncBadge').onclick = () => { if (auth) openSettings(); else openLogin(); };
+$('signinBtn').onclick = () => doLogin(false);
+$('signupBtn').onclick = () => doLogin(true);
+$('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(false); });
 // sur mobile, choisir un élément de la barre latérale referme le tiroir
 document.querySelector('.sidebar').addEventListener('click', e => {
   if (isMobile() && e.target.closest('.nav-label, .cat-row, .proj-row, .note-row, .habit-row, .filter-tabs, .mini-day')) closeDrawer();
@@ -6354,6 +6613,7 @@ document.addEventListener('keydown', e => {
 
 /* ---------- Go ---------- */
 render();
+initCloud();   // synchro : reprend la session, va chercher les changements de l'autre appareil
 </script>
 </body>
 </html>
