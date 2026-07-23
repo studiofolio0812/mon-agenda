@@ -283,9 +283,19 @@
   /* ---------- Main ---------- */
   .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .toolbar {
-    height: 62px; flex-shrink: 0; border-bottom: 1px solid var(--border);
+    min-height: 62px; flex-shrink: 0; border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 14px; padding: 0 20px; background: var(--surface);
+    /* sur écran étroit (petit portable, demi-écran) la bascule de vues passe à la
+       ligne au lieu de déborder à droite ; en plein écran tout reste sur une ligne */
+    flex-wrap: wrap; row-gap: 0;
   }
+  .toolbar .period-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* le spacer ne « grandit » plus (sinon il pousse toujours la bascule à la ligne) :
+     c'est margin-left:auto qui colle la bascule à droite quand la place existe */
+  .toolbar > .spacer { flex: 0 1 0; min-width: 0; }
+  .toolbar .view-switch { margin-left: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .toolbar .view-switch::-webkit-scrollbar { display: none; }
+  .toolbar .view-switch button { white-space: nowrap; }
   /* pastille d'état de la synchronisation, dans la barre d'outils */
   .sync-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px;
     border: 1px solid var(--border); background: var(--surface); font-size: 11.5px; color: var(--text-soft); cursor: pointer; flex: none; }
@@ -1224,8 +1234,10 @@
     /* le tiroir passe au-dessus de la barre du bas */
     .sidebar { z-index: 60; }
 
-    /* sur téléphone il n'y a pas de survol : le ＋ doit rester visible */
-    .cell-add { opacity: 1; }
+    /* sur téléphone la case du mois s'épure : plus de ＋. On ajoute en touchant le
+       NUMÉRO du jour (fenêtre de création), et on ouvre la vue Jour en touchant
+       ailleurs dans la case — le ＋ faisait donc doublon avec le numéro. */
+    .cell-add { display: none; }
 
     /* --- confort tactile : cibles un peu plus grandes --- */
     .icon-btn { width: 38px; height: 38px; }
@@ -1629,7 +1641,7 @@
     <span class="nb-sep"></span>
     <button type="button" class="nb-btn" id="nbLink" title="Ajouter un lien">🔗</button>
     <button type="button" class="nb-btn" id="nbBox" title="Encadrer">▢</button>
-    <button type="button" class="nb-btn" data-cmd="removeFormat" title="Enlever la mise en forme">⌫</button>
+    <button type="button" class="nb-btn" id="nbClear" title="Tout enlever (revenir au texte simple)">⌫</button>
   </div>
   <div class="nb-link hidden">
     <input type="url" id="nbLinkInput" placeholder="https://…" autocomplete="off">
@@ -3063,7 +3075,7 @@ function groupTasks(list, mode) {
   const done = list.filter(t => t.done);
   const todo = list.filter(t => !t.done);
   const groups = [];
-  const push = (label, items, late, pill) => { if (items.length) groups.push({ label, items, late, pill }); };
+  const push = (label, items, late, pill, done) => { if (items.length) groups.push({ label, items, late, pill, done }); };
   // seules les tâches de premier niveau sont classées : les sous-tâches suivent leur parent
   const todoTop = topLevelTasks(todo);
 
@@ -3081,7 +3093,7 @@ function groupTasks(list, mode) {
     push('Plus tard', todoTop.filter(t => t.due && t.due > endWeek));
     push('Sans date', todoTop.filter(t => !t.due));
   }
-  push('Terminées', topLevelTasks(done));
+  push('Terminées', topLevelTasks(done), false, null, true);
   return groups;
 }
 
@@ -3135,12 +3147,21 @@ function renderTasksSpace() {
   const hideProjPill = cfg.groupBy === 'project';
   const hidePrioDot  = cfg.groupBy === 'prio';
 
+  // les terminées se replient d'un clic (comme sur la fiche projet), état retenu
+  const doneCollapsed = !!state.tasksDoneCollapsed;
+
   groups.forEach(g => {
     // en-tête sous forme de pilule colorée quand le groupe a une couleur (projet, priorité)
     const titre = g.pill
       ? `<span class="grp-pill" style="background:${g.pill};color:${inkOn(g.pill)}"><span class="pill-dot" style="background:${dotOf(g.pill)}"></span>${esc(g.label)}</span>`
       : esc(g.label);
-    html += `<div class="grp-head ${g.late ? 'late' : ''}">${titre} <span class="grp-n">· ${g.items.length}</span></div>`;
+    if (g.done) {
+      html += `<div class="grp-head done-head" onclick="toggleTasksDone()" title="${doneCollapsed ? 'Afficher' : 'Replier'} les tâches terminées">
+        <span class="sub-chev ${doneCollapsed ? '' : 'open'}">${ICON_CHEV}</span>${esc(g.label)} <span class="grp-n">· ${g.items.length}</span></div>`;
+      if (doneCollapsed) return;   // on saute les lignes tant que c'est replié
+    } else {
+      html += `<div class="grp-head ${g.late ? 'late' : ''}">${titre} <span class="grp-n">· ${g.items.length}</span></div>`;
+    }
 
     const ligne = (t, sub) => {
       const p = t.projectId ? projById(t.projectId) : null;
@@ -3212,6 +3233,9 @@ function setTasksSpace(spec) {
   save(); render();
 }
 window.setTasksSpace = setTasksSpace;
+// replie/déplie le groupe « Terminées » de l'espace Mes tâches (valable pour les 3 regroupements)
+function toggleTasksDone() { state.tasksDoneCollapsed = !state.tasksDoneCollapsed; save(); renderTasksSpace(); }
+window.toggleTasksDone = toggleTasksDone;
 
 /* ============================================================
    ESPACE « PROJETS »
@@ -4238,6 +4262,9 @@ function openNote(id, presetFolder) {
   $('deleteNoteBtn').classList.toggle('hidden', !id);
   $('noteTitle').value = n ? (n.title || '') : '';
   $('noteBody').innerHTML = n ? (n.body || '') : '';
+  // Entrée crée un <p> (pas un <div>/<br>) : les commandes de bloc restent au bon endroit
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+  ensureNoteBlocks();
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
   noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : '') : '';
@@ -4274,9 +4301,159 @@ function noteWrap(className) {
   catch (e) { span.appendChild(range.extractContents()); range.insertNode(span); }
   sel.removeAllRanges();
 }
-/* Insère une liste à cocher. Chaque <li> a une case dessinée en CSS ; un clic
-   dessus bascule la classe .done (géré par le listener sur #noteBody). L'état
-   se conserve dans le HTML enregistré. Entrée crée une nouvelle case. */
+
+/* ---------- Outils communs à l'éditeur de notes ----------
+   Les commandes de bloc (titres, listes, encadrés) doivent agir sur la LIGNE où
+   se trouve le curseur — d'où la nécessité que chaque ligne soit un vrai bloc
+   (<p>, <h1>…) et pas un simple texte séparé par des <br>. */
+const NOTE_BLOCK_TAGS = new Set(['P','H1','H2','H3','H4','BLOCKQUOTE','PRE','UL','OL','DIV','DETAILS','HR','FIGURE']);
+// bloc de premier niveau qui contient le curseur (enfant direct de #noteBody)
+function caretBlock() {
+  const s = window.getSelection();
+  if (!s.rangeCount) return null;
+  let n = s.anchorNode;
+  if (n === $('noteBody')) { const c = n.childNodes; n = c[Math.min(s.anchorOffset, c.length - 1)] || null; }
+  if (n && n.nodeType === 3) n = n.parentNode;
+  while (n && n.parentNode && n.parentNode !== $('noteBody')) n = n.parentNode;
+  return (n && n.parentNode === $('noteBody')) ? n : null;
+}
+// ancêtre de la sélection correspondant au sélecteur, sans sortir de la note
+function noteClosest(sel) {
+  const s = window.getSelection();
+  if (!s.rangeCount) return null;
+  let n = s.anchorNode;
+  if (n && n.nodeType === 3) n = n.parentNode;
+  while (n && n !== $('noteBody')) { if (n.matches && n.matches(sel)) return n; n = n.parentNode; }
+  return null;
+}
+// remplace un élément par son contenu (retire l'encadré, le lien… sans perdre le texte)
+function unwrapEl(el) {
+  const p = el.parentNode; if (!p) return;
+  while (el.firstChild) p.insertBefore(el.firstChild, el);
+  p.removeChild(el);
+}
+function caretToEnd(el) {
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); $('noteBody').focus();
+}
+/* Garantit que le contenu est une suite de blocs : les morceaux « libres »
+   (texte, <span>, <br>) sont regroupés en <p>. Appelé à l'ouverture — jamais
+   pendant l'édition (il réécrit le HTML et déplacerait le curseur). Idempotent. */
+function ensureNoteBlocks() {
+  const body = $('noteBody');
+  if (!body.innerHTML.trim()) { body.innerHTML = '<p><br></p>'; return; }
+  const frag = document.createDocumentFragment();
+  let buf = null;
+  const flush = () => { if (buf) { if (!buf.innerHTML.trim()) buf.innerHTML = '<br>'; frag.appendChild(buf); buf = null; } };
+  [...body.childNodes].forEach(node => {
+    if (node.nodeType === 1 && NOTE_BLOCK_TAGS.has(node.tagName)) { flush(); frag.appendChild(node); }
+    else if (node.nodeType === 1 && node.tagName === 'BR') { if (buf) flush(); else frag.appendChild(Object.assign(document.createElement('p'), { innerHTML: '<br>' })); }
+    else { if (!buf) buf = document.createElement('p'); buf.appendChild(node); }
+  });
+  flush();
+  body.innerHTML = ''; body.appendChild(frag);
+}
+/* Encadré depuis la bulle de sélection = une BASCULE : si le texte choisi est déjà
+   dans un encadré, on le retire ; sinon on l'encadre. Fini l'encadré qu'on ne
+   pouvait plus enlever. */
+function noteToggleBox() {
+  $('noteBody').focus();
+  const box = noteClosest('.note-box');
+  if (box) { unwrapEl(box); return; }
+  noteWrap('note-box');
+}
+/* Bouton « effacer la mise en forme » (⌫) : enlève TOUT — gras/couleur/surlignage
+   (removeFormat), l'encadré de la bulle, et remet la ligne en texte simple si
+   c'était un titre, une citation, du code, un encadré de bloc ou une liste. */
+const NOTE_INLINE_FMT = 'b,strong,i,em,u,s,strike,font,mark,.note-box,span[style],span[class]';
+function noteClearFormat() {
+  $('noteBody').focus();
+  // On défait la mise en forme À LA MAIN (déterministe) : removeFormat seul est
+  // capricieux et ne sait pas retirer un <span class> comme l'encadré. On enlève
+  // toutes les balises de style qui touchent la sélection.
+  const sel = window.getSelection();
+  if (sel.rangeCount) {
+    const range = sel.getRangeAt(0);
+    [...$('noteBody').querySelectorAll(NOTE_INLINE_FMT)]
+      .filter(el => range.intersectsNode(el))
+      .forEach(unwrapEl);
+  }
+  document.execCommand('removeFormat');   // filet de sécurité pour les styles restants
+  const li = selLi();
+  if (li) { liToParagraph(li); return; }               // ligne de liste → paragraphe
+  const blk = caretBlock();
+  if (!blk) return;
+  if (/^(H1|H2|H3|H4|BLOCKQUOTE|PRE)$/.test(blk.tagName) || blk.classList.contains('note-callout')) {
+    document.execCommand('formatBlock', false, '<p>');
+    const b = caretBlock(); if (b && b.classList) b.classList.remove('note-callout');
+  }
+}
+
+/* ---------- Listes (puces, numéros, cases à cocher) ----------
+   On gère les listes À LA MAIN plutôt qu'avec execCommand('insertUnorderedList'),
+   qui produisait du HTML invalide (`<p><ul>…</ul></p>`) impossible à défaire.
+   Ici tout est réversible : re-taper la commande retire la liste, et une ligne de
+   liste peut redevenir un simple paragraphe. */
+function selLi() {
+  let n = window.getSelection().anchorNode;
+  if (n && n.nodeType === 3) n = n.parentNode;
+  while (n && n !== $('noteBody')) { if (n.tagName === 'LI') return n; n = n.parentNode; }
+  return null;
+}
+// une ligne de liste redevient un paragraphe (en coupant la liste au bon endroit)
+function liToParagraph(li) {
+  const list = li.parentNode;
+  const items = [...list.children];
+  const idx = items.indexOf(li);
+  const p = document.createElement('p');
+  p.innerHTML = li.innerHTML.replace(/​/g, '').trim() || '<br>';
+  list.parentNode.insertBefore(p, list.nextSibling);
+  const after = items.slice(idx + 1);
+  if (after.length) {
+    const suite = list.cloneNode(false);
+    after.forEach(x => suite.appendChild(x));
+    p.parentNode.insertBefore(suite, p.nextSibling);
+  }
+  li.remove();
+  if (!list.children.length) list.remove();
+  caretToEnd(p);
+}
+const listKindOf = list => list.classList.contains('note-todo') ? 'todo' : (list.tagName === 'OL' ? 'ol' : 'ul');
+function makeListEl(kind) {
+  const el = document.createElement(kind === 'ol' ? 'ol' : 'ul');
+  if (kind === 'todo') el.className = 'note-todo';
+  return el;
+}
+/* Applique / retire une liste sur la ligne courante. Re-taper la même = retour au
+   texte ; taper une autre sorte = on change de sorte. */
+function noteSetList(kind) {
+  $('noteBody').focus();
+  const li = selLi();
+  if (li) {
+    const list = li.parentNode;                                    // capturé AVANT toute mutation
+    if (listKindOf(list) === kind) { liToParagraph(li); return; }  // même sorte → on enlève
+    const wantTag = kind === 'ol' ? 'OL' : 'UL';
+    if (list.tagName === wantTag) {
+      list.className = kind === 'todo' ? 'note-todo' : '';         // même balise (UL) : on ajuste juste la classe
+    } else {
+      const nl = makeListEl(kind);                                 // balise différente : on recrée la liste
+      while (list.firstChild) nl.appendChild(list.firstChild);
+      list.replaceWith(nl);
+    }
+    caretToEnd(li);
+    return;
+  }
+  const blk = caretBlock();
+  if (!blk) { insertNoteChecklist(); return; }
+  const list = makeListEl(kind);
+  const item = document.createElement('li');
+  item.innerHTML = blk.innerHTML.trim() || '<br>';
+  list.appendChild(item);
+  blk.replaceWith(list);
+  caretToEnd(item);
+}
+/* Insère une liste à cocher vide (utilisé seulement quand il n'y a pas de bloc courant).
+   Un clic sur la case bascule la classe .done (listener sur #noteBody). */
 function insertNoteChecklist() {
   $('noteBody').focus();
   document.execCommand('insertHTML', false,
@@ -4414,30 +4591,34 @@ function applyBlock(kind) {
   hideSlashMenu();
   $('noteBody').focus();
   const fb = t => document.execCommand('formatBlock', false, t);
+  const blk = caretBlock();
+  const estBloc = tag => blk && blk.tagName === tag && !blk.classList.contains('note-callout');
   switch (kind) {
-    case 'p': fb('<p>'); break;
-    case 'h1': fb('<h1>'); break;
-    case 'h2': fb('<h2>'); break;
-    case 'h3': fb('<h3>'); break;
-    case 'ul': document.execCommand('insertUnorderedList'); break;
-    case 'ol': document.execCommand('insertOrderedList'); break;
-    case 'todo': insertNoteChecklist(); break;
-    case 'quote': fb('<blockquote>'); break;
-    case 'code': fb('<pre>'); break;
-    case 'hr': document.execCommand('insertHTML', false, '<hr><p>&#8203;</p>'); break;
-    // encadré : on transforme le bloc courant en <div> puis on lui pose la classe.
+    // « Texte » ramène toujours au paragraphe simple (titre, liste, citation, code, encadré → texte)
+    case 'p':
+      if (selLi()) liToParagraph(selLi());
+      else { fb('<p>'); const b = caretBlock(); if (b && b.classList) b.classList.remove('note-callout'); }
+      break;
+    // titres : re-taper la même commande revient au texte simple (bascule)
+    case 'h1': fb(estBloc('H1') ? '<p>' : '<h1>'); break;
+    case 'h2': fb(estBloc('H2') ? '<p>' : '<h2>'); break;
+    case 'h3': fb(estBloc('H3') ? '<p>' : '<h3>'); break;
+    case 'quote': fb(estBloc('BLOCKQUOTE') ? '<p>' : '<blockquote>'); break;
+    case 'code': fb(estBloc('PRE') ? '<p>' : '<pre>'); break;
+    // listes : gestion manuelle (re-taper la même sorte retire la liste)
+    case 'ul': noteSetList('ul'); break;
+    case 'ol': noteSetList('ol'); break;
+    case 'todo': noteSetList('todo'); break;
+    case 'hr': document.execCommand('insertHTML', false, '<hr><p><br></p>'); break;
+    // encadré : bascule. On transforme le bloc courant en <div> puis on lui pose la classe.
     // (insertHTML d'un <div> dans un <p> était converti en <span> avec styles en dur)
     case 'callout': {
-      fb('<div>');
-      const s2 = window.getSelection();
-      let n = s2.anchorNode;
-      if (n && n.nodeType === 3) n = n.parentNode;
-      while (n && n.parentNode && n.parentNode !== $('noteBody')) n = n.parentNode;
-      if (n && n.classList) n.classList.add('note-callout');
+      if (blk && blk.classList && blk.classList.contains('note-callout')) { fb('<p>'); const b = caretBlock(); if (b && b.classList) b.classList.remove('note-callout'); }
+      else { fb('<div>'); const b = caretBlock(); if (b && b.classList) b.classList.add('note-callout'); }
       break;
     }
     case 'toggle': document.execCommand('insertHTML', false,
-      '<details class="note-toggle" open><summary>Titre</summary><div>&#8203;</div></details><p>&#8203;</p>'); break;
+      '<details class="note-toggle" open><summary>Titre</summary><div><br></div></details><p><br></p>'); break;
   }
 }
 window.applyBlock = applyBlock;
@@ -7232,7 +7413,8 @@ document.querySelectorAll('#noteBubble .nb-btn[data-cmd]').forEach(b => {
 });
 $('nbColor').onclick = () => { savedRange = currentRange(); $('ntFontColorInput').click(); };
 $('nbHilite').onclick = () => { savedRange = currentRange(); $('ntHiliteInput').click(); };
-$('nbBox').onclick = () => { noteWrap('note-box'); hideBubble(); };
+$('nbBox').onclick = () => { noteToggleBox(); hideBubble(); };
+$('nbClear').onclick = () => { noteClearFormat(); hideBubble(); };
 $('ntFontColorInput').onchange = e => { restoreRange(); noteTextColor(e.target.value); };
 $('ntHiliteInput').onchange = e => { restoreRange(); noteHighlight(e.target.value); };
 $('nbLink').onclick = () => openLinkEditor();
@@ -7260,6 +7442,24 @@ $('noteBody').addEventListener('keydown', e => {
   else if (e.key === 'ArrowUp') { e.preventDefault(); slashIdx = (slashIdx - 1 + slashItems.length) % slashItems.length; markSlashActive(); }
   else if (e.key === 'Enter') { e.preventDefault(); applyBlock(slashItems[slashIdx].k); }
   else if (e.key === 'Escape') { e.preventDefault(); hideSlashMenu(); }
+});
+/* Entrée depuis un encadré en ligne : on SORT de l'encadré au lieu de le couper
+   en deux (ce qui fabriquait un mini-encadré vide à chaque saut de ligne). */
+$('noteBody').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.shiftKey) return;
+  if (!$('slashMenu').classList.contains('hidden')) return;   // le menu « / » gère déjà Entrée
+  // Entrée sur une puce/case VIDE = sortir de la liste (comme Notion), au lieu
+  // de fabriquer une puce vide de plus qu'on ne sait pas retirer
+  const li = selLi();
+  if (li && !li.textContent.replace(/​/g, '').trim()) { e.preventDefault(); liToParagraph(li); return; }
+  // Entrée dans un encadré en ligne = en sortir (fini les mini-encadrés à chaque ligne)
+  if (noteClosest('.note-box')) {
+    e.preventDefault();
+    const blk = caretBlock();
+    const p = document.createElement('p'); p.innerHTML = '<br>';
+    if (blk && blk.parentNode) blk.after(p); else $('noteBody').appendChild(p);
+    caretToEnd(p);
+  }
 });
 $('slashMenu').addEventListener('mousedown', e => e.preventDefault());   // garder le curseur dans la note
 $('slashMenu').onclick = e => { const it = e.target.closest('.sl-item'); if (it) applyBlock(it.dataset.k); };
