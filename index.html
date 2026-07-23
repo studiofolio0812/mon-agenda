@@ -520,6 +520,11 @@
   .note-row .del { opacity: 0; color: var(--text-soft); font-size: 15px; flex: none; background: none; border: none; cursor: pointer; }
   .note-row:hover .del { opacity: 1; }
   .note-row:hover .note-date { display: none; }   /* la croix prend la place de la date au survol */
+  /* glisser-déposer des notes vers les dossiers */
+  .note-card[draggable="true"] { cursor: grab; }
+  .note-card.dragging { opacity: .45; }
+  .folder-tile.drop-hover { background: var(--accent-soft); outline: 2px solid var(--accent); outline-offset: -2px; }
+  .crumb-link.drop-hover { background: var(--accent-soft); border-radius: 6px; }
   .note-props { display: flex; gap: 20px; margin-top: 14px; align-items: flex-start; flex-wrap: wrap; }
   .note-props > div { flex: 1; min-width: 160px; }
   .note-props label { display: block; margin-bottom: 6px; }
@@ -662,6 +667,25 @@
 
   /* ---------- Modal ---------- */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  /* ---------- Propriétés épinglées : cartes horizontales (façon Notion) ---------- */
+  .pins-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .pin-card { flex: 1 1 150px; min-width: 130px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px 8px; }
+  .pin-card-head { display: flex; align-items: center; gap: 4px; min-height: 16px; }
+  .pin-card-key { flex: 1; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pin-card .prop-grip, .pin-card .prop-pin { position: static; margin: 0; }
+  .pin-card:hover .prop-grip { opacity: 1; }
+  .pin-card .prop-pin { opacity: 0; }
+  .pin-card:hover .prop-pin { opacity: 1; color: var(--accent); }
+  .pin-card-val { margin-top: 3px; }
+  .pin-card-val input, .pin-card-val select { width: 100%; }
+  .pin-card.drop-hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .pin-card.dragging { opacity: .45; }
+  /* pastilles de couleur dans les sélecteurs Agenda / Projet */
+  .dot-select { position: relative; }
+  .dot-select select { width: 100%; padding-left: 27px; }
+  .ds-dot { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; border-radius: 50%; pointer-events: none; background: transparent; }
+  .ds-dot.vide { box-shadow: inset 0 0 0 1.5px var(--border, #d9d6d1); }
+
   #projDetailOverlay { z-index: 49; } /* passe sous la fiche tâche / la fiche projet */
   #pageOverlay { z-index: 55; }        /* la page d'un enregistrement passe au-dessus du panneau base de données */
   #iconOverlay { z-index: 60; }        /* le sélecteur d'icône s'ouvre PAR-DESSUS une fenêtre déjà ouverte (habitude, fiche) */
@@ -773,6 +797,28 @@
   .prow .p-name { flex: 1; font-size: 14px; }
   .prow .pbar { width: 110px; flex: none; }
   .prow .p-meta { font-size: 12px; color: var(--text-faint); white-space: nowrap; min-width: 92px; text-align: right; }
+
+  /* ----- Espace Projets : bandeau d'indicateurs + vue Tableau ----- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 18px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+  .kpi-val { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .kpi-lbl { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+  .kpi.warn .kpi-val { color: #b4544f; }
+  .ptable-wrap { margin-top: 18px; overflow-x: auto; }
+  .ptable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .ptable th { text-align: left; font-size: 11.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); padding: 8px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  .ptable th[onclick] { cursor: pointer; }
+  .ptable th[onclick]:hover { color: var(--text); }
+  .ptable th.on { color: var(--accent); }
+  .ptable td { padding: 10px; border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: middle; }
+  .ptable tbody tr { cursor: pointer; }
+  .ptable tbody tr:hover td { background: var(--surface-2); }
+  .pt-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+  .pt-prog .pbar { display: inline-block; width: 90px; vertical-align: middle; }
+  .pt-pct { font-size: 12px; color: var(--text-soft); margin-left: 8px; }
+  .pt-num { text-align: center; color: var(--text-soft); }
+  .pt-num.late { color: #b4544f; font-weight: 600; }
+  .pt-next, .pt-dates { font-size: 12.5px; color: var(--text-soft); max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
 
   /* ---- Espace Projets : chronologie ---- */
   .tl { margin-top: 20px; }
@@ -961,6 +1007,18 @@
   .prop-row.tall { align-items: flex-start; }
   .prop-row.tall .prop-key { padding-top: 9px; }
   .prop-row.tall .prop-eye { margin-top: 5px; }
+  /* épingler + réordonner les propriétés de la fiche */
+  .prop-grip { opacity: 0; cursor: grab; color: var(--text-faint); font-size: 11px; letter-spacing: -2px; width: 13px; flex-shrink: 0; text-align: center; user-select: none; }
+  .prop-row:hover .prop-grip { opacity: 1; }
+  .prop-row.tall .prop-grip { margin-top: 9px; }
+  .prop-row.dragging { opacity: .45; }
+  .prop-row.drop-hover { box-shadow: inset 0 2px 0 var(--accent); }
+  .prop-pin { opacity: 0; background: none; border: none; cursor: pointer; color: var(--text-soft); padding: 2px; flex-shrink: 0; display: inline-flex; }
+  .prop-row:hover .prop-pin { opacity: 1; }
+  .prop-pin.on { opacity: 1; color: var(--accent); }
+  .prop-row.tall .prop-pin { margin-top: 5px; }
+  .page-more-btn { background: none; border: none; color: var(--text-soft); font-size: 12.5px; cursor: pointer; padding: 6px 4px; display: block; }
+  .page-more-btn:hover { color: var(--accent); }
   .prop-textarea {
     width: 100%; resize: none; overflow: hidden;
     min-height: 36px; line-height: 1.55; font-size: 14.5px;
@@ -1406,6 +1464,7 @@
   <div class="modal">
     <div class="modal-head">
       <h2 id="modalTitle">Nouveau</h2>
+      <button class="icon-btn" id="itemTplBtn" title="Modèles" onclick="openTplMenu(this)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
       <button class="icon-btn" data-close>✕</button>
     </div>
     <div class="modal-body">
@@ -1475,11 +1534,11 @@
       </div>
 
       <label>Agenda</label>
-      <select id="fCat"></select>
+      <div class="dot-select"><span class="ds-dot vide" id="fCatDot"></span><select id="fCat"></select></div>
 
       <div id="projField" class="hidden">
         <label>Projet</label>
-        <select id="fProj"></select>
+        <div class="dot-select"><span class="ds-dot vide" id="fProjDot"></span><select id="fProj"></select></div>
       </div>
 
       <div id="colorField">
@@ -1556,6 +1615,7 @@
     <div class="modal-head">
       <button class="icon-btn note-fav-btn" id="noteFavBtn" title="Mettre en favori">☆</button>
       <input id="noteTitle" class="note-title-input" placeholder="Titre de la note" autocomplete="off">
+      <button class="icon-btn" title="Modèles" onclick="openTplMenu(this,'note')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
       <button class="icon-btn" id="noteReadBtn" title="Aperçu"></button>
       <button class="icon-btn" id="noteZoomBtn" title="Ouvrir en grand"></button>
       <button class="icon-btn" data-close>✕</button>
@@ -1680,7 +1740,7 @@
 <!-- ============ MODAL: PROJECT ============ -->
 <div class="overlay" id="projOverlay">
   <div class="modal" style="max-width:360px;">
-    <div class="modal-head"><h2 id="projModalTitle">Nouveau projet</h2><button class="icon-btn" data-close>✕</button></div>
+    <div class="modal-head"><h2 id="projModalTitle">Nouveau projet</h2><button class="icon-btn" title="Modèles" onclick="openTplMenu(this,'project')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button><button class="icon-btn" data-close>✕</button></div>
     <div class="modal-body">
       <label>Nom du projet</label>
       <input id="projName" placeholder="Ex : Refonte site client X…" autocomplete="off">
@@ -1700,6 +1760,7 @@
     <div class="page-head">
       <span class="page-crumb" id="pageCrumb"></span>
       <div style="display:flex;align-items:center;gap:2px">
+        <button class="icon-btn hidden" id="pageTplBtn" title="Modèles"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
         <button class="icon-btn" id="pageDupBtn" title="Dupliquer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="icon-btn" id="pageModeBtn" title="Basculer entre fenêtre et panneau latéral"></button>
         <button class="icon-btn danger" id="pageDelBtn" title="Supprimer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg></button>
@@ -1724,6 +1785,7 @@
   <div class="modal">
     <div class="modal-head">
       <h2 id="pdTitle"></h2>
+      <button class="icon-btn" title="Modèles" onclick="openTplMenuProjDetail(this)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
       <button class="icon-btn" data-close>✕</button>
     </div>
     <div class="modal-body">
@@ -1813,6 +1875,7 @@
         <option value="phone">Téléphone</option>
         <option value="relation"> Relation </option>
         <option value="rollup"> Rollup (agrégation)</option>
+        <option value="formula">Formule (calcul)</option>
       </select>
       <div id="propOptionsField" class="hidden">
         <label>Options <button class="mini-add" id="propAddOpt" type="button">＋ option</button></label>
@@ -1844,6 +1907,16 @@
           <option value="latest">Date la plus tard</option>
           <option value="range">Période (plus tôt → plus tard)</option>
         </select>
+      </div>
+      <div id="propFormulaField" class="hidden">
+        <label>Formule</label>
+        <textarea id="propFormula" rows="3" spellcheck="false" placeholder='Ex : if(prop("Faite"), "✅", "⏳")'></textarea>
+        <p class="hint-txt">Même écriture que dans Notion : <b>prop("Nom")</b> lit une autre propriété.
+        Exemples : <b>prop("Budget") * 1.2</b> · <b>dateBetween(prop("Échéance"), now(), "days")</b> ·
+        <b>if(prop("Faite"), "OK", "À faire")</b> · <b>style("OK", "b", "green")</b>.<br>
+        Fonctions : if, and, or, not, empty, concat, join, length, contains, replace, replaceAll,
+        lower, upper, slice, format, toNumber, round, floor, ceil, abs, sqrt, pow, mod, min, max,
+        now, today, dateAdd, dateBetween, formatDate, year, month, day, style, unstyle.</p>
       </div>
       <label class="check-row" id="propHiddenRow" style="margin-top:16px;">
         <input type="checkbox" id="propHidden"> Masquer cette colonne (les données sont conservées)
@@ -1993,6 +2066,12 @@ const defaultState = () => ({
   noteRead: false,
   // abonnements aux notifications (un par appareil) : lus par la fonction serveur pour envoyer les rappels
   pushSubscriptions: [],
+  // modèles enregistrés (tâches/événements/projets/notes), par type
+  templates: {},
+  // propriétés épinglées / ordre des propriétés / « afficher plus » sur les fiches, par table
+  pagePins: {},
+  pageOrder: {},
+  pageMore: {},
   colOrder: {},   // ordre des colonnes par table
   colHidden: {},  // colonnes masquées par table (ID comprise)
   customColors: [],
@@ -3355,23 +3434,69 @@ function projDatesText(p) {
   return s + e;
 }
 
+/* Bandeau d'indicateurs de l'espace Projets : l'essentiel en un coup d'œil. */
+function projKpisHtml(list) {
+  const stats = list.map(projStats);
+  const actifs = list.filter(p => projStatut(p) !== 'fini').length;
+  const total = stats.reduce((n, s) => n + s.total, 0);
+  const done = stats.reduce((n, s) => n + s.done, 0);
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const late = stats.reduce((n, s) => n + s.late, 0);
+  const aujourdhui = ymd(new Date());
+  const dans7j = ymd(new Date(Date.now() + 7 * 86400000));
+  const semaine = state.tasks.filter(t => !t.done && t.projectId && t.due && t.due >= aujourdhui && t.due <= dans7j).length;
+  const kpi = (val, label, cls = '') => `<div class="kpi ${cls}"><div class="kpi-val">${val}</div><div class="kpi-lbl">${label}</div></div>`;
+  return `<div class="kpis">
+    ${kpi(actifs, 'projet' + (actifs > 1 ? 's' : '') + ' actif' + (actifs > 1 ? 's' : ''))}
+    ${kpi(pct + ' %', 'avancement global')}
+    ${kpi(late, 'tâche' + (late > 1 ? 's' : '') + ' en retard', late ? 'warn' : '')}
+    ${kpi(semaine, 'échéance' + (semaine > 1 ? 's' : '') + ' sous 7 jours')}
+  </div>`;
+}
+
+/* Vue « Tableau » : une ligne par projet, en-têtes cliquables pour trier.
+   Le statut reste déduit (dates + avancement), fidèle au choix du reste de l'app. */
+function projTableHtml(list) {
+  const cfg = projSpaceCfg();
+  const th = (key, label) => `<th class="${cfg.sort === key ? 'on' : ''}" onclick="setProjSort('${key}')" title="Trier par ${label.toLowerCase()}">${label}</th>`;
+  const rows = list.map(p => {
+    const st = projStats(p);
+    const [, stLabel, stColor] = PROJ_STATUTS.find(([k]) => k === projStatut(p));
+    return `<tr onclick="openPage('projects','${p.id}')">
+      <td><span class="pt-name"><span class="pill-dot" style="background:${dotOf(p.color)};width:9px;height:9px;border-radius:50%;flex:none"></span>${iconOf(p, 'projects')} ${esc(p.name)}</span></td>
+      <td><span class="grp-pill" style="background:${stColor};color:${inkOn(stColor)}">${esc(stLabel)}</span></td>
+      <td class="pt-prog"><span class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></span><span class="pt-pct">${st.pct} %</span></td>
+      <td class="pt-num">${st.done}/${st.total}</td>
+      <td class="pt-num${st.late ? ' late' : ''}">${st.late || '·'}</td>
+      <td class="pt-next">${st.next ? esc(st.next.title) + ' · ' + esc(formatDue(st.next.due)) : '·'}</td>
+      <td class="pt-dates">${esc(projDatesText(p))}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="ptable-wrap"><table class="ptable">
+    <thead><tr>${th('nom', 'Projet')}${th('statut', 'Statut')}${th('avancement', 'Avancement')}<th>Tâches</th><th>En retard</th><th>Prochaine tâche</th>${th('echeance', 'Échéance')}</tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
 function renderProjectsSpace() {
   const cfg = projSpaceCfg();
   const list = state.projects.slice();
   const tab = (m, label) => `<span class="space-tab ${cfg.mode === m ? 'on' : ''}" onclick="setProjSpace('${m}')">${label}</span>`;
 
-  let html = `<div class="space ${cfg.mode === 'timeline' ? 'wide' : ''}">
+  let html = `<div class="space ${cfg.mode === 'timeline' || cfg.mode === 'table' ? 'wide' : ''}">
     <div class="space-head">
       <span class="space-title">Projets</span>
       <span class="space-count">${list.length} projet${list.length > 1 ? 's' : ''}</span>
-      <span class="space-tabs">${tab('cards', 'Cartes')}${tab('list', 'Liste')}${tab('timeline', 'Chronologie')}</span>
+      <span class="space-tabs">${tab('cards', 'Cartes')}${tab('list', 'Liste')}${tab('table', 'Tableau')}${tab('timeline', 'Chronologie')}</span>
     </div>
+    ${list.length ? projKpisHtml(list) : ''}
     <div class="space-bar">
       <span class="space-add" onclick="openProjModal()">${ICON_PLUS} Ajouter un projet</span>
       <span style="flex:1"></span>
-      ${cfg.mode !== 'timeline' ? `<span class="space-sort-lbl">Trier par</span>
+      ${cfg.mode === 'cards' || cfg.mode === 'list' ? `<span class="space-sort-lbl">Trier par</span>
         ${[['statut','statut'],['echeance','échéance'],['avancement','avancement'],['nom','nom']]
           .map(([k, l]) => `<span class="space-tab ${cfg.sort === k ? 'on' : ''}" onclick="setProjSort('${k}')">${l}</span>`).join('')}`
+        : cfg.mode === 'table' ? `<span class="space-sort-lbl">Clique sur un en-tête de colonne pour trier</span>`
         : `<span class="space-sort-lbl">Maj + molette pour faire défiler</span>
            ${Math.abs(tlPan) > 0.5 ? `<span class="space-tab on" onclick="resetTlPan()">Recentrer</span>` : ''}`}
     </div>`;
@@ -3383,6 +3508,7 @@ function renderProjectsSpace() {
   const tries = sortProjects(list, cfg.sort);
   html += cfg.mode === 'cards' ? projCardsHtml(tries, cfg.sort === 'statut')
         : cfg.mode === 'list'  ? projListHtml(tries, cfg.sort === 'statut')
+        : cfg.mode === 'table' ? projTableHtml(tries)
         : projTimelineHtml(list);
   canvas.innerHTML = html + '</div>';
   if (cfg.mode === 'timeline') { thinTimelineLabels(); wireTimelinePan(); }
@@ -4162,13 +4288,45 @@ function renderNotes() {
 // une carte de note
 function noteCardHtml(n) {
   const link = noteLinkLabel(n);
-  return `<div class="note-card" style="border-top:3px solid ${dotOf(n.color || '#eae8e4')}" onclick="openNote('${n.id}')">
+  return `<div class="note-card" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${dotOf(n.color || '#eae8e4')}" onclick="openNote('${n.id}')">
       <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
       <div class="note-card-title">${esc(n.title || 'Sans titre')}</div>
       <div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>
       <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="note-card-date">${esc(noteDateLabel(n))}</span></div>
     </div>`;
 }
+
+/* ---------- Glisser-déposer : note → dossier ----------
+   Pour trier les notes sans dossier d'un geste ; déposée sur « Notes » dans le
+   fil d'Ariane, une note ressort de son dossier. Indépendant du drag du calendrier. */
+let dragNoteId = null;
+function noteDragStart(e, id, el) {
+  dragNoteId = id;
+  el.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);   // requis par Firefox
+}
+function noteDragEnd(el) { el.classList.remove('dragging'); dragNoteId = null; }
+function noteDragOver(e, el) {
+  if (!dragNoteId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  el.classList.add('drop-hover');
+}
+function noteDropOnFolder(e, folderId, el) {
+  e.preventDefault(); e.stopPropagation();
+  el.classList.remove('drop-hover');
+  const n = state.notes.find(x => x.id === dragNoteId);
+  dragNoteId = null;
+  if (!n || (n.folderId || '') === folderId) return;
+  n.folderId = folderId;
+  n.updated = Date.now();
+  save(); render();
+}
+window.noteDragStart = noteDragStart;
+window.noteDragEnd = noteDragEnd;
+window.noteDragOver = noteDragOver;
+window.noteDropOnFolder = noteDropOnFolder;
 
 let notesOpenFolder = null;   // dossier ouvert dans l'espace ('__fav__' = favoris, null = accueil)
 function openNotesFolder(id) { notesOpenFolder = id; render(); }
@@ -4188,7 +4346,7 @@ function renderNotesSpace() {
     const items = isFav ? list.filter(n => n.fav) : list.filter(n => n.folderId === f.id);
     const proj = f && f.projectId ? projById(f.projectId) : null;
     let h = `<div class="space">
-      <div class="notes-crumb"><span class="crumb-link" onclick="openNotesFolder(null)">Notes</span> <span class="crumb-sep">›</span> ${isFav ? '<span class="note-star">★</span> Favoris' : `${folderSvg(f.color, f.icon, 22)} ${esc(f.name)}`}</div>
+      <div class="notes-crumb"><span class="crumb-link" onclick="openNotesFolder(null)" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="noteDropOnFolder(event,'',this)">Notes</span> <span class="crumb-sep">›</span> ${isFav ? '<span class="note-star">★</span> Favoris' : `${folderSvg(f.color, f.icon, 22)} ${esc(f.name)}`}</div>
       <div class="space-head"><span class="space-title">${isFav ? 'Favoris' : esc(f.name)}</span><span class="space-count">${items.length} note${items.length > 1 ? 's' : ''}</span>
         ${proj ? `<span class="space-count">· projet : ${esc(proj.name)}</span>` : ''}</div>
       <div class="space-bar">
@@ -4215,7 +4373,7 @@ function renderNotesSpace() {
   }
 
   const favs = list.filter(n => n.fav);
-  const tuile = (onclick, svg, name, count, extra) => `<div class="folder-tile" onclick="${onclick}">
+  const tuile = (onclick, svg, name, count, extra, drop) => `<div class="folder-tile" onclick="${onclick}"${drop || ''}>
       <div class="folder-tile-ico">${svg}</div>
       <div class="folder-tile-name">${name}</div>
       <div class="folder-tile-count">${count} note${count > 1 ? 's' : ''}</div>${extra || ''}</div>`;
@@ -4225,7 +4383,8 @@ function renderNotesSpace() {
   folders.forEach(f => {
     const n = list.filter(x => x.folderId === f.id).length;
     tiles.push(tuile(`openNotesFolder('${f.id}')`, folderSvg(f.color, f.icon, 46), esc(f.name), n,
-      `<button class="folder-tile-edit" onclick="event.stopPropagation();openFolderModal('${f.id}')" title="Modifier">${ICON_GEAR}</button>`));
+      `<button class="folder-tile-edit" onclick="event.stopPropagation();openFolderModal('${f.id}')" title="Modifier">${ICON_GEAR}</button>`,
+      ` ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="noteDropOnFolder(event,'${f.id}',this)"`));
   });
   if (tiles.length) html += `<div class="folder-tiles">${tiles.join('')}</div>`;
 
@@ -4850,6 +5009,7 @@ let projDraftColor = PALETTE[0];
 let editingProj = null;
 function openProjModal(id) {
   editingProj = id || null;
+  projTplTasks = null;   // on repart sans tâches de modèle
   const isEdit = !!id;
   $('projModalTitle').textContent = isEdit ? 'Modifier le projet' : 'Nouveau projet';
   $('saveProjBtn').textContent = isEdit ? 'Enregistrer' : 'Ajouter';
@@ -4877,8 +5037,15 @@ function saveProj() {
     const p = projById(editingProj);
     if (p) { p.name = name; p.color = projDraftColor; }
   } else {
-    state.projects.push({ id: uid(), name, color: projDraftColor });
+    const pid = uid();
+    state.projects.push({ id: pid, name, color: projDraftColor });
+    // tâches embarquées par un modèle de projet
+    if (projTplTasks && projTplTasks.length) projTplTasks.forEach(t => state.tasks.push({
+      id: uid(), done: false, title: t.title, due: '', dueTime: '', dueEnd: '',
+      prio: t.prio || 'med', catId: t.catId || '', projectId: pid, note: t.note || '',
+    }));
   }
+  projTplTasks = null;
   save(); closeModals(); render();
 }
 function deleteProject(id) {
@@ -5104,6 +5271,21 @@ function fillProjSelect() {
   $('fProj').innerHTML = '<option value="">— Aucun —</option>' +
     state.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
 }
+/* Pastilles de couleur à gauche des sélecteurs Agenda / Projet de la fiche :
+   un <option> natif ne peut pas contenir de HTML, alors la pastille vit à côté
+   du menu et suit la sélection. Anneau creux quand rien n'est choisi. */
+function syncDotSelects() {
+  const cd = $('fCatDot'), pd = $('fProjDot');
+  if (!cd || !pd) return;
+  const c = catById($('fCat').value);
+  cd.style.background = c ? dotOf(catColor(c)) : 'transparent';
+  cd.classList.toggle('vide', !c);
+  const p = projById($('fProj').value);
+  pd.style.background = p ? dotOf(p.color) : 'transparent';
+  pd.classList.toggle('vide', !p);
+}
+$('fCat').addEventListener('change', syncDotSelects);
+$('fProj').addEventListener('change', syncDotSelects);
 function allColors(base) { return (base || PALETTE).concat(state.customColors || []); }
 
 /* ---------- Les 5 dernières couleurs utilisées ----------
@@ -5124,6 +5306,152 @@ function recentColors(selected) {
   if (selected && !list.some(c => normColor(c) === normColor(selected))) list = [selected, ...list].slice(0, RECENT_MAX);
   return list;
 }
+
+/* ============================================================
+   MODÈLES (tâches, événements, projets, notes) — façon Notion
+   ------------------------------------------------------------
+   Un modèle mémorise les valeurs du formulaire ouvert (sans les
+   dates : elles restent à choisir à chaque fois). Un projet
+   existant embarque aussi sa liste de tâches dans le modèle.
+   ============================================================ */
+let projTplTasks = null;   // tâches à créer avec le prochain projet (venant d'un modèle)
+function tplsOf(kind) {
+  if (!state.templates) state.templates = {};
+  if (!state.templates[kind]) state.templates[kind] = [];
+  return state.templates[kind];
+}
+// valeurs du formulaire ouvert, selon le type de modèle
+function tplDataFromForm(kind) {
+  if (kind === 'note') return {
+    title: $('noteTitle').value.trim(),
+    body: sanitizeNoteHtml($('noteBody').innerHTML),
+    color: noteDraftColor,
+  };
+  if (kind === 'project') {
+    const d = { name: $('projName').value.trim(), color: projDraftColor };
+    // un projet existant emporte ses tâches (titres, priorités, agendas, notes — pas les dates)
+    if (editingProj) d.tasks = state.tasks.filter(t => t.projectId === editingProj)
+      .map(t => ({ title: t.title, prio: t.prio || 'med', catId: t.catId || '', note: t.note || '' }));
+    return d;
+  }
+  if (kind === 'event') return {
+    title: $('fTitle').value.trim(), allDay: $('fAllDay').checked,
+    start: $('fStart').value, end: $('fEnd').value,
+    catId: $('fCat').value, projectId: $('fProj').value,
+    note: $('fNote').value.trim(), color: draft.color,
+  };
+  return {   // tâche
+    title: $('fTitle').value.trim(), prio: draft.prio,
+    dueTime: $('fDueTime').value, dueEnd: $('fDueEnd').value,
+    catId: $('fCat').value, projectId: $('fProj').value, note: $('fNote').value.trim(),
+  };
+}
+// applique un modèle au formulaire ouvert (les dates proposées ne bougent pas)
+function applyTpl(kind, tpl) {
+  const d = tpl.data || {};
+  if (kind === 'note') {
+    $('noteTitle').value = d.title || '';
+    $('noteBody').innerHTML = d.body || '';
+    ensureNoteBlocks();
+    noteDraftColor = d.color || noteDraftColor;
+    renderNoteColorPicker();
+    return;
+  }
+  if (kind === 'project') {
+    $('projName').value = d.name || '';
+    if (d.color) projDraftColor = d.color;
+    renderProjPicker();
+    projTplTasks = (d.tasks || []).map(t => ({ ...t }));   // créées à l'enregistrement
+    return;
+  }
+  // tâche / événement : on bascule sur le bon type puis on remplit
+  setType(kind);
+  $('fTitle').value = d.title || '';
+  $('fCat').value = d.catId || '';
+  $('fProj').value = d.projectId || '';
+  syncDotSelects();
+  $('fNote').value = d.note || '';
+  if (kind === 'event') {
+    $('fAllDay').checked = !!d.allDay;
+    $('fStart').value = d.start || '09:00';
+    $('fEnd').value = d.end || '10:00';
+    if (d.color) { draft.color = d.color; renderColorPicker(); }
+    syncEventColorField();
+  } else {
+    setPrio(d.prio || 'med');
+    $('fDueTime').value = d.dueTime || '';
+    $('fDueEnd').value = d.dueEnd || '';
+  }
+}
+function saveTplFromForm(kind) {
+  const data = tplDataFromForm(kind);
+  const name = (kind === 'project' ? data.name : data.title) || 'Modèle ' + (tplsOf(kind).length + 1);
+  tplsOf(kind).push({ id: uid(), name, data });
+  save();
+}
+// menu des modèles (bouton en tête de fenêtre) ; delMode = choisir un modèle à supprimer
+function openTplMenu(btn, kindArg, delMode) {
+  const kind = kindArg || draft.type;   // fiche tâche/événement : le type affiché
+  const list = tplsOf(kind);
+  const NOM = { task: 'tâche', event: 'événement', project: 'projet', note: 'note' }[kind] || kind;
+  const groups = [];
+  if (list.length) groups.push({
+    label: delMode ? 'Supprimer un modèle' : `Modèles de ${NOM}`,
+    items: list.map(t => ({ value: (delMode ? 'del:' : 'use:') + t.id, label: t.name })),
+  });
+  if (!delMode) {
+    const acts = [{ value: 'save', label: 'Enregistrer les valeurs comme modèle', action: true }];
+    if (list.length) acts.push({ value: 'gerer', label: 'Supprimer un modèle…', action: true });
+    groups.push({ items: acts });
+  } else if (!list.length) {
+    groups.push({ items: [{ value: '', label: 'Aucun modèle', action: true }] });
+  }
+  openStyledMenu(btn, groups, null, v => {
+    if (!v) return;
+    if (v === 'save') return saveTplFromForm(kind);
+    if (v === 'gerer') return setTimeout(() => openTplMenu(btn, kind, true), 0);
+    const t = list.find(x => x.id === v.slice(4));
+    if (!t) return;
+    if (v.startsWith('use:')) applyTpl(kind, t);
+    else { state.templates[kind] = list.filter(x => x.id !== t.id); save(); }
+  });
+}
+window.openTplMenu = openTplMenu;
+// enregistre un projet existant comme modèle, avec ses tâches (titres, priorités, agendas, notes — pas les dates)
+function saveTplFromProject(pid) {
+  const pj = state.projects.find(p => p.id === pid); if (!pj) return;
+  const data = {
+    name: pj.name, color: pj.color,
+    tasks: state.tasks.filter(t => t.projectId === pid)
+      .map(t => ({ title: t.title, prio: t.prio || 'med', catId: t.catId || '', note: t.note || '' })),
+  };
+  tplsOf('project').push({ id: uid(), name: pj.name || 'Modèle ' + (tplsOf('project').length + 1), data });
+  save();
+}
+// menu « Modèles » de la vue détail d'un projet : sauvegarder ce projet, ou en créer un depuis un modèle
+function openTplMenuProjDetail(btn, pidArg) {
+  const pid = pidArg || pdProjId;
+  const list = tplsOf('project');
+  const groups = [];
+  if (list.length) groups.push({
+    label: 'Nouveau projet depuis un modèle',
+    items: list.map(t => ({ value: 'use:' + t.id, label: t.name })),
+  });
+  const acts = [{ value: 'save', label: 'Enregistrer ce projet comme modèle (tâches comprises)', action: true }];
+  if (list.length) acts.push({ value: 'gerer', label: 'Supprimer un modèle…', action: true });
+  groups.push({ items: acts });
+  openStyledMenu(btn, groups, null, v => {
+    if (!v) return;
+    if (v === 'save') return saveTplFromProject(pid);
+    if (v === 'gerer') return setTimeout(() => openTplMenu(btn, 'project', true), 0);
+    const t = list.find(x => x.id === v.slice(4));
+    if (!t) return;
+    closeModals();
+    openProjModal();
+    applyTpl('project', t);
+  });
+}
+window.openTplMenuProjDetail = openTplMenuProjDetail;
 // palette : liste de couleurs à proposer (par défaut les teintes de tag). Le swatch affiche la
 // pastille "dot" plus soutenue (comme dans le design system), mais la valeur choisie reste le pastel.
 function paletteHtml(selected, pickFn, ctx, palette) {
@@ -5333,6 +5661,7 @@ function openModal(kind, id, opts) {
   renderDowPicker();
   syncRecurField();
 
+  syncDotSelects();
   $('itemOverlay').classList.add('show');
   setTimeout(() => $('fTitle').focus(), 50);
 }
@@ -5749,16 +6078,31 @@ function urlB64ToUint8Array(base64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 function notifSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+/* Un fichier ouvert par double-clic (file://) ne permet JAMAIS l'enregistrement
+   d'un service worker — `notifSupported()` reste vrai (l'API existe), mais
+   `navigator.serviceWorker.ready` n'aurait alors jamais résolu, bloquant tout
+   en silence (aucun bouton, aucune erreur). D'où ce garde-fou dédié + le
+   filet de sécurité `withTimeout` ci-dessous, pour ne plus jamais rester
+   coincé sans message si l'enregistrement échoue pour une autre raison. */
+function notifContextOk() { return notifSupported() && location.protocol !== 'file:'; }
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('délai dépassé')), ms))]);
+}
 async function currentPushSub() {
-  if (!notifSupported()) return null;
-  const reg = await navigator.serviceWorker.ready;
+  if (!notifContextOk()) return null;
+  const reg = await withTimeout(navigator.serviceWorker.ready, 4000);
   return reg.pushManager.getSubscription();
 }
 async function enableNotifs() {
-  if (!notifSupported()) { alert("Les notifications ne sont pas prises en charge par ce navigateur."); return; }
+  if (!notifContextOk()) {
+    alert(location.protocol === 'file:'
+      ? "Les notifications ne fonctionnent que sur l'adresse en ligne de l'app, pas en ouvrant directement le fichier."
+      : "Les notifications ne sont pas prises en charge par ce navigateur.");
+    return;
+  }
   const perm = await Notification.requestPermission();
-  if (perm !== 'granted') { renderNotifBox(); return; }   // refusée : on affiche juste l'état à jour
-  const reg = await navigator.serviceWorker.ready;
+  if (perm !== 'granted') { await renderNotifBox(); return; }   // refusée : on affiche juste l'état à jour
+  const reg = await withTimeout(navigator.serviceWorker.ready, 4000);
   let sub = await reg.pushManager.getSubscription();
   if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
   const json = sub.toJSON();
@@ -5767,7 +6111,7 @@ async function enableNotifs() {
   state.pushSubscriptions = state.pushSubscriptions.filter(s => s.endpoint !== json.endpoint);
   state.pushSubscriptions.push({ endpoint: json.endpoint, keys: json.keys, addedAt: Date.now() });
   save();
-  renderNotifBox();
+  await renderNotifBox();
 }
 window.enableNotifs = enableNotifs;
 async function disableNotifs() {
@@ -5777,17 +6121,23 @@ async function disableNotifs() {
     await sub.unsubscribe();
     save();
   }
-  renderNotifBox();
+  await renderNotifBox();
 }
 window.disableNotifs = disableNotifs;
 async function renderNotifBox() {
   const box = $('notifBox'); if (!box) return;
   if (!notifSupported()) { box.innerHTML = `<p class="hint-txt" style="margin-top:0">Non pris en charge par ce navigateur.</p>`; return; }
+  if (location.protocol === 'file:') {
+    box.innerHTML = `<p class="hint-txt" style="margin-top:0">Ouvre l'adresse en ligne de l'app pour activer les rappels (ça ne marche pas en ouvrant le fichier directement).</p>`;
+    return;
+  }
   if (Notification.permission === 'denied') {
     box.innerHTML = `<p class="hint-txt" style="margin-top:0">Notifications bloquées pour ce site. Autorise-les dans les réglages du navigateur pour cet onglet, puis reviens ici.</p>`;
     return;
   }
-  const sub = await currentPushSub();
+  let sub;
+  try { sub = await currentPushSub(); }
+  catch (e) { box.innerHTML = `<p class="hint-txt" style="margin-top:0">Impossible de vérifier l'état des notifications pour l'instant. Recharge la page et réessaie.</p>`; return; }
   if (sub) {
     box.innerHTML = `<p class="hint-txt" style="margin-top:0">✓ Rappels activés sur cet appareil.</p>
       <button class="btn-ghost" style="width:100%;margin-top:6px" onclick="disableNotifs()">Désactiver sur cet appareil</button>`;
@@ -5919,6 +6269,77 @@ function togglePageProp(c, key) {
 }
 window.togglePageProp = togglePageProp;
 
+/* ---- épingles et ordre des propriétés sur la fiche (par table, comme dans Notion) ---- */
+function pagePinsOf(c) {
+  if (!state.pagePins) state.pagePins = {};
+  if (!state.pagePins[c]) state.pagePins[c] = [];
+  return state.pagePins[c];
+}
+function pageOrderOf(c) {
+  if (!state.pageOrder) state.pageOrder = {};
+  if (!state.pageOrder[c]) state.pageOrder[c] = [];
+  return state.pageOrder[c];
+}
+// les champs de la fiche, dans l'ordre choisi (les nouveaux venus à leur place naturelle)
+function orderedPageFields(c) {
+  const fields = pageFields(c);
+  const order = pageOrderOf(c);
+  const pos = f => { const i = order.indexOf(f.key); return i < 0 ? order.length + fields.indexOf(f) : i; };
+  return fields.slice().sort((a, b) => pos(a) - pos(b));
+}
+function movePageProp(c, dragKey, targetKey) {
+  if (!dragKey || dragKey === targetKey) return;
+  const keys = orderedPageFields(c).map(f => f.key);
+  const from = keys.indexOf(dragKey);
+  if (from < 0) return;
+  keys.splice(from, 1);
+  const to = keys.indexOf(targetKey);
+  keys.splice(to < 0 ? keys.length : to, 0, dragKey);   // inséré devant la ligne d'accueil
+  const order = pageOrderOf(c);
+  order.length = 0; order.push(...keys);
+  save(); renderPage();
+}
+function togglePagePin(c, key) {
+  const l = pagePinsOf(c);
+  const i = l.indexOf(key);
+  if (i >= 0) l.splice(i, 1); else l.push(key);
+  save(); renderPage();
+}
+function togglePageMore(c) {
+  if (!state.pageMore) state.pageMore = {};
+  state.pageMore[c] = !state.pageMore[c];
+  save(); renderPage();
+}
+// glisser-déposer d'une ligne de propriété (poignée ⋮⋮) — indépendant des autres drags
+let dragPropKey = null;
+function propDragStart(e, key, el) {
+  dragPropKey = key;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', key);   // requis par Firefox
+  el.closest('.prop-row').classList.add('dragging');
+}
+function propDragEnd(el) { el.closest('.prop-row').classList.remove('dragging'); dragPropKey = null; }
+function propRowOver(e, el) {
+  if (!dragPropKey) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  el.classList.add('drop-hover');
+}
+function propRowDrop(e, coll, key, el) {
+  e.preventDefault(); e.stopPropagation();
+  el.classList.remove('drop-hover');
+  if (dragPropKey) movePageProp(coll, dragPropKey, key);
+  dragPropKey = null;
+}
+window.togglePagePin = togglePagePin;
+window.togglePageMore = togglePageMore;
+window.propDragStart = propDragStart;
+window.propDragEnd = propDragEnd;
+window.propRowOver = propRowOver;
+window.propRowDrop = propRowDrop;
+// petite épingle (propriétés mises en avant)
+const ICON_PIN = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l-.8 6.5 3.3 2.5V15H6.5v-2l3.3-2.5z"/><path d="M12 15v6"/></svg>';
+
 // icônes de bascule d'affichage
 const ICON_SIDE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>';
 const ICON_MODAL = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>';
@@ -5976,20 +6397,55 @@ function renderPage() {
        </div>`
     : '';
 
+  // bouton « Modèles » en tête de page : pour les projets (modèle avec tâches incluses)
+  const tplBtn = $('pageTplBtn');
+  if (tplBtn) {
+    tplBtn.classList.toggle('hidden', coll !== 'projects');
+    tplBtn.onclick = () => openTplMenuProjDetail(tplBtn, id);
+  }
+
   const hidden = pageHiddenOf(coll);
-  const fields = pageFields(coll);
+  const fields = orderedPageFields(coll);
   const visible = fields.filter(f => !hidden.includes(f.key));
   const masked = fields.filter(f => hidden.includes(f.key));
+  const pins = pagePinsOf(coll);
 
-  $('pageProps').innerHTML = visible.map(f => {
+  const ligne = f => {
     const ctrl = f.prop ? customField(coll, rec, f.prop) : builtinField(coll, rec, f);
+    const pinOn = pins.includes(f.key);
     // pas de petit sigle devant le nom : plus sobre (choix de Clémence)
-    return `<div class="prop-row ${f.kind === 'longtext' ? 'tall' : ''}">
+    return `<div class="prop-row ${f.kind === 'longtext' ? 'tall' : ''}" ondragover="propRowOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="propRowDrop(event,'${coll}','${f.key}',this)">
+      <span class="prop-grip" draggable="true" ondragstart="propDragStart(event,'${f.key}',this)" ondragend="propDragEnd(this)" title="Glisser pour réordonner">⋮⋮</span>
       <div class="prop-key">${esc(f.label)}</div>
       <div class="prop-val">${ctrl}</div>
+      <button class="prop-pin ${pinOn ? 'on' : ''}" onclick="togglePagePin('${coll}','${f.key}')" title="${pinOn ? 'Désépingler' : 'Épingler en haut de la fiche'}">${ICON_PIN}</button>
       <button class="prop-eye" onclick="togglePageProp('${coll}','${f.key}')" title="Masquer cette propriété">${ICON_EYE}</button>
     </div>`;
-  }).join('') || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
+  };
+
+  // carte horizontale d'une propriété épinglée (façon Notion)
+  const carte = f => {
+    const ctrl = f.prop ? customField(coll, rec, f.prop) : builtinField(coll, rec, f);
+    return `<div class="pin-card" ondragover="propRowOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="propRowDrop(event,'${coll}','${f.key}',this)">
+      <div class="pin-card-head">
+        <span class="prop-grip" draggable="true" ondragstart="propDragStart(event,'${f.key}',this)" ondragend="propDragEnd(this)" title="Glisser pour réordonner">⋮⋮</span>
+        <span class="pin-card-key">${esc(f.label)}</span>
+        <button class="prop-pin on" onclick="togglePagePin('${coll}','${f.key}')" title="Désépingler">${ICON_PIN}</button>
+      </div>
+      <div class="pin-card-val">${ctrl}</div>
+    </div>`;
+  };
+
+  /* Les propriétés épinglées restent en haut ; les autres se replient derrière
+     un bouton « Afficher plus », comme dans Notion. Sans épingle, tout s'affiche. */
+  const epinglees = visible.filter(f => pins.includes(f.key));
+  const autres = visible.filter(f => !pins.includes(f.key));
+  const deplie = !!(state.pageMore || {})[coll];
+  $('pageProps').innerHTML = (epinglees.length
+    ? '<div class="pins-row">' + epinglees.map(carte).join('') + '</div>'
+      + (autres.length ? `<button class="page-more-btn" onclick="togglePageMore('${coll}')">${deplie ? '▴ Réduire' : `▾ Afficher ${autres.length} propriété${autres.length > 1 ? 's' : ''} de plus`}</button>${deplie ? autres.map(ligne).join('') : ''}` : '')
+    : visible.map(ligne).join(''))
+    || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
   // on ajuste la hauteur des zones de texte au contenu déjà saisi
   $$('#pageProps .prop-textarea').forEach(autoGrow);
 
@@ -6174,6 +6630,7 @@ function addSubtask(parentId) {
   draftParent = parentId;
   // la sous-tâche hérite du projet du parent, c'est presque toujours ce qu'on veut
   if (p && p.projectId) $('fProj').value = p.projectId;
+  syncDotSelects();
 }
 window.addSubtask = addSubtask;
 
@@ -6196,6 +6653,7 @@ function addTaskToProject(projId) {
   reopenPage = { coll: 'projects', id: projId };
   openModal('task');
   $('fProj').value = projId;
+  syncDotSelects();
 }
 window.addTaskToProject = addTaskToProject;
 
@@ -6476,6 +6934,10 @@ function customField(c, rec, prop) {
   }
   if (prop.type === 'rollup')
     return `<span class="rollup-val">${esc(String(computeRollup(c, rec, prop)))}</span>`;
+  if (prop.type === 'formula') {
+    const fv = computeFormula(c, rec, prop);
+    return `<span class="rollup-val" title="${esc(prop.expr || '')}">${fv instanceof FmlRich ? fv.html : esc(String(fv))}</span>`;
+  }
   // texte / url / email / téléphone
   const it = { url:'url', email:'email', phone:'tel' }[prop.type] || 'text';
   return `<input type="${it}" value="${esc(v==null?'':v)}" onchange="updProp(${base},this.value)">`;
@@ -6485,7 +6947,7 @@ function customCell(c, rec, prop) {
   const align = prop.type === 'checkbox' ? ' style="text-align:center"' : '';
   return `<td${align}>${customField(c, rec, prop)}</td>`;
 }
-const propIco = { text:'Aa', number:'#', date:'-:-', checkbox:'✓', select:'◉', multi:'x', url:'Url', email:'@', phone:'Tel', relation:'⇄', rollup:'Σ' };
+const propIco = { text:'Aa', number:'#', date:'-:-', checkbox:'✓', select:'◉', multi:'x', url:'Url', email:'@', phone:'Tel', relation:'⇄', rollup:'Σ', formula:'ƒ' };
 // petite icône calendrier sobre (remplace l'emoji 📅) utilisée devant les dates
 const ICON_CAL = '<svg class="ic-inline" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
 const ICON_GEAR = '<svg class="ic-inline" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
@@ -6587,6 +7049,37 @@ const ICON_LIB = {
   corbeille: '<path d="M3.5 6.5h17"/><path d="M8.5 6.5V4.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v2"/><path d="M5.5 6.5l1 13a2 2 0 0 0 2 1.8h7a2 2 0 0 0 2-1.8l1-13"/>',
   partage:   '<circle cx="18" cy="5.5" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.5" r="2.8"/><path d="M8.5 10.7l7-3.9M8.5 13.3l7 3.9"/>',
   oeil:      '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  // — santé —
+  pilule:    '<rect x="4" y="8.2" width="16" height="7.6" rx="3.8" transform="rotate(-45 12 12)"/><path d="M9.3 14.7l5.4-5.4"/>',
+  croix_med: '<path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"/>',
+  stethoscope:'<path d="M5 3v5.5a4.5 4.5 0 0 0 9 0V3"/><path d="M9.5 13v3.5a4.5 4.5 0 0 0 9 0v-2.6"/><circle cx="18.5" cy="11.5" r="2.4"/>',
+  thermometre:'<path d="M10 14.8V4.5a2 2 0 0 1 4 0v10.3a4.2 4.2 0 1 1-4 0z"/><path d="M12 9.5V16"/>',
+  seringue:  '<rect x="6.8" y="8.8" width="10.4" height="6.4" rx="1" transform="rotate(-45 12 12)"/><path d="M16.7 4.3l3 3M18.9 2.1l3 3M7.3 13.7L3 18M5.1 15.9l3 3"/>',
+  pansement: '<rect x="2.8" y="8.4" width="18.4" height="7.2" rx="3.6" transform="rotate(-45 12 12)"/><path d="M10.6 10.6h.01M13.4 13.4h.01M13.4 10.6h.01M10.6 13.4h.01"/>',
+  dent:      '<path d="M12 5.3C10.6 3.9 8.6 3.4 7 4.4 5.1 5.7 4.6 8.4 5.6 11c1 2.6 1.5 4 1.8 7 .1 1.5 2 1.8 2.5.3.4-1.3.6-2.9 2.1-2.9s1.7 1.6 2.1 2.9c.5 1.5 2.4 1.2 2.5-.3.3-3 .8-4.4 1.8-7 1-2.6.5-5.3-1.4-6.6-1.6-1-3.6-.5-5 1z"/>',
+  // — maison & quotidien —
+  lave_linge:'<rect x="4" y="2.8" width="16" height="18.4" rx="2"/><circle cx="12" cy="13.5" r="4.4"/><path d="M8.9 12.6a4.4 4.4 0 0 0 6.3 1.8"/><path d="M7.5 6h3"/><circle cx="16.5" cy="6" r="1"/>',
+  tshirt:    '<path d="M8 4L3 7l2 3.5 2.2-1.2V20h9.6v-10.7L19 10.5 21 7l-5-3a4 4 0 0 1-8 0z"/>',
+  cintre:    '<path d="M14 4.5a2 2 0 1 0-3.4 1.4L12 7.2"/><path d="M12 7.2l8.8 5.9a1.4 1.4 0 0 1-.8 2.6H4a1.4 1.4 0 0 1-.8-2.6z"/>',
+  balai:     '<path d="M16.5 2.5l-5 8.5"/><path d="M4.5 21c.3-4 2.2-7.3 5.7-9.2l3.6 2.1c-.6 3.9-2.8 6.4-6 7.6z"/><path d="M8 16.5l2.2 2.2"/>',
+  spray:     '<rect x="6.5" y="10" width="9" height="11" rx="1.5"/><path d="M8.5 10V6.5H14l1.5 3.5"/><path d="M13.5 6.5v-2H10"/><path d="M17.5 4.5h.01M19.5 7h.01M17.5 9.5h.01"/>',
+  couverts:  '<path d="M7 2.5v19"/><path d="M4.5 2.5v5a2.5 2.5 0 0 0 5 0v-5"/><path d="M16.5 21.5v-9.3"/><path d="M16.5 12.2c1.9 0 3.2-2 3.2-4.6S18.4 3 16.5 3s-3.2 2-3.2 4.6 1.3 4.6 3.2 4.6z"/>',
+  casserole: '<path d="M5 10.5h11.5V17a3.5 3.5 0 0 1-3.5 3.5H8.5A3.5 3.5 0 0 1 5 17z"/><path d="M16.5 12.5H21"/><path d="M8.5 7.5c0-1 .7-1.6.7-2.7M12.3 7.5c0-1 .7-1.6.7-2.7"/>',
+  lit:       '<path d="M3 19.5V6"/><path d="M3 15.5h18v4"/><circle cx="6.8" cy="9.2" r="1.9"/><path d="M10.5 11.5h7.5a3 3 0 0 1 3 3v1"/><path d="M3 11.5h4"/>',
+  plante:    '<path d="M8 21h8l1.2-5.5H6.8z"/><path d="M12 15.5V9"/><path d="M12 9c0-3.2 2.1-5.3 5.3-5.3C17.3 6.9 15.2 9 12 9zM12 12c0-2.6-1.7-4.3-4.3-4.3 0 2.6 1.7 4.3 4.3 4.3z"/>',
+  // — création de contenu —
+  megaphone: '<path d="M19.5 3.5l-14 5h-2A1.5 1.5 0 0 0 2 10v4a1.5 1.5 0 0 0 1.5 1.5h2l14 5z"/><path d="M7.5 15.5l1.2 5"/>',
+  clap:      '<path d="M3.5 10.5l1-5.3 17 3-.6 2.9"/><rect x="3.5" y="10.5" width="17" height="9.5" rx="1.5"/><path d="M8.7 6.1l2 3.7M13.6 7l2 3.6"/>',
+  plume:     '<path d="M20 3.5c-7 0-12.3 4-14.3 10.8L4.5 21"/><path d="M20 3.5c.6 6-2.4 11-7.8 12.6-1.9.6-3.8.5-5.4 0"/><path d="M18 6L7.5 16.5"/>',
+  hashtag:   '<path d="M9.7 3.5l-2.2 17M16.7 3.5l-2.2 17M4 8.7h16.5M3.5 15.3H20"/>',
+  pouce:     '<path d="M7.5 11l4-8a2.5 2.5 0 0 1 2.5 2.5v4H19a2 2 0 0 1 2 2.3l-1.1 6.5A2 2 0 0 1 17.9 20H7.5"/><path d="M7.5 11H3.5v9h4z"/>',
+  envoi:     '<path d="M21 3L3 10.5l7 2.5 2.5 7z"/><path d="M21 3L10 13"/>',
+  presentation:'<path d="M3 4h18"/><rect x="4.5" y="4" width="15" height="11" rx="1"/><path d="M8 12l2.7-3 2.2 1.8L16.5 7"/><path d="M12 15v2.5M8.5 21l3.5-3.5L15.5 21"/>',
+  // — divers —
+  euro:      '<path d="M18.5 5.8A7 7 0 0 0 6.5 12a7 7 0 0 0 12 6.2"/><path d="M3.5 10.2h9M3.5 13.8h8"/>',
+  billet:    '<rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5h.01M18 14.5h.01"/>',
+  calendrier:'<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 2.8V6.2M16 2.8V6.2"/><path d="M8 13.5h.01M12 13.5h.01M16 13.5h.01M8 17h.01M12 17h.01"/>',
+  smiley:    '<circle cx="12" cy="12" r="8.5"/><path d="M9 10h.01M15 10h.01"/><path d="M8.5 14.3a4.6 4.6 0 0 0 7 0"/>',
 };
 const ICON_NAMES = Object.keys(ICON_LIB);
 // rend une icône de la bibliothèque, dans la couleur demandée
@@ -6634,7 +7127,7 @@ const BUILTIN_FIELDS = {
 function fieldsOf(c) {
   const builtins = BUILTIN_FIELDS[c] || [['title','Nom','text']];  // table perso : propriété "Nom"
   return builtins.map(([key,label,kind]) => ({ key, label, kind }))
-    .concat(schemaOf(c).filter(p => p.type !== 'rollup').map(p => ({ key: p.id, label: p.name, kind: p.type })));
+    .concat(schemaOf(c).filter(p => p.type !== 'rollup' && p.type !== 'formula').map(p => ({ key: p.id, label: p.name, kind: p.type })));
 }
 const getFieldValue = (c, rec, key) => (key in rec) ? rec[key] : (rec.props || {})[key];
 function fmtDateShort(s) { if (!s) return ''; const d = parseYmd(s); return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`; }
@@ -6657,6 +7150,214 @@ function computeRollup(coll, rec, prop) {
   if (agg === 'latest') return fmtDateShort(sorted[sorted.length - 1]);
   if (agg === 'range') return fmtDateShort(sorted[0]) + ' → ' + fmtDateShort(sorted[sorted.length - 1]);
   return '—';
+}
+
+/* ============================================================
+   PROPRIÉTÉ « FORMULE » — la syntaxe de Notion (sous-ensemble)
+   ------------------------------------------------------------
+   prop("Nom") lit une autre propriété (intégrée ou personnalisée).
+   Opérateurs : + - * / % == != > >= < <= and or not (ou && || !)
+   et le ternaire cond ? a : b. Les dates sont des chaînes
+   AAAA-MM-JJ, comme partout ailleurs dans l'app.
+   ============================================================ */
+const FML_TRUTHY = v => v instanceof FmlRich ? v.text !== '' : Array.isArray(v) ? v.length > 0 : (typeof v === 'string' ? v !== '' && v !== 'false' : !!v);
+const fmlDate = s => parseYmd(String(s || ''));
+/* mise en forme façon Notion : style(valeur, "b", "blue", "gray_background"…).
+   Un FmlRich transporte à la fois le HTML stylisé (affichage) et le texte brut (calculs). */
+class FmlRich {
+  constructor(html, text) { this.html = html; this.text = text; }
+  toString() { return this.text; }
+}
+const fmlText = v => v instanceof FmlRich ? v.text : (v == null ? '' : String(v));
+const FML_COLORS = { gray:'#787774', brown:'#976D57', orange:'#D9730D', yellow:'#CB912F', green:'#448361', blue:'#337EA9', purple:'#9065B0', pink:'#C14C8A', red:'#D44C47' };
+const FML_BG = { gray:'#F1F1EF', brown:'#F3EEEE', orange:'#FAEBDD', yellow:'#FBF3DB', green:'#EDF3EC', blue:'#E7F3F8', purple:'#F8F3FC', pink:'#FAF1F5', red:'#FDEBEC' };
+function fmlConcat(a, b) {
+  const h = x => x instanceof FmlRich ? x.html : esc(fmlText(x));
+  return new FmlRich(h(a) + h(b), fmlText(a) + fmlText(b));
+}
+function fmlStyle(v, styles) {
+  const text = fmlText(v);
+  const inner = v instanceof FmlRich ? v.html : esc(text);
+  const css = [], deco = [];
+  for (const raw of styles.map(s => String(s))) {
+    if (raw === 'b') css.push('font-weight:600');
+    else if (raw === 'i') css.push('font-style:italic');
+    else if (raw === 'u') deco.push('underline');
+    else if (raw === 's') deco.push('line-through');
+    else if (raw === 'c') css.push('font-family:ui-monospace,SFMono-Regular,Menlo,monospace', 'background:rgba(135,131,120,.15)', 'padding:1px 4px', 'border-radius:4px', 'color:#EB5757', 'font-size:.92em');
+    else if (raw.endsWith('_background')) { const c = FML_BG[raw.slice(0, -11)]; if (!c) throw new Error('couleur inconnue : ' + raw); css.push('background:' + c, 'padding:1px 4px', 'border-radius:4px'); }
+    else if (FML_COLORS[raw]) css.push('color:' + FML_COLORS[raw]);
+    else throw new Error('style inconnu : ' + raw);
+  }
+  if (deco.length) css.push('text-decoration:' + deco.join(' '));
+  return new FmlRich('<span style="' + css.join(';') + '">' + inner + '</span>', text);
+}
+const FML_FNS = {
+  if: (c, a, b) => FML_TRUTHY(c) ? a : b,
+  and: (...a) => a.every(FML_TRUTHY),
+  or: (...a) => a.some(FML_TRUTHY),
+  not: a => !FML_TRUTHY(a),
+  empty: a => a instanceof FmlRich ? a.text === '' : (a === undefined || a === null || a === '' || a === false || (Array.isArray(a) && !a.length)),
+  length: a => String(a ?? '').length,
+  concat: (...a) => a.some(x => x instanceof FmlRich) ? a.reduce((acc, x) => fmlConcat(acc, x), '') : a.map(x => String(x ?? '')).join(''),
+  join: (sep, ...a) => a.map(x => String(x ?? '')).join(String(sep)),
+  format: a => String(a ?? ''),
+  style: (v, ...st) => fmlStyle(v, st),
+  unstyle: a => fmlText(a),
+  toNumber: a => Number(a) || 0,
+  contains: (a, b) => String(a ?? '').includes(String(b ?? '')),
+  replace: (a, b, c) => String(a ?? '').replace(new RegExp(String(b)), String(c ?? '')),
+  replaceAll: (a, b, c) => String(a ?? '').replace(new RegExp(String(b), 'g'), String(c ?? '')),
+  lower: a => String(a ?? '').toLowerCase(),
+  upper: a => String(a ?? '').toUpperCase(),
+  slice: (a, b, c) => String(a ?? '').slice(Number(b), c === undefined ? undefined : Number(c)),
+  round: a => Math.round(Number(a)), floor: a => Math.floor(Number(a)), ceil: a => Math.ceil(Number(a)),
+  abs: a => Math.abs(Number(a)), sqrt: a => Math.sqrt(Number(a)),
+  pow: (a, b) => Math.pow(Number(a), Number(b)), mod: (a, b) => Number(a) % Number(b),
+  min: (...a) => Math.min(...a.map(Number)), max: (...a) => Math.max(...a.map(Number)),
+  now: () => ymd(new Date()), today: () => ymd(new Date()),
+  year: d => fmlDate(d).getFullYear(), month: d => fmlDate(d).getMonth() + 1, day: d => fmlDate(d).getDate(),
+  dateBetween: (a, b, unit) => {
+    const j = Math.round((fmlDate(a) - fmlDate(b)) / 86400000);
+    return unit === 'weeks' ? Math.round(j / 7) : unit === 'months' ? Math.round(j / 30.44) : unit === 'years' ? Math.round(j / 365.25) : j;
+  },
+  dateAdd: (d, n, unit) => {
+    const dt = fmlDate(d);
+    if (unit === 'months') dt.setMonth(dt.getMonth() + Number(n));
+    else if (unit === 'years') dt.setFullYear(dt.getFullYear() + Number(n));
+    else dt.setDate(dt.getDate() + Number(n) * (unit === 'weeks' ? 7 : 1));
+    return ymd(dt);
+  },
+  formatDate: (d, fmt) => {
+    const dt = fmlDate(d);
+    const dd = String(dt.getDate()).padStart(2, '0'), mm = String(dt.getMonth() + 1).padStart(2, '0');
+    return String(fmt || 'DD/MM/YYYY').replace('YYYY', dt.getFullYear()).replace('MM', mm).replace('DD', dd);
+  },
+};
+// découpe la formule en jetons (nombres, chaînes, mots, opérateurs)
+function fmlTokens(src) {
+  const toks = [];
+  let i = 0;
+  const re = /(?:(\d+(?:\.\d+)?)|"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|([A-Za-zÀ-ɏ_][A-Za-z0-9À-ɏ_]*)|(==|!=|>=|<=|&&|\|\||[-+*\/%()<>,!?:]))/y;
+  while (i < src.length) {
+    if (/\s/.test(src[i])) { i++; continue; }
+    re.lastIndex = i;
+    const m = re.exec(src);
+    if (!m) throw new Error('caractère inattendu : ' + src[i]);
+    if (m[1] !== undefined) toks.push({ t: 'num', v: Number(m[1]) });
+    else if (m[2] !== undefined || m[3] !== undefined) toks.push({ t: 'str', v: (m[2] !== undefined ? m[2] : m[3]).replace(/\\(.)/g, '$1') });
+    else if (m[4] !== undefined) toks.push({ t: 'id', v: m[4] });
+    else toks.push({ t: 'op', v: m[5] });
+    i = re.lastIndex;
+  }
+  return toks;
+}
+// évalue une formule pour un enregistrement (analyse descendante classique)
+function evalFormulaExpr(expr, coll, rec, depth) {
+  const toks = fmlTokens(expr);
+  let p = 0;
+  const peek = () => toks[p];
+  const eat = (t, v) => { const k = toks[p]; if (!k || k.t !== t || (v !== undefined && k.v !== v)) throw new Error('attendu « ' + (v || t) + ' »'); p++; return k; };
+  const isOp = v => peek() && peek().t === 'op' && peek().v === v;
+  const isId = v => peek() && peek().t === 'id' && peek().v === v;
+
+  function pExpr() {   // ternaire : cond ? a : b
+    const c = pOr();
+    if (isOp('?')) { p++; const a = pExpr(); eat('op', ':'); const b = pExpr(); return FML_TRUTHY(c) ? a : b; }
+    return c;
+  }
+  function pOr() { let a = pAnd(); while (isOp('||') || isId('or')) { p++; const b = pAnd(); a = FML_TRUTHY(a) || FML_TRUTHY(b); } return a; }
+  function pAnd() { let a = pCmp(); while (isOp('&&') || isId('and')) { p++; const b = pCmp(); a = FML_TRUTHY(a) && FML_TRUTHY(b); } return a; }
+  function pCmp() {
+    let a = pAdd();
+    while (peek() && peek().t === 'op' && ['==', '!=', '>', '<', '>=', '<='].includes(peek().v)) {
+      const op = eat('op').v; const b = pAdd();
+      const num = a !== '' && b !== '' && !isNaN(Number(a)) && !isNaN(Number(b));
+      const cmp = num ? Number(a) - Number(b) : String(a ?? '').localeCompare(String(b ?? ''));
+      a = op === '==' ? cmp === 0 : op === '!=' ? cmp !== 0 : op === '>' ? cmp > 0 : op === '<' ? cmp < 0 : op === '>=' ? cmp >= 0 : cmp <= 0;
+    }
+    return a;
+  }
+  function pAdd() {
+    let a = pMul();
+    while (isOp('+') || isOp('-')) {
+      const op = eat('op').v; const b = pMul();
+      if (op === '+') a = (a instanceof FmlRich || b instanceof FmlRich) ? fmlConcat(a, b) : (typeof a === 'string' || typeof b === 'string') ? String(a ?? '') + String(b ?? '') : Number(a) + Number(b);
+      else a = Number(a) - Number(b);
+    }
+    return a;
+  }
+  function pMul() {
+    let a = pUn();
+    while (isOp('*') || isOp('/') || isOp('%')) { const op = eat('op').v; const b = pUn(); a = op === '*' ? Number(a) * Number(b) : op === '/' ? Number(a) / Number(b) : Number(a) % Number(b); }
+    return a;
+  }
+  function pUn() {
+    if (isOp('-')) { p++; return -Number(pUn()); }
+    if (isOp('!') || isId('not')) { p++; return !FML_TRUTHY(pUn()); }
+    return pPrim();
+  }
+  function pArgs() { eat('op', '('); const args = []; if (!isOp(')')) { args.push(pExpr()); while (isOp(',')) { p++; args.push(pExpr()); } } eat('op', ')'); return args; }
+  function pPrim() {
+    const k = peek();
+    if (!k) throw new Error('formule incomplète');
+    if (k.t === 'num' || k.t === 'str') { p++; return k.v; }
+    if (k.t === 'op' && k.v === '(') { p++; const v = pExpr(); eat('op', ')'); return v; }
+    if (k.t === 'id') {
+      p++;
+      if (k.v === 'true') return true;
+      if (k.v === 'false') return false;
+      if (isOp('(')) {
+        const args = pArgs();
+        if (k.v === 'prop') return fmlPropValue(coll, rec, String(args[0]), depth);
+        const fn = FML_FNS[k.v];
+        if (!fn) throw new Error('fonction inconnue : ' + k.v);
+        return fn(...args);
+      }
+      throw new Error('mot inattendu : ' + k.v);
+    }
+    throw new Error('symbole inattendu : ' + k.v);
+  }
+  const out = pExpr();
+  if (p < toks.length) throw new Error('éléments en trop après la fin de la formule');
+  return out;
+}
+// valeur d'une propriété appelée par prop("Nom") : intégrée, spéciale ou personnalisée
+function fmlPropValue(coll, rec, name, depth) {
+  const lc = String(name).toLowerCase();
+  const bf = (BUILTIN_FIELDS[coll] || []).find(([k, l]) => l.toLowerCase() === lc || k.toLowerCase() === lc);
+  if (bf) { const v = rec[bf[0]]; return bf[2] === 'checkbox' ? !!v : (v == null ? '' : v); }
+  // quelques champs intégrés qui ne sont pas dans BUILTIN_FIELDS
+  if (coll === 'tasks' && ['priorité', 'priorite', 'prio'].includes(lc)) return rec.prio || '';
+  if (['projet', 'project'].includes(lc) && 'projectId' in rec) { const pj = projById(rec.projectId); return pj ? pj.name : ''; }
+  if (['agenda', 'catégorie', 'categorie'].includes(lc) && 'catId' in rec) { const c = state.categories.find(x => x.id === rec.catId); return c ? c.name : ''; }
+  const prop = schemaOf(coll).find(x => x.name.toLowerCase() === lc);
+  if (!prop) throw new Error('propriété introuvable : ' + name);
+  if (prop.type === 'formula') {
+    if ((depth || 0) > 4) throw new Error('formules en boucle');
+    return evalFormulaExpr(prop.expr || '', coll, rec, (depth || 0) + 1);
+  }
+  if (prop.type === 'rollup') return computeRollup(coll, rec, prop);
+  const v = (rec.props || {})[prop.id];
+  if (prop.type === 'checkbox') return !!v;
+  if (prop.type === 'number') return v == null || v === '' ? '' : Number(v);
+  if (prop.type === 'select') { const o = (prop.options || []).find(x => x.id === v); return o ? o.label : ''; }
+  if (prop.type === 'multi') return (Array.isArray(v) ? v : []).map(oid => ((prop.options || []).find(x => x.id === oid) || {}).label).filter(Boolean);
+  if (prop.type === 'relation') return (Array.isArray(v) ? v : []).map(rid => { const r = collArr(prop.target).find(x => x.id === rid); return r ? recLabel(prop.target, r) : ''; }).filter(Boolean);
+  return v == null ? '' : v;
+}
+// résultat affiché dans les tableaux et sur les fiches (jamais bloquant : les erreurs s'affichent)
+function computeFormula(coll, rec, prop) {
+  if (!(prop.expr || '').trim()) return '—';
+  try {
+    const v = evalFormulaExpr(prop.expr, coll, rec, 0);
+    if (v instanceof FmlRich) return v;
+    if (v === true) return '✓';
+    if (v === false) return '✗';
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'number' && !Number.isInteger(v)) return Math.round(v * 100) / 100;
+    return v === '' || v == null ? '—' : v;
+  } catch (err) { return '⚠ ' + (err && err.message ? err.message : 'formule invalide'); }
 }
 /* ============================================================
    TRIS & FILTRES (par vue, comme dans Notion)
@@ -7174,10 +7875,12 @@ function openPropModal(coll, id) {
     propOptsDraft = (p.options || []).map(o => ({ ...o }));
     propTargetDraft = p.target || 'tasks';
     rollupDraft = { relationProp: p.relationProp, targetProp: p.targetProp, agg: p.agg || 'count' };
+    $('propFormula').value = p.expr || '';
     $('propHidden').checked = colHiddenOf(coll).includes(id);
   } else {
     $('propName').value = ''; $('propType').value = 'text';
     propOptsDraft = []; rollupDraft = { agg: 'count' }; propTargetDraft = 'tasks';
+    $('propFormula').value = '';
     $('propHidden').checked = false;
   }
   syncPropTypeFields();
@@ -7194,6 +7897,7 @@ function syncPropTypeFields() {
   $('propTarget').innerHTML = allTables().map(([id, label]) => `<option value="${id}">${esc(label)}</option>`).join('');
   if (allTables().some(([id]) => id === propTargetDraft)) $('propTarget').value = propTargetDraft;
   $('propRollupFields').classList.toggle('hidden', t !== 'rollup');
+  $('propFormulaField').classList.toggle('hidden', t !== 'formula');
   if (isSel && !propOptsDraft.length) addPropOpt();  // au moins une option
   renderPropOptions();
   if (t === 'rollup') refreshRollupFields();
@@ -7238,11 +7942,12 @@ function savePropDef() {
   if (type === 'select' || type === 'multi') def.options = propOptsDraft.filter(o => o.label.trim()).map(o => ({ ...o }));
   if (type === 'relation') def.target = $('propTarget').value;
   if (type === 'rollup') { def.relationProp = $('propRel').value; def.targetProp = $('propTargetProp').value; def.agg = $('propAgg').value; }
+  if (type === 'formula') def.expr = $('propFormula').value.trim();
   const list = schemaOf(propCtx.coll);
   if (propCtx.id) {
     const p = list.find(x => x.id === propCtx.id);
     // on retire les anciennes clés spécifiques avant de réassigner (si le type a changé)
-    ['options','target','relationProp','targetProp','agg'].forEach(k => delete p[k]);
+    ['options','target','relationProp','targetProp','agg','expr'].forEach(k => delete p[k]);
     Object.assign(p, def);
     // le masquage passe par la liste unifiée des colonnes masquées
     if ($('propHidden').checked) hideColSilent(propCtx.coll, propCtx.id);
@@ -7624,6 +8329,7 @@ $('pdAddTaskBtn').onclick = () => {
   reopenProjDetail = id;      // on rouvrira la fenêtre du projet après l'ajout
   openModal('task');
   $('fProj').value = id;
+  syncDotSelects();
 };
 
 $('settingsBtn').onclick = openSettings;
