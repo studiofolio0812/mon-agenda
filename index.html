@@ -1885,6 +1885,9 @@
       <label style="margin-top:20px;">Application</label>
       <div id="installBox"></div>
 
+      <label style="margin-top:20px;">Notifications</label>
+      <div id="notifBox"></div>
+
       <label style="margin-top:20px;">Données</label>
       <div class="row-2">
         <button class="btn-ghost" id="exportBtn" style="flex:1;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Exporter</button>
@@ -1988,6 +1991,8 @@ const defaultState = () => ({
   // note ouverte en grand (façon document) et/ou en aperçu (sans les réglages autour)
   noteDoc: false,
   noteRead: false,
+  // abonnements aux notifications (un par appareil) : lus par la fonction serveur pour envoyer les rappels
+  pushSubscriptions: [],
   colOrder: {},   // ordre des colonnes par table
   colHidden: {},  // colonnes masquées par table (ID comprise)
   customColors: [],
@@ -2190,16 +2195,47 @@ function cloudMarkDirty() {
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => cloudPush().catch(cloudOnError), 1500);
 }
+/* Envoi effectif : écrase la ligne distante sans poser de question. À n'appeler
+   qu'une fois qu'on est sûr de vouloir écraser (juste après vérification de
+   fraîcheur dans cloudPush, ou après un choix explicite de Clémence). */
+async function forcePush() {
+  setSyncState('syncing');
+  const now = new Date().toISOString();
+  try {
+    await supaRest('POST', {
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: { user_id: auth.user_id, data: state, updated_at: now },
+    });
+  } catch (e) { cloudOnError(e); return; }
+  syncMeta.lastSyncedAt = Date.parse(now); syncMeta.dirty = false; saveSyncMeta();
+  setSyncState('idle');
+}
+/* ⚠️ cloudPush VÉRIFIE D'ABORD qu'aucune version plus récente n'est arrivée
+   entre-temps (un autre appareil, ou le connecteur Claude) avant d'écraser.
+   Avant ce correctif (2026-07-23), l'envoi était inconditionnel : n'importe
+   quelle sauvegarde locale (même triviale, ex. ouvrir un espace) pouvait
+   écraser en silence un ajout fait ailleurs entre-temps — c'est ainsi qu'une
+   note créée via le connecteur Claude a disparu du cloud alors que Clémence
+   avait pourtant choisi « Récupérer la version en ligne » dans la fenêtre de
+   conflit. Jamais d'écrasement silencieux : c'est la règle du projet. */
 async function cloudPush() {
   if (!cloudReady() || !auth || !syncMeta.dirty) return;
   setSyncState('syncing');
-  const now = new Date().toISOString();
-  await supaRest('POST', {
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: { user_id: auth.user_id, data: state, updated_at: now },
-  });
-  syncMeta.lastSyncedAt = Date.parse(now); syncMeta.dirty = false; saveSyncMeta();
-  setSyncState('idle');
+  let row = null;
+  try {
+    const rows = await supaRest('GET', { query: '?select=data,updated_at&limit=1' });
+    row = rows && rows[0];
+  } catch (e) { cloudOnError(e); return; }
+  const remoteTime = row ? Date.parse(row.updated_at) : 0;
+  if (row && remoteTime > syncMeta.lastSyncedAt) {
+    setSyncState('idle');
+    askChoice('Deux versions différentes',
+      "Cet appareil a des modifications non envoyées, et une version plus récente existe en ligne (faite sur un autre appareil, ou ajoutée par Claude). Laquelle veux-tu garder ?",
+      'Garder cet appareil', 'Récupérer la version en ligne',
+      choix => { if (choix === 'one') forcePush(); else adoptRemoteFresh(); });
+    return;
+  }
+  await forcePush();
 }
 // remplace l'état local par celui reçu, sans déclencher un renvoi
 function adoptRemote(data, remoteTime) {
@@ -2210,6 +2246,18 @@ function adoptRemote(data, remoteTime) {
   syncMeta.lastSyncedAt = remoteTime; syncMeta.dirty = false; saveSyncMeta();
   notesOpenFolder = null;
   render();
+}
+/* Re-récupère la version en ligne AU MOMENT DU CLIC plutôt que celle mise de
+   côté à l'ouverture de la fenêtre de choix : si Clémence met du temps à
+   répondre, cette dernière peut être périmée (un ajout peut arriver entre
+   l'ouverture de la fenêtre et son clic). */
+async function adoptRemoteFresh() {
+  setSyncState('syncing');
+  try {
+    const rows = await supaRest('GET', { query: '?select=data,updated_at&limit=1' });
+    const row = rows && rows[0];
+    if (row) adoptRemote(row.data, Date.parse(row.updated_at)); else setSyncState('idle');
+  } catch (e) { cloudOnError(e); }
 }
 async function cloudSyncNow() {
   if (!cloudReady() || !auth) return;
@@ -2223,11 +2271,11 @@ async function cloudSyncNow() {
       // modifs des deux côtés : on laisse le choix plutôt que d'écraser en silence
       setSyncState('idle');
       askChoice('Deux versions différentes',
-        "Cet appareil a des modifications non envoyées, et une version plus récente existe en ligne (faite sur un autre appareil). Laquelle veux-tu garder ?",
+        "Cet appareil a des modifications non envoyées, et une version plus récente existe en ligne (faite sur un autre appareil, ou ajoutée par Claude). Laquelle veux-tu garder ?",
         'Garder cet appareil', 'Récupérer la version en ligne',
         choix => {
-          if (choix === 'one') cloudPush().catch(cloudOnError);
-          else adoptRemote(row.data, remoteTime);
+          if (choix === 'one') forcePush();
+          else adoptRemoteFresh();
         });
       return;
     }
@@ -5528,6 +5576,7 @@ function openSettings() {
   $('logoClearBtn').classList.toggle('hidden', !state.logo);
   renderAccountBox();
   renderInstallBox();
+  renderNotifBox();
   $('settingsOverlay').classList.add('show');
 }
 function setAccent(c) { state.accent = c; save(); render(); openSettings(); }
@@ -5681,6 +5730,72 @@ async function doInstall() {
   renderInstallBox();
 }
 window.doInstall = doInstall;
+
+/* ============================================================
+   Notifications (rappels de traitement, façon Web Push)
+   ------------------------------------------------------------
+   La clé publique ci-dessous est sans danger à exposer (comme la clé
+   Supabase) : seule la clé PRIVÉE, gardée côté serveur, sait signer les
+   envois. L'abonnement de CET appareil est stocké dans
+   `state.pushSubscriptions` et suit la synchro habituelle — c'est ainsi
+   que la fonction serveur (Edge Function) sait où envoyer les rappels.
+   Plusieurs appareils = plusieurs abonnements dans le même tableau. */
+const VAPID_PUBLIC_KEY = 'BGkvZKLT9SEViH3PeS1g15D2f2buqNWEKX1qX3gsFStRRhujFRo74SM1t3yZZcoawWZN-t8fdJ9fEG5lTSWcrNc';
+// conversion base64url → Uint8Array, format attendu par pushManager.subscribe
+function urlB64ToUint8Array(base64) {
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+function notifSupported() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+async function currentPushSub() {
+  if (!notifSupported()) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function enableNotifs() {
+  if (!notifSupported()) { alert("Les notifications ne sont pas prises en charge par ce navigateur."); return; }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { renderNotifBox(); return; }   // refusée : on affiche juste l'état à jour
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
+  const json = sub.toJSON();
+  if (!state.pushSubscriptions) state.pushSubscriptions = [];
+  // un appareil = un abonnement : on remplace si cet endpoint existait déjà (renouvellement)
+  state.pushSubscriptions = state.pushSubscriptions.filter(s => s.endpoint !== json.endpoint);
+  state.pushSubscriptions.push({ endpoint: json.endpoint, keys: json.keys, addedAt: Date.now() });
+  save();
+  renderNotifBox();
+}
+window.enableNotifs = enableNotifs;
+async function disableNotifs() {
+  const sub = await currentPushSub();
+  if (sub) {
+    state.pushSubscriptions = (state.pushSubscriptions || []).filter(s => s.endpoint !== sub.endpoint);
+    await sub.unsubscribe();
+    save();
+  }
+  renderNotifBox();
+}
+window.disableNotifs = disableNotifs;
+async function renderNotifBox() {
+  const box = $('notifBox'); if (!box) return;
+  if (!notifSupported()) { box.innerHTML = `<p class="hint-txt" style="margin-top:0">Non pris en charge par ce navigateur.</p>`; return; }
+  if (Notification.permission === 'denied') {
+    box.innerHTML = `<p class="hint-txt" style="margin-top:0">Notifications bloquées pour ce site. Autorise-les dans les réglages du navigateur pour cet onglet, puis reviens ici.</p>`;
+    return;
+  }
+  const sub = await currentPushSub();
+  if (sub) {
+    box.innerHTML = `<p class="hint-txt" style="margin-top:0">✓ Rappels activés sur cet appareil.</p>
+      <button class="btn-ghost" style="width:100%;margin-top:6px" onclick="disableNotifs()">Désactiver sur cet appareil</button>`;
+  } else {
+    box.innerHTML = `<button class="btn-primary" style="width:100%" onclick="enableNotifs()">Activer les rappels</button>
+      <p class="hint-txt">Pour tes habitudes, tâches et événements à heure fixe — même app fermée.</p>`;
+  }
+}
 
 /* ---------- Export / Import ---------- */
 function exportData() {

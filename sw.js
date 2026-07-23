@@ -23,6 +23,34 @@ self.addEventListener('activate', e => {
   );
 });
 
+/* ---------- Notifications push (rappels de traitement, événements, tâches) ----------
+   Le message envoyé par la fonction serveur est un JSON { title, body, url, tag }.
+   `tag` évite d'empiler deux notifications identiques (ex. si l'envoi est relancé). */
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: 'Mon Agenda', body: e.data ? e.data.text() : '' }; }
+  const titre = data.title || 'Mon Agenda';
+  e.waitUntil(self.registration.showNotification(titre, {
+    body: data.body || '',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: data.tag || undefined,
+    data: { url: data.url || './' },
+  }));
+});
+// clic sur la notification : on retrouve un onglet déjà ouvert, sinon on en ouvre un
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const dejaOuvert = list.find(c => c.url.includes(self.location.origin));
+      if (dejaOuvert) return dejaOuvert.focus();
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
