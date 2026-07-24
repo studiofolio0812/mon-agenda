@@ -485,6 +485,68 @@
   .sl-item.on, .sl-item:hover { background: var(--accent-soft); }
   .sl-n { display: block; font-size: 13px; color: var(--text); }
   .sl-h { display: block; font-size: 11px; color: var(--text-faint); }
+  /* menu « : » : l'émoji ou l'icône devant le nom */
+  .em-ch { display: inline-flex; width: 22px; justify-content: center; align-items: center; flex: none; }
+  /* icône SVG insérée dans le texte d'une note (menu « : ») */
+  .note-ico { display: inline-block; vertical-align: -3px; }
+
+  /* ---- Drag & drop des blocs de la note (style Notion) ---- */
+  .note-drag-handle { position: fixed; z-index: 66; width: 20px; height: 22px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; color: var(--text-soft); cursor: grab; user-select: none; }
+  .note-drag-handle:hover { background: var(--surface-2); }
+  .note-drag-handle:active { cursor: grabbing; }
+  .note-drag-handle svg { pointer-events: none; opacity: .7; }
+  .note-drop-line { position: fixed; z-index: 66; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+  .nb-dragging { opacity: .35; }
+
+  /* ---- bloc « sous-page » dans une note (façon Notion) ---- */
+  .note-page-link { display: flex; align-items: center; gap: 7px; padding: 4px 8px; margin: 2px 0;
+    border-radius: 6px; cursor: pointer; font-weight: 600; }
+  .note-page-link:hover { background: var(--surface-2); }
+  .note-page-link .npl-title { border-bottom: 1px solid var(--border-strong); }
+  .note-page-link.npl-missing { opacity: .55; font-style: italic; }
+  .note-page-link .npl-ico { display: inline-flex; color: var(--text-soft); flex: none; }
+  /* panneau des sous-pages, à droite de la feuille (mode pleine page) */
+  .note-pages { display: none; }
+  #noteOverlay.doc .note-pages:not(.hidden) { display: block; position: fixed; right: 14px; top: 84px; bottom: 84px;
+    width: 216px; overflow-y: auto; padding: 8px 6px; z-index: 57; }
+  .npg-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-soft); padding: 5px 10px;
+    border-radius: 6px; cursor: pointer; }
+  .npg-item svg { flex: none; }
+  .npg-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .npg-item:hover { background: var(--surface-2); color: inherit; }
+  @media (max-width: 1240px) { #noteOverlay.doc .note-pages { display: none !important; } }
+  /* arborescence du panneau des sous-pages */
+  .npg-chev { display: inline-flex; flex: none; width: 16px; height: 16px; align-items: center; justify-content: center;
+    border-radius: 4px; color: var(--text-faint); cursor: pointer; transition: transform .15s; }
+  .npg-chev:hover { background: var(--border); color: inherit; }
+  .npg-chev.open { transform: rotate(90deg); }
+  .npg-gap { width: 16px; flex: none; }
+  /* menu « Ajouter une note » : créer, ou piocher une note existante (avec ses sous-pages) */
+  .note-attach { position: fixed; z-index: 70; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 6px; width: 260px; max-height: 320px; overflow: auto; }
+  .na-new { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--accent); font-weight: 500; }
+  .na-new:hover { background: var(--surface-2); }
+  .na-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+  .na-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .na-item:hover { background: var(--surface-2); }
+  .na-chev { display: inline-flex; flex: none; width: 16px; height: 16px; align-items: center; justify-content: center;
+    border-radius: 4px; color: var(--text-faint); cursor: pointer; transition: transform .15s; }
+  .na-chev:hover { background: var(--border); color: inherit; }
+  .na-chev.open { transform: rotate(90deg); }
+  .na-gap { width: 16px; flex: none; }
+  .na-empty { padding: 8px; font-size: 12.5px; color: var(--text-faint); }
+
+  /* ---- Tableaux simples dans les notes ---- */
+  .note-table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 10px 0; }
+  .note-table td { border: 1px solid var(--border-strong); padding: 6px 10px; vertical-align: top;
+    word-break: break-word; font-size: .95em; }
+  .note-table.nt-head tr:first-child td { background: var(--surface-2); font-weight: 600; }
+  /* ---- Pilules : petites étiquettes colorées, dans les tableaux ou ailleurs ---- */
+  .note-pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: .85em;
+    font-weight: 600; line-height: 1.7; }
+  /* petite icône textuelle dans les menus (T, H1, •…) */
+  .sm-ico { width: 20px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-soft); flex: none; }
 
   /* ---- blocs disponibles dans une note (éditeur ET tuiles) ---- */
   .note-body h1, .note-card-body h1 { font-size: 1.6em; font-weight: 600; margin: 12px 0 4px; }
@@ -495,7 +557,8 @@
   .note-body pre, .note-card-body pre { background: var(--surface-2); border-radius: 6px; padding: 8px 10px;
     font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; white-space: pre-wrap; margin: 6px 0; }
   .note-body hr, .note-card-body hr { border: none; border-top: 1px solid var(--border-strong); margin: 12px 0; }
-  .note-callout { background: var(--surface-2); border-left: 3px solid var(--accent);
+  /* encadré coloré : gris par défaut, ou une teinte choisie (BOX_TINTS) posée en style inline */
+  .note-callout { background: rgba(120, 119, 116, .13); border: 1.5px solid #787774;
     border-radius: 6px; padding: 8px 12px; margin: 8px 0; }
   .note-toggle { margin: 6px 0; }
   .note-toggle > summary { cursor: pointer; font-weight: 500; }
@@ -554,6 +617,19 @@
   #noteOverlay.doc .note-props { max-width: 820px; margin: 26px auto 0; }
   #noteOverlay.doc .modal-foot { flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 22px; }
   #noteOverlay.doc .modal-foot .btn-primary { max-width: 820px; margin: 0 auto; }
+  /* ---- Sommaire de la note (plein écran) : les titres de la note, cliquables.
+     La feuille centrale ne bouge pas : le panneau flotte à gauche, comme dans Notion. ---- */
+  .note-toc { display: none; }
+  #noteOverlay.doc .note-toc:not(.hidden) { display: block; position: fixed; left: 14px; top: 84px; bottom: 84px;
+    width: 216px; overflow-y: auto; padding: 8px 6px; z-index: 57; }
+  .ntoc-cap { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-soft); padding: 4px 10px 6px; }
+  .ntoc-item { font-size: 13px; color: var(--text-soft); padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ntoc-item:hover { background: var(--surface-2); color: inherit; }
+  .ntoc-item.lv2 { padding-left: 22px; }
+  .ntoc-item.lv3 { padding-left: 34px; }
+  @media (max-width: 1240px) { #noteOverlay.doc .note-toc { display: none !important; } }
   /* ---- Aperçu : plus rien autour du texte, mais on peut toujours écrire ---- */
   #noteOverlay.reading .note-hint,
   #noteOverlay.reading .note-props,
@@ -748,6 +824,27 @@
   .space-add { font-size: 13px; color: var(--text-soft); display: inline-flex; align-items: center; gap: 6px; }
   .space-add:hover { color: var(--accent); }
 
+  /* ---- Espace Bilan ---- */
+  .bl-kpis { display: flex; gap: 12px; margin: 14px 0 4px; flex-wrap: wrap; }
+  .bl-kpi { background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 16px; min-width: 130px; }
+  .bl-kpi-val { font-size: 19px; font-weight: 600; }
+  .bl-kpi-lbl { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
+  .bl-nav { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
+  .bl-nav-lbl { font-weight: 600; font-size: 14px; text-transform: capitalize; }
+  .bl-wrap { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 10px; }
+  .bl-chart-box { flex: 1 1 440px; min-width: 300px; }
+  .bl-donut-box { flex: 0 0 220px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .bl-bars { width: 100%; height: auto; }
+  .bl-grid { stroke: var(--border); stroke-width: 1; }
+  .bl-axis { font-size: 9.5px; fill: var(--text-faint); }
+  .bl-donut { width: 148px; height: 148px; }
+  .bl-donut-total { font-size: 15px; font-weight: 600; fill: var(--text); }
+  .bl-donut-sub { font-size: 9.5px; fill: var(--text-faint); }
+  .bl-legend { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; font-size: 12.5px; color: var(--text-soft); width: 100%; }
+  .bl-legend-row { display: flex; align-items: center; gap: 8px; }
+  .bl-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .bl-legend-val { margin-left: auto; color: var(--text-faint); white-space: nowrap; }
+
   .grp-head { font-size: 11.5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
     color: var(--text-faint); margin: 22px 0 2px; display: flex; align-items: center; gap: 8px; }
   .grp-head.late { color: #b4544f; }
@@ -884,14 +981,14 @@
   .health-check { display: flex; align-items: center; gap: 6px; }
   .health-note { width: 100%; min-height: 50px; resize: vertical; font-family: var(--font-sans); font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
   .health-chart-wrap { margin-top: 22px; }
-  .health-chart { width: 100%; height: 204px; margin-top: 6px; }
+  .health-chart { width: 100%; height: 280px; margin-top: 6px; }
   .hc-grid { stroke: var(--border); stroke-width: 1; }
   .hc-grid-mid { stroke: var(--border-strong); }
   .hc-line { fill: none; stroke: var(--accent); stroke-width: 1.6; }
   .hc-bar { fill: var(--accent-soft); }
   .hc-cycle { fill: #c0564f; }
-  .hc-label { font-size: 8.5px; fill: var(--text-faint); }
-  .hc-axis { font-size: 8.5px; fill: var(--text-faint); }
+  .hc-label { font-size: 9.5px; fill: var(--text-faint); }
+  .hc-axis { font-size: 9.5px; fill: var(--text-faint); }
 
   /* ---- Icônes ---- */
   .lib-ico { flex: none; vertical-align: -2px; }
@@ -1198,6 +1295,22 @@
   .kb-card:hover { border-color: var(--accent); }
   .kb-card.dragging { opacity: .4; }
   .kb-card-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  /* kanban de l'espace Mes tâches */
+  .kb-head.late { color: #b3423c; }
+  .kb-title { font-size: 13.5px; font-weight: 500; margin-bottom: 4px; cursor: pointer; }
+  .kb-card.is-done .kb-title { text-decoration: line-through; color: var(--text-faint); }
+  .kb-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-soft); }
+  .kb-meta .proj-pill, .kb-meta .cat-pill { font-size: 10.5px; }
+  .space-sep { color: var(--text-faint); }
+  /* menu « Propriétés » des cartes kanban */
+  .kb-props { position: absolute; right: 26px; margin-top: 4px; z-index: 60; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 6px; width: 220px; }
+  .kbp-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .kbp-row:hover { background: var(--surface-2); }
+  .kbp-check { width: 15px; height: 15px; flex: none; border: 1.5px solid var(--border-strong); border-radius: 4px; }
+  .kbp-check.on { background: var(--accent); border-color: var(--accent); position: relative; }
+  .kbp-check.on::after { content: '✓'; position: absolute; inset: 0; color: #fff; font-size: 10px; line-height: 15px; text-align: center; }
+  .kb-cell { font-size: 11.5px; color: var(--text-soft); }
   /* en-tête de colonne personnalisée : nom + bouton réglage */
   table.data-table th.col-custom { }
   .th-inner { display: flex; align-items: center; gap: 6px; }
@@ -1447,6 +1560,12 @@
       <div class="nav-panel" data-panel="health">
         <div id="healthPreview"></div>
       </div>
+
+      <!-- Bilan -->
+      <button class="nav-item" data-section="bilan">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-6"/></svg>
+        <span class="nav-label">Bilan</span>
+      </button>
     </nav>
   </aside>
   <!-- fond sombre quand le tiroir de la barre latérale est ouvert (mobile) -->
@@ -1667,6 +1786,7 @@
 <div class="overlay" id="noteOverlay">
   <div class="modal note-modal" style="max-width:560px;">
     <div class="modal-head">
+      <button class="icon-btn hidden" id="noteBackBtn" title="Revenir à la note parente">←</button>
       <button class="icon-btn note-fav-btn" id="noteFavBtn" title="Mettre en favori">☆</button>
       <input id="noteTitle" class="note-title-input" placeholder="Titre de la note" autocomplete="off">
       <button class="icon-btn" title="Modèles" onclick="openTplMenu(this,'note')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
@@ -1674,8 +1794,10 @@
       <button class="icon-btn" id="noteZoomBtn" title="Ouvrir en grand"></button>
       <button class="icon-btn" data-close>✕</button>
     </div>
+    <nav id="noteToc" class="note-toc hidden"></nav>
+    <nav id="notePages" class="note-pages hidden"></nav>
     <div class="modal-body">
-      <p class="note-hint">Tape <b>/</b> pour insérer un bloc · sélectionne du texte pour le mettre en forme · emoji : Win + .</p>
+      <p class="note-hint">Tape <b>/</b> pour un bloc · <b>:</b> pour un émoji ou une icône · sélectionne du texte pour le mettre en forme</p>
       <input type="color" id="ntFontColorInput" class="hidden" value="#c0564f">
       <input type="color" id="ntHiliteInput" class="hidden" value="#f6dfb5">
       <div id="noteBody" class="note-body" contenteditable="true" spellcheck="true"></div>
@@ -1755,6 +1877,7 @@
     <span class="nb-sep"></span>
     <button type="button" class="nb-btn" id="nbLink" title="Ajouter un lien">🔗</button>
     <button type="button" class="nb-btn" id="nbBox" title="Encadrer">▢</button>
+    <button type="button" class="nb-btn" id="nbPill" title="Pilule colorée">⬭</button>
     <button type="button" class="nb-btn" id="nbClear" title="Tout enlever (revenir au texte simple)">⌫</button>
   </div>
   <div class="nb-link hidden">
@@ -1766,6 +1889,10 @@
 
 <!-- menu « / » : insertion de blocs façon Notion -->
 <div id="slashMenu" class="slash-menu hidden"></div>
+<div id="emojiMenu" class="slash-menu hidden"></div>
+<div id="noteAttachMenu" class="note-attach hidden"></div>
+<div id="noteDragHandle" class="note-drag-handle hidden" draggable="true" title="Glisser pour déplacer · Cliquer : couleur de l'encadré"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="5" r="1.7"/><circle cx="15" cy="5" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="19" r="1.7"/><circle cx="15" cy="19" r="1.7"/></svg></div>
+<div id="noteDropLine" class="note-drop-line hidden"></div>
 
 <!-- ============ MODAL: HABIT ============ -->
 <div class="overlay" id="habitOverlay">
@@ -2599,6 +2726,7 @@ function render() {
   else if (state.view === 'notes') renderNotesSpace();
   else if (state.view === 'crm') renderCrmSpace();
   else if (state.view === 'health') renderHealthSpace();
+  else if (state.view === 'bilan') renderBilanSpace();
   else if (state.view === 'month') renderMonth();
   else if (state.view === 'agenda') renderAgenda();
   else renderTimeGrid(viewDayCount());
@@ -2614,7 +2742,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['tasks', 'projects', 'notes', 'crm', 'health'];
+const SPACE_VIEWS = ['tasks', 'projects', 'notes', 'crm', 'health', 'bilan'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -3245,6 +3373,8 @@ window.toggleSubtasks = toggleSubtasks;
 
 function tasksSpaceCfg() {
   if (!state.tasksSpace) state.tasksSpace = { groupBy: 'due', filter: 'active' };
+  if (!state.tasksSpace.layout) state.tasksSpace.layout = 'list';
+  if (!state.tasksSpace.cardProps) state.tasksSpace.cardProps = { prio: true, project: true, cat: false, due: true, sub: true };
   return state.tasksSpace;
 }
 const PRIO_LABEL = { high: 'Haute', med: 'Moyenne', low: 'Basse' };
@@ -3254,32 +3384,46 @@ const PRIO_PASTEL = { low: '#d3e8cf', med: '#f6dfb5', high: '#f2d3d0' };
 
 /* Répartit les tâches en groupes selon le regroupement choisi.
    Règle unique et prévisible : une tâche terminée va toujours dans « Terminées »,
-   quel que soit le regroupement — sinon elle polluerait « En retard ». */
-function groupTasks(list, mode) {
+   quel que soit le regroupement — sinon elle polluerait « En retard ».
+   `all` (utilisé par la vue kanban) garde aussi les groupes vides, pour que la
+   colonne existe même sans carte dedans (on peut y déposer une tâche). */
+function groupTasks(list, mode, all) {
   const today = ymd(new Date());
   const endWeek = ymd(addDays(startOfWeek(new Date()), 6));
   const done = list.filter(t => t.done);
   const todo = list.filter(t => !t.done);
   const groups = [];
-  const push = (label, items, late, pill, done) => { if (items.length) groups.push({ label, items, late, pill, done }); };
+  // key : identifiant stable du groupe (utilisé par la vue kanban pour les dépôts)
+  const push = (label, items, late, pill, done, key) => { if (items.length || all) groups.push({ label, items, late, pill, done, key }); };
   // seules les tâches de premier niveau sont classées : les sous-tâches suivent leur parent
   const todoTop = topLevelTasks(todo);
 
-  if (mode === 'project') {
+  // regroupement par propriété personnalisée (« p:<id> ») ; si elle a disparu, on retombe sur l'échéance
+  if (mode && mode.startsWith('p:') && !schemaOf('tasks').some(x => x.id === mode.slice(2))) mode = 'due';
+  if (mode && mode.startsWith('p:')) {
+    const prop = schemaOf('tasks').find(x => x.id === mode.slice(2));
+    (prop.options || []).forEach(o => push(o.label, todoTop.filter(t => (t.props || {})[prop.id] === o.id), false, o.color || null, false, o.id));
+    push('Sans ' + prop.name.toLowerCase(), todoTop.filter(t => { const v = (t.props || {})[prop.id]; return !v || !(prop.options || []).some(o => o.id === v); }), false, null, false, '');
+  } else if (mode === 'cat') {
+    state.categories.forEach(c => push(catPath(c), todoTop.filter(t => t.catId === c.id), false, catColor(c), false, c.id));
+    push('Sans agenda', todoTop.filter(t => !t.catId || !catById(t.catId)), false, null, false, '');
+  } else if (mode === 'status') {
+    push('À faire', todoTop, false, null, false, 'todo');
+  } else if (mode === 'project') {
     // pilule de la couleur du projet en tête de groupe
-    state.projects.forEach(p => push(p.name, todoTop.filter(t => t.projectId === p.id), false, p.color));
-    push('Sans projet', todoTop.filter(t => !t.projectId || !projById(t.projectId)));
+    state.projects.forEach(p => push(p.name, todoTop.filter(t => t.projectId === p.id), false, p.color, false, p.id));
+    push('Sans projet', todoTop.filter(t => !t.projectId || !projById(t.projectId)), false, null, false, '');
   } else if (mode === 'prio') {
     ['high', 'med', 'low'].forEach(p =>
-      push(PRIO_LABEL[p], todoTop.filter(t => (t.prio || 'med') === p), false, PRIO_PASTEL[p]));
+      push(PRIO_LABEL[p], todoTop.filter(t => (t.prio || 'med') === p), false, PRIO_PASTEL[p], false, p));
   } else {
-    push('En retard', todoTop.filter(t => t.due && t.due < today), true);
-    push("Aujourd'hui", todoTop.filter(t => t.due === today));
-    push('Cette semaine', todoTop.filter(t => t.due && t.due > today && t.due <= endWeek));
-    push('Plus tard', todoTop.filter(t => t.due && t.due > endWeek));
-    push('Sans date', todoTop.filter(t => !t.due));
+    push('En retard', todoTop.filter(t => t.due && t.due < today), true, null, false, 'late');
+    push("Aujourd'hui", todoTop.filter(t => t.due === today), false, null, false, 'today');
+    push('Cette semaine', todoTop.filter(t => t.due && t.due > today && t.due <= endWeek), false, null, false, 'week');
+    push('Plus tard', todoTop.filter(t => t.due && t.due > endWeek), false, null, false, 'later');
+    push('Sans date', todoTop.filter(t => !t.due), false, null, false, 'nodate');
   }
-  push('Terminées', topLevelTasks(done), false, null, true);
+  push('Terminées', topLevelTasks(done), false, null, true, 'done');
   return groups;
 }
 
@@ -3309,20 +3453,54 @@ function renderTasksSpace() {
       <span class="space-title">Mes tâches</span>
       <span class="space-count">${nTodo} à faire</span>
       <span class="space-tabs">
-        ${tab('group:due', 'Par échéance', cfg.groupBy === 'due')}
-        ${tab('group:project', 'Par projet', cfg.groupBy === 'project')}
-        ${tab('group:prio', 'Par priorité', cfg.groupBy === 'prio')}
+        <span class="space-tab on" onclick="kbGroupMenu(event)">Grouper par : ${esc(kbGroupLabel(cfg.groupBy))}</span>
       </span>
     </div>
     <div class="space-bar">
       <span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span>
       <span style="flex:1"></span>
+      ${tab('layout:list', 'Liste', cfg.layout !== 'kanban')}
+      ${tab('layout:kanban', 'Kanban', cfg.layout === 'kanban')}
+      ${cfg.layout === 'kanban' ? `<span class="space-sep">·</span><span class="space-tab" onclick="kbToggleProps(event)">Propriétés</span>` : ''}
+      <span class="space-sep">·</span>
       ${tab('filter:active', 'À faire', cfg.filter === 'active')}
       ${tab('filter:all', 'Toutes', cfg.filter === 'all')}
-    </div>`;
+    </div>
+    ${cfg.layout === 'kanban' && kbPropsOpen ? kbPropsMenuHtml(cfg.cardProps) : ''}`;
 
   if (!groups.length) {
     html += `<div class="space-empty">Rien ici pour l'instant.<br>Clique sur « Ajouter une tâche » pour commencer.</div></div>`;
+    canvas.innerHTML = html;
+    return;
+  }
+
+  // ---- vue kanban : une colonne par groupe, cartes déplaçables entre colonnes ----
+  if (cfg.layout === 'kanban') {
+    const cols = groupTasks(list, cfg.groupBy, true);
+    html += '<div class="kanban">' + cols.map(g => {
+      const titre = g.pill
+        ? `<span class="grp-pill" style="background:${g.pill};color:${inkOn(g.pill)}"><span class="pill-dot" style="background:${dotOf(g.pill)}"></span>${esc(g.label)}</span>`
+        : esc(g.label);
+      const cartes = g.items.map(t => {
+        const p = t.projectId ? projById(t.projectId) : null;
+        const c = catById(t.catId);
+        const late = !t.done && t.due && t.due < today;
+        const pr = subtasksOf(t.id).length ? subProgress(t.id) : null;
+        return `<div class="kb-card ${t.done ? 'is-done' : ''}" draggable="true" ondragstart="kbDragStart(event,'${t.id}')">
+          <div class="kb-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${esc(t.title)}</div>
+          <div class="kb-meta">
+            ${(cfg.cardProps.prio && cfg.groupBy !== 'prio') ? `<span class="prio-dot" style="background:${PRIO_COLOR[t.prio] || '#999'}" title="Priorité ${(PRIO_LABEL[t.prio] || 'moyenne').toLowerCase()}"></span>` : ''}
+            ${(cfg.cardProps.project && p && cfg.groupBy !== 'project') ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
+            ${(cfg.cardProps.cat && c && cfg.groupBy !== 'cat') ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>` : ''}
+            ${(cfg.cardProps.due && t.due) ? `<span class="t-due ${late ? 'late' : ''}">${esc(taskDueText(t))}</span>` : ''}
+            ${(cfg.cardProps.sub && pr) ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}
+            ${kbCustomCellsHtml(t, cfg)}
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="kb-col" ondragover="kbDragOver(event,this)" ondragleave="this.classList.remove('kb-over')" ondrop="kbDrop(event,'${g.key}',this)">
+        <div class="kb-head ${g.late ? 'late' : ''}">${titre} <span class="grp-n">· ${g.items.length}</span></div><div class="kb-cards">${cartes}</div></div>`;
+    }).join('') + '</div></div>';
     canvas.innerHTML = html;
     return;
   }
@@ -3332,6 +3510,7 @@ function renderTasksSpace() {
      c'est la pastille de priorité. Ailleurs, tout reste visible. */
   const hideProjPill = cfg.groupBy === 'project';
   const hidePrioDot  = cfg.groupBy === 'prio';
+  const hideCatPill  = cfg.groupBy === 'cat';
 
   // les terminées se replient d'un clic (comme sur la fiche projet), état retenu
   const doneCollapsed = !!state.tasksDoneCollapsed;
@@ -3369,7 +3548,7 @@ function renderTasksSpace() {
         ${retards ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}
         ${pr ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}
         ${(p && !hideProjPill) ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
-        ${c ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>` : ''}
+        ${(c && !hideCatPill) ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>` : ''}
         <span class="t-due ${late ? 'late' : ''}">${esc(taskDueText(t))}</span>
       </div>`;
     };
@@ -3415,13 +3594,102 @@ window.openSpace = openSpace;
 function setTasksSpace(spec) {
   const [what, val] = spec.split(':');
   const cfg = tasksSpaceCfg();
-  if (what === 'group') cfg.groupBy = val; else cfg.filter = val;
+  if (what === 'group') cfg.groupBy = val; else if (what === 'layout') cfg.layout = val; else cfg.filter = val;
   save(); render();
 }
 window.setTasksSpace = setTasksSpace;
 // replie/déplie le groupe « Terminées » de l'espace Mes tâches (valable pour les 3 regroupements)
 function toggleTasksDone() { state.tasksDoneCollapsed = !state.tasksDoneCollapsed; save(); renderTasksSpace(); }
 window.toggleTasksDone = toggleTasksDone;
+
+/* ---- Kanban de l'espace Mes tâches : déposer une carte dans une colonne change la propriété associée ---- */
+let kbDragId = null;
+function kbDragStart(e, id) { kbDragId = id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }
+function kbDragOver(e, el) { if (!kbDragId) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; el.classList.add('kb-over'); }
+function kbDrop(e, key, el) {
+  e.preventDefault(); el.classList.remove('kb-over');
+  const t = state.tasks.find(x => x.id === kbDragId);
+  kbDragId = null;
+  if (!t) return;
+  const mode = tasksSpaceCfg().groupBy;
+  if (key === 'done') t.done = true;
+  else {
+    t.done = false;
+    if (mode === 'project') t.projectId = key;
+    else if (mode === 'prio') t.prio = key;
+    else if (mode === 'cat') t.catId = key;
+    else if (mode && mode.startsWith('p:')) { if (!t.props) t.props = {}; t.props[mode.slice(2)] = key || null; }
+    else if (mode === 'status') { /* déposer dans « À faire » : décocher suffit (fait plus haut) */ }
+    else {
+      const today = ymd(new Date());
+      if (key === 'today') t.due = today;
+      else if (key === 'week') t.due = ymd(addDays(startOfWeek(new Date()), 6));
+      else if (key === 'later') t.due = ymd(addDays(new Date(), 14));
+      else if (key === 'nodate') { t.due = ''; t.dueTime = ''; }
+      // « En retard » ne se fabrique pas : la carte revient simplement à sa place
+    }
+  }
+  save(); render();
+}
+window.kbDragStart = kbDragStart; window.kbDragOver = kbDragOver; window.kbDrop = kbDrop;
+
+/* ---- Kanban : choix du regroupement et des propriétés affichées sur les cartes ---- */
+function kbGroupChoices() {
+  const items = [
+    { value: 'due', label: 'Échéance' },
+    { value: 'project', label: 'Projet' },
+    { value: 'prio', label: 'Priorité' },
+    { value: 'cat', label: 'Agenda' },
+    { value: 'status', label: 'Statut (à faire / terminée)' },
+  ];
+  schemaOf('tasks').filter(p => p.type === 'select').forEach(p => items.push({ value: 'p:' + p.id, label: p.name }));
+  return items;
+}
+function kbGroupLabel(v) { const it = kbGroupChoices().find(x => x.value === v); return it ? it.label : 'Échéance'; }
+function kbGroupMenu(e) {
+  e.stopPropagation();
+  openStyledMenu(e.target, [{ label: 'Grouper par', items: kbGroupChoices() }], tasksSpaceCfg().groupBy,
+    v => { tasksSpaceCfg().groupBy = v; save(); render(); });
+}
+window.kbGroupMenu = kbGroupMenu;
+let kbPropsOpen = false;
+function kbToggleProps(e) { e.stopPropagation(); kbPropsOpen = !kbPropsOpen; renderTasksSpace(); }
+function kbToggleProp(k, e) { e.stopPropagation(); const cp = tasksSpaceCfg().cardProps; cp[k] = !cp[k]; save(); renderTasksSpace(); }
+// un clic ailleurs referme le menu des propriétés
+document.addEventListener('click', () => { if (kbPropsOpen) { kbPropsOpen = false; if (state.view === 'tasks') renderTasksSpace(); } });
+function kbPropsMenuHtml(cp) {
+  const row = (k, label) => `<div class="kbp-row" onclick="kbToggleProp('${k}',event)"><span class="kbp-check ${cp[k] ? 'on' : ''}"></span><span>${esc(label)}</span></div>`;
+  let rows = row('prio', 'Priorité') + row('project', 'Projet') + row('cat', 'Agenda') + row('due', 'Échéance') + row('sub', 'Sous-tâches');
+  schemaOf('tasks').forEach(p => { rows += row('p:' + p.id, p.name); });
+  return `<div class="kb-props" onclick="event.stopPropagation()"><div class="ntoc-cap">Propriétés des cartes</div>${rows}</div>`;
+}
+// texte d'une propriété personnalisée pour une carte (jamais bloquant)
+function kbCellText(t, p) {
+  try {
+    const v = (t.props || {})[p.id];
+    if (p.type === 'select') { const o = (p.options || []).find(x => x.id === v); return o ? o.label : ''; }
+    if (p.type === 'multi') return (Array.isArray(v) ? v : []).map(id => ((p.options || []).find(o => o.id === id) || {}).label).filter(Boolean).join(', ');
+    if (p.type === 'checkbox') return v ? '✓' : '';
+    if (p.type === 'relation') return (Array.isArray(v) ? v : []).map(rid => { const r = collArr(p.target).find(x => x.id === rid); return r ? recLabel(p.target, r) : ''; }).filter(Boolean).join(', ');
+    if (p.type === 'formula' || p.type === 'rollup') {
+      const r = p.type === 'formula' ? computeFormula('tasks', t, p) : computeRollup('tasks', t, p);
+      const s = Array.isArray(r) ? r.join(', ') : String(r == null ? '' : r);
+      return (s === '—' || s.startsWith('[object')) ? '' : s;
+    }
+    return v == null ? '' : String(v);
+  } catch (err) { return ''; }
+}
+function kbCustomCellsHtml(t, cfg) {
+  return schemaOf('tasks').filter(p => cfg.cardProps['p:' + p.id] && cfg.groupBy !== 'p:' + p.id).map(p => {
+    if (p.type === 'select') {
+      const o = (p.options || []).find(x => x.id === (t.props || {})[p.id]);
+      return o ? `<span class="proj-pill" style="background:${o.color || '#EDEDEB'};color:${inkOn(o.color || '#EDEDEB')}"><span class="pill-dot" style="background:${dotOf(o.color || '#EDEDEB')}"></span>${esc(o.label)}</span>` : '';
+    }
+    const s = kbCellText(t, p);
+    return s ? `<span class="kb-cell" title="${esc(p.name)}">${esc(s)}</span>` : '';
+  }).join('');
+}
+window.kbToggleProps = kbToggleProps; window.kbToggleProp = kbToggleProp;
 
 /* ============================================================
    ESPACE « PROJETS »
@@ -4238,6 +4506,8 @@ function linkMenuGroups() {
   if (evs.length) g.push({ label: 'Événements', items: evs.map(e => ({
     value: 'e:' + e.id, label: e.title, dot: eventLook(e).dot,
     sub: (e.date ? fmtDateLong(e.date) : 'sans date') + (e.start && !isAllDayEv(e) ? ' · ' + e.start : '') })) });
+  const tks = topLevelTasks(state.tasks).slice().sort((a, b) => (a.title || '').localeCompare(b.title || '')).slice(0, 80);
+  if (tks.length) g.push({ label: 'Tâches', items: tks.map(t => ({ value: 't:' + t.id, label: t.title, dot: PRIO_COLOR[t.prio] || '#999' })) });
   return g;
 }
 function folderMenuGroups() {
@@ -4246,7 +4516,9 @@ function folderMenuGroups() {
   items.push({ value: '__new__', label: 'Nouveau dossier…', action: true, icon: `<span class="sm-dot" style="background:transparent">${ICON_PLUS}</span>` });
   return [{ items }];
 }
-const linkLabelOf = v => !v ? 'Rien' : v.startsWith('p:') ? (projById(v.slice(2)) || {}).name || '—' : ((state.events.find(e => e.id === v.slice(2)) || {}).title || '—');
+const linkLabelOf = v => !v ? 'Rien' : v.startsWith('p:') ? (projById(v.slice(2)) || {}).name || '—'
+  : v.startsWith('t:') ? ((state.tasks.find(t => t.id === v.slice(2)) || {}).title || '—')
+  : ((state.events.find(e => e.id === v.slice(2)) || {}).title || '—');
 
 /* ---------- Personnes (liées à un événement / projet) ----------
    Une « personne » est un enregistrement d'une table personnalisée (ex. la table
@@ -4574,8 +4846,14 @@ function healthMedRatio(dateStr) {
 
 function healthChartHtml(n) {
   const days = [...Array(n)].map((_, i) => ymd(addDays(new Date(), -(n - 1 - i))));
+  // rangées bien séparées verticalement (texte qui se chevauchait, signalé le 2026-07-24) :
+  // humeur (grille), sommeil (barres), cycle, traitement, dates — chacune sa bande.
   const W = 620, x0 = 10, x1 = 610, step = (x1 - x0) / (n - 1);
-  const yMood = v => 104 - (v + 3) * 15;   // échelle -3..3 → 104..14 px
+  const MOOD_TOP = 16, MOOD_BOTTOM = 160;   // grille humeur : 24px par cran (-3..3)
+  const yMood = v => MOOD_BOTTOM - (v + 3) * ((MOOD_BOTTOM - MOOD_TOP) / 6);
+  const SLEEP_BASE = 214, SLEEP_MAXH = 40;
+  const Y_CYCLE = 232, Y_MED = 250, Y_DATES = 275;
+  const H = 286;
   const xAt = i => x0 + i * step;
 
   let grid = '';
@@ -4591,44 +4869,44 @@ function healthChartHtml(n) {
     if (p) seg.push(`${p.x},${p.y}`);
     if (!p || i === pts.length - 1) { if (seg.length > 1) path += `<polyline points="${seg.join(' ')}" class="hc-line"/>`; seg = []; }
   });
-  const dots = pts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="2.6" fill="${dotOf(p.color)}"><title>${esc(fmtDateShort(p.d))}</title></circle>`).join('');
+  const dots = pts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${dotOf(p.color)}"><title>${esc(fmtDateShort(p.d))}</title></circle>`).join('');
 
   const bars = days.map((d, i) => {
     const log = healthLogFor(d);
     if (!log || log.sleepHours == null) return '';
-    const h = Math.max(2, Math.min(1, log.sleepHours / 10) * 34);
-    return `<rect x="${xAt(i) - 2.5}" y="${150 - h}" width="5" height="${h}" rx="1.5" class="hc-bar"><title>${esc(fmtDateShort(d))} · ${log.sleepHours} h</title></rect>`;
+    const h = Math.max(2, Math.min(1, log.sleepHours / 10) * SLEEP_MAXH);
+    return `<rect x="${xAt(i) - 3}" y="${SLEEP_BASE - h}" width="6" height="${h}" rx="1.5" class="hc-bar"><title>${esc(fmtDateShort(d))} · ${log.sleepHours} h</title></rect>`;
   }).join('');
 
   const cycles = days.map((d, i) => {
     const log = healthLogFor(d);
     if (!log || !log.cycle) return '';
-    return `<circle cx="${xAt(i)}" cy="164" r="2.6" class="hc-cycle"><title>${esc(fmtDateShort(d))} · règles</title></circle>`;
+    return `<circle cx="${xAt(i)}" cy="${Y_CYCLE}" r="3" class="hc-cycle"><title>${esc(fmtDateShort(d))} · règles</title></circle>`;
   }).join('');
 
   // traitement : plein = tout pris, anneau = pris en partie, vide = rien pris ce jour prévu
-  const PRIO_LIKE = { full: '#7ba36f', partial: '#cfa055', empty: '#d98a8a' };
+  const MED_COLORS = { full: '#7ba36f', partial: '#cfa055', empty: '#d98a8a' };
   const meds = days.map((d, i) => {
     const r = healthMedRatio(d);
     if (r == null) return '';
     const key = r === 1 ? 'full' : r === 0 ? 'empty' : 'partial';
-    const col = PRIO_LIKE[key];
-    return `<circle cx="${xAt(i)}" cy="176" r="2.4" class="hc-med" style="${key === 'full' ? `fill:${col}` : `fill:none;stroke:${col};stroke-width:1.3`}"><title>${esc(fmtDateShort(d))} · traitement ${Math.round(r * 100)} %</title></circle>`;
+    const col = MED_COLORS[key];
+    return `<circle cx="${xAt(i)}" cy="${Y_MED}" r="2.8" class="hc-med" style="${key === 'full' ? `fill:${col}` : `fill:none;stroke:${col};stroke-width:1.4`}"><title>${esc(fmtDateShort(d))} · traitement ${Math.round(r * 100)} %</title></circle>`;
   }).join('');
 
   const labels = days.map((d, i) => {
     if (i % 5 !== 0 && i !== n - 1) return '';
     const dd = parseYmd(d);
-    return `<text x="${xAt(i)}" y="196" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`;
+    return `<text x="${xAt(i)}" y="${Y_DATES}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} 204" class="health-chart" preserveAspectRatio="none">
+  return `<svg viewBox="0 0 ${W} ${H}" class="health-chart" preserveAspectRatio="none">
     ${grid}${path}${dots}${bars}${cycles}${meds}${labels}
-    <text x="2" y="17" class="hc-axis">Hypomanie</text>
-    <text x="2" y="107" class="hc-axis">Dépression</text>
-    <text x="2" y="119" class="hc-axis">Sommeil</text>
-    <text x="2" y="167" class="hc-axis">Cycle</text>
-    <text x="2" y="179" class="hc-axis">Traitement</text>
+    <text x="2" y="${MOOD_TOP + 6}" class="hc-axis">Hypomanie</text>
+    <text x="2" y="${MOOD_BOTTOM - 2}" class="hc-axis">Dépression</text>
+    <text x="2" y="${SLEEP_BASE - SLEEP_MAXH + 8}" class="hc-axis">Sommeil</text>
+    <text x="2" y="${Y_CYCLE + 3}" class="hc-axis">Cycle</text>
+    <text x="2" y="${Y_MED + 3}" class="hc-axis">Traitement</text>
   </svg>`;
 }
 
@@ -4829,6 +5107,183 @@ function renderNotesSpace() {
 
   canvas.innerHTML = html + '</div>';
 }
+
+/* ============================================================
+   ESPACE « BILAN » — répartition du temps par agenda / projet,
+   sur la semaine ou le mois en cours (créneaux chronométrés
+   uniquement : événements avec une heure de début ET de fin).
+   ============================================================ */
+let bilanMode = 'week';       // 'week' | 'month'
+let bilanCursor = new Date(); // date de référence de la période affichée
+
+function setBilanMode(m) { bilanMode = m; renderBilanSpace(); }
+window.setBilanMode = setBilanMode;
+function bilanShift(dir) {
+  bilanCursor = bilanMode === 'week' ? addDays(bilanCursor, 7 * dir) : new Date(bilanCursor.getFullYear(), bilanCursor.getMonth() + dir, 1);
+  renderBilanSpace();
+}
+window.bilanShift = bilanShift;
+function bilanGoToday() { bilanCursor = new Date(); renderBilanSpace(); }
+window.bilanGoToday = bilanGoToday;
+
+// jours (aaaa-mm-jj) couverts par la période affichée
+function bilanDays() {
+  if (bilanMode === 'week') {
+    const s = startOfWeek(bilanCursor);
+    return [...Array(7)].map((_, i) => ymd(addDays(s, i)));
+  }
+  const y = bilanCursor.getFullYear(), m = bilanCursor.getMonth();
+  const nb = new Date(y, m + 1, 0).getDate();
+  return [...Array(nb)].map((_, i) => ymd(new Date(y, m, i + 1)));
+}
+function bilanPeriodLabel() {
+  const days = bilanDays();
+  if (bilanMode === 'month') return `${MONTHS[bilanCursor.getMonth()]} ${bilanCursor.getFullYear()}`;
+  const s = parseYmd(days[0]), e = parseYmd(days[days.length - 1]);
+  return s.getMonth() === e.getMonth()
+    ? `${s.getDate()} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
+    : `${s.getDate()} ${MONTHS[s.getMonth()]} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
+}
+
+// durée en minutes d'un événement chronométré (ignore les créneaux sans heure ou incohérents)
+function evMinutes(e) {
+  if (!e.start || !e.end) return 0;
+  const [sh, sm] = e.start.split(':').map(Number), [eh, em] = e.end.split(':').map(Number);
+  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  return mins > 0 ? mins : 0;
+}
+// à quel groupe rattacher un événement pour le bilan : son projet en priorité, sinon son agenda
+function bilanGroupOf(e) {
+  if (e.projectId) { const p = projById(e.projectId); if (p) return { key: 'p:' + p.id, label: p.name, color: p.color }; }
+  if (e.catId) { const c = catById(e.catId); if (c) return { key: 'c:' + c.id, label: c.name, color: catColor(c) }; }
+  return { key: 'none', label: 'Sans agenda', color: '#cfcac2' };
+}
+// totaux (par groupe, et par groupe+jour) sur la période affichée
+function bilanData() {
+  const days = bilanDays();
+  const groups = new Map();
+  days.forEach(k => {
+    timedEventsOn(parseYmd(k)).forEach(e => {
+      const mins = evMinutes(e);
+      if (!mins) return;
+      const g = bilanGroupOf(e);
+      if (!groups.has(g.key)) groups.set(g.key, { label: g.label, color: g.color, total: 0, perDay: {} });
+      const row = groups.get(g.key);
+      row.total += mins;
+      row.perDay[k] = (row.perDay[k] || 0) + mins;
+    });
+  });
+  return { days, groups: [...groups.values()].sort((a, b) => b.total - a.total) };
+}
+// affichage compact d'une durée (« 2h30 », « 45 min »…)
+function fmtMinutes(m, short) {
+  m = Math.round(m || 0);
+  if (m <= 0) return short ? '0h' : '0 min';
+  const h = Math.floor(m / 60), mm = m % 60;
+  if (short) return h ? `${h}h${mm ? String(mm).padStart(2, '0') : ''}` : `${mm}min`;
+  return h ? (mm ? `${h} h ${mm} min` : `${h} h`) : `${mm} min`;
+}
+
+// graphique en barres empilées : une barre par jour, un segment coloré par groupe (agenda/projet)
+function bilanBarChartHtml(days, groups) {
+  const n = days.length;
+  const W = Math.max(620, n * 40), H = 200, x0 = 34, x1 = W - 10, top = 16, base = 156;
+  const step = (x1 - x0) / n;
+  const barW = Math.min(30, step * 0.62);
+  const dayTotal = k => groups.reduce((s, g) => s + (g.perDay[k] || 0), 0);
+  const maxMin = Math.max(60, ...days.map(dayTotal));
+
+  let bars = '';
+  days.forEach((k, i) => {
+    const x = x0 + i * step + (step - barW) / 2;
+    let y = base;
+    groups.forEach(g => {
+      const m = g.perDay[k] || 0;
+      if (!m) return;
+      const h = (base - top) * (m / maxMin);
+      y -= h;
+      bars += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="2" fill="${dotOf(g.color)}"><title>${esc(fmtDateShort(k))} · ${esc(g.label)} · ${fmtMinutes(m)}</title></rect>`;
+    });
+  });
+
+  let grid = '';
+  for (let i = 0; i <= 4; i++) {
+    const m = maxMin * i / 4, y = top + (base - top) * (1 - i / 4);
+    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" class="bl-grid"/><text x="${x0 - 6}" y="${y + 3}" class="bl-axis" text-anchor="end">${fmtMinutes(m, true)}</text>`;
+  }
+
+  const everyLbl = Math.max(1, Math.ceil(n / (bilanMode === 'week' ? 7 : 10)));
+  const labels = days.map((k, i) => {
+    if (i % everyLbl !== 0 && i !== n - 1) return '';
+    const d = parseYmd(k), x = x0 + i * step + step / 2;
+    const txt = bilanMode === 'week' ? DOW_SHORT[d.getDay()] : String(d.getDate());
+    return `<text x="${x}" y="${base + 16}" class="bl-axis" text-anchor="middle">${txt}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="bl-bars" preserveAspectRatio="none">${grid}${bars}${labels}</svg>`;
+}
+
+// donut : répartition totale par groupe sur la période
+function bilanDonutHtml(groups, totalMin) {
+  const cx = 60, cy = 60, R = 46, C = 2 * Math.PI * R;
+  if (!totalMin) return `<svg viewBox="0 0 120 120" class="bl-donut"><circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="var(--border)" stroke-width="16"/></svg>`;
+  let offset = 0;
+  const segs = groups.map(g => {
+    const len = (g.total / totalMin) * C;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${dotOf(g.color)}" stroke-width="16" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"><title>${esc(g.label)} · ${fmtMinutes(g.total)}</title></circle>`;
+    offset += len;
+    return seg;
+  }).join('');
+  return `<svg viewBox="0 0 120 120" class="bl-donut">${segs}<text x="60" y="56" text-anchor="middle" class="bl-donut-total">${fmtMinutes(totalMin, true)}</text><text x="60" y="72" text-anchor="middle" class="bl-donut-sub">au total</text></svg>`;
+}
+
+function renderBilanSpace() {
+  const { days, groups } = bilanData();
+  const totalMin = groups.reduce((s, g) => s + g.total, 0);
+  const joursActifs = days.filter(k => groups.some(g => g.perDay[k])).length;
+  const moy = joursActifs ? totalMin / joursActifs : 0;
+
+  const legend = groups.length ? groups.map(g => `<div class="bl-legend-row">
+      <span class="bl-legend-dot" style="background:${dotOf(g.color)}"></span>
+      <span>${esc(g.label)}</span>
+      <span class="bl-legend-val">${fmtMinutes(g.total)} · ${Math.round((g.total / totalMin) * 100)}%</span>
+    </div>`).join('') : `<div class="proj-empty">Aucun créneau chronométré sur cette période. Ajoute une heure de début et de fin à tes événements pour les voir ici.</div>`;
+
+  const html = `<div class="space">
+    <div class="space-head">
+      <span class="space-title">Bilan</span>
+      <span class="space-tabs">${['week', 'month'].map(m => `<span class="space-tab ${bilanMode === m ? 'on' : ''}" onclick="setBilanMode('${m}')">${m === 'week' ? 'Semaine' : 'Mois'}</span>`).join('')}</span>
+    </div>
+
+    <div class="bl-nav">
+      <span class="mini-arrow" onclick="bilanShift(-1)" title="Période précédente">‹</span>
+      <span class="bl-nav-lbl">${esc(bilanPeriodLabel())}</span>
+      <span class="mini-arrow" onclick="bilanShift(1)" title="Période suivante">›</span>
+      <span class="space-tab" onclick="bilanGoToday()">Revenir à ${bilanMode === 'week' ? 'cette semaine' : 'ce mois'}</span>
+    </div>
+
+    <div class="bl-kpis">
+      <div class="bl-kpi"><div class="bl-kpi-val">${fmtMinutes(totalMin, true)}</div><div class="bl-kpi-lbl">au total</div></div>
+      <div class="bl-kpi"><div class="bl-kpi-val">${fmtMinutes(moy, true)}</div><div class="bl-kpi-lbl">par jour actif</div></div>
+      <div class="bl-kpi"><div class="bl-kpi-val">${groups[0] ? esc(groups[0].label) : '—'}</div><div class="bl-kpi-lbl">le plus chargé</div></div>
+    </div>
+
+    <div class="bl-wrap">
+      <div class="bl-chart-box">
+        <div class="space-sort-lbl">Répartition par jour</div>
+        ${bilanBarChartHtml(days, groups)}
+      </div>
+      <div class="bl-donut-box">
+        <div class="space-sort-lbl">Répartition ${bilanMode === 'week' ? 'de la semaine' : 'du mois'}</div>
+        ${bilanDonutHtml(groups, totalMin)}
+        <div class="bl-legend">${legend}</div>
+      </div>
+    </div>
+  </div>`;
+  canvas.innerHTML = html;
+}
+window.renderBilanSpace = renderBilanSpace;
+
 function toggleNoteFav(id, ev) {
   if (ev) ev.stopPropagation();
   const n = state.notes.find(x => x.id === id);
@@ -4854,6 +5309,7 @@ function applyNoteMode() {
   $('noteReadBtn').innerHTML = ICON_EYE;
   $('noteReadBtn').title = state.noteRead ? 'Réafficher les réglages et le bouton Enregistrer' : 'Aperçu : rien que la note';
   $('noteReadBtn').classList.toggle('on', !!state.noteRead);
+  nbBuildToc();
 }
 function toggleNoteDoc() { state.noteDoc = !state.noteDoc; save(); applyNoteMode(); }
 function toggleNoteRead() {
@@ -4888,9 +5344,19 @@ function noteRecordFromForm(title, body) {
     folderId: noteDraftFolder || '',
     projectId: noteDraftLink.startsWith('p:') ? noteDraftLink.slice(2) : '',
     eventId: noteDraftLink.startsWith('e:') ? noteDraftLink.slice(2) : '',
+    taskId: noteDraftLink.startsWith('t:') ? noteDraftLink.slice(2) : '',
     fav: noteDraftFav, updated: Date.now() };
   if (editingNote) Object.assign(state.notes.find(x => x.id === editingNote) || {}, data);
   else { const id = uid(); state.notes.push({ id, ...data }); editingNote = id; $('deleteNoteBtn').classList.remove('hidden'); }
+  // sous-pages : un bloc-lien retiré du corps supprime la note enfant correspondante (et ses propres sous-pages)
+  const kept = new Set([...body.matchAll(/data-page="([^"]+)"/g)].map(m => m[1]));
+  const dead = state.notes.filter(x => x.parentId === editingNote && !kept.has(x.id));
+  if (dead.length) {
+    const drop = new Set(dead.map(x => x.id));
+    let grew = true;
+    while (grew) { grew = false; state.notes.forEach(x => { if (x.parentId && drop.has(x.parentId) && !drop.has(x.id)) { drop.add(x.id); grew = true; } }); }
+    state.notes = state.notes.filter(x => !drop.has(x.id));
+  }
   return data;
 }
 
@@ -4906,15 +5372,37 @@ function openNote(id, presetFolder) {
   ensureNoteBlocks();
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
-  noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : '') : '';
+  noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : n.taskId ? 't:' + n.taskId : '') : '';
   noteDraftFav = n ? !!n.fav : false;
   renderNoteColorPicker();
   updateNoteFieldButtons();
+  nbSyncPageLinks();
+  nbSyncMarkerColors();
+  $('noteBackBtn').classList.toggle('hidden', !(n && n.parentId));
   applyNoteMode();
   $('noteOverlay').classList.add('show');
   setTimeout(() => $(n ? 'noteBody' : 'noteTitle').focus(), 50);
 }
 window.openNote = openNote;
+// on enregistre la note courante avant de basculer vers une sous-page (ou retour au parent)
+function notePageOpen(id) {
+  clearTimeout(noteSaveTimer);
+  const title = $('noteTitle').value.trim();
+  const body = sanitizeNoteHtml($('noteBody').innerHTML);
+  if (editingNote || title || notePreview(body)) { noteRecordFromForm(title, body); save(); }
+  openNote(id);
+}
+window.notePageOpen = notePageOpen;
+// remet à jour le titre affiché des blocs sous-page à l'ouverture d'une note
+function nbSyncPageLinks() {
+  $('noteBody').querySelectorAll('.note-page-link').forEach(d => {
+    const n = state.notes.find(x => x.id === d.dataset.page);
+    const t = d.querySelector('.npl-title');
+    if (!n) { d.classList.add('npl-missing'); if (t) t.textContent = 'Page supprimée'; return; }
+    d.classList.remove('npl-missing');
+    if (t) t.textContent = n.title || 'Page sans titre';
+  });
+}
 
 // applique une commande de mise en forme au texte sélectionné
 // styleWithCSS : les commandes produisent des <span style> propres (couleur, surlignage fiables)
@@ -5176,6 +5664,8 @@ const SLASH_BLOCKS = [
   { k: 'code',    n: 'Code',             h: 'Police à chasse fixe' },
   { k: 'hr',      n: 'Séparateur',       h: 'Trait de séparation' },
   { k: 'toggle',  n: 'Menu dépliant',    h: 'Contenu repliable' },
+  { k: 'table',   n: 'Tableau',          h: 'Tableau simple' },
+  { k: 'page',    n: 'Page',             h: 'Sous-page dans la note' },
 ];
 let slashIdx = 0, slashItems = [];
 // « / » suivi éventuellement de lettres, juste avant le curseur
@@ -5232,18 +5722,36 @@ function applyBlock(kind) {
   const fb = t => document.execCommand('formatBlock', false, t);
   const blk = caretBlock();
   const estBloc = tag => blk && blk.tagName === tag && !blk.classList.contains('note-callout');
+  /* Échange direct de balise : execCommand('formatBlock') laissait parfois la taille
+     du titre (spans avec styles en dur, notamment en repassant titre → texte). On
+     reconstruit le bloc nous-mêmes : fiable, et l'alignement (textAlign) est conservé. */
+  const SWAPPABLE = ['P', 'H1', 'H2', 'H3', 'H4', 'BLOCKQUOTE', 'PRE', 'DIV'];
+  const swap = (tag, fallback) => {
+    if (blk && SWAPPABLE.includes(blk.tagName)) {
+      const ta = blk.style.textAlign;
+      const n = document.createElement(tag);
+      while (blk.firstChild) n.appendChild(blk.firstChild);
+      if (ta) n.style.textAlign = ta;
+      blk.replaceWith(n);
+      const r = document.createRange(); r.selectNodeContents(n); r.collapse(false);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      return n;
+    }
+    fb(fallback);
+    return caretBlock();
+  };
   switch (kind) {
     // « Texte » ramène toujours au paragraphe simple (titre, liste, citation, code, encadré → texte)
     case 'p':
       if (selLi()) liToParagraph(selLi());
-      else { fb('<p>'); const b = caretBlock(); if (b && b.classList) b.classList.remove('note-callout'); }
+      else swap('p', '<p>');
       break;
     // titres : re-taper la même commande revient au texte simple (bascule)
-    case 'h1': fb(estBloc('H1') ? '<p>' : '<h1>'); break;
-    case 'h2': fb(estBloc('H2') ? '<p>' : '<h2>'); break;
-    case 'h3': fb(estBloc('H3') ? '<p>' : '<h3>'); break;
-    case 'quote': fb(estBloc('BLOCKQUOTE') ? '<p>' : '<blockquote>'); break;
-    case 'code': fb(estBloc('PRE') ? '<p>' : '<pre>'); break;
+    case 'h1': estBloc('H1') ? swap('p', '<p>') : swap('h1', '<h1>'); break;
+    case 'h2': estBloc('H2') ? swap('p', '<p>') : swap('h2', '<h2>'); break;
+    case 'h3': estBloc('H3') ? swap('p', '<p>') : swap('h3', '<h3>'); break;
+    case 'quote': estBloc('BLOCKQUOTE') ? swap('p', '<p>') : swap('blockquote', '<blockquote>'); break;
+    case 'code': estBloc('PRE') ? swap('p', '<p>') : swap('pre', '<pre>'); break;
     // listes : gestion manuelle (re-taper la même sorte retire la liste)
     case 'ul': noteSetList('ul'); break;
     case 'ol': noteSetList('ol'); break;
@@ -5252,15 +5760,394 @@ function applyBlock(kind) {
     // encadré : bascule. On transforme le bloc courant en <div> puis on lui pose la classe.
     // (insertHTML d'un <div> dans un <p> était converti en <span> avec styles en dur)
     case 'callout': {
-      if (blk && blk.classList && blk.classList.contains('note-callout')) { fb('<p>'); const b = caretBlock(); if (b && b.classList) b.classList.remove('note-callout'); }
-      else { fb('<div>'); const b = caretBlock(); if (b && b.classList) b.classList.add('note-callout'); }
+      if (blk && blk.classList && blk.classList.contains('note-callout')) swap('p', '<p>');
+      else { const b = swap('div', '<div>'); if (b && b.classList) b.classList.add('note-callout'); }
       break;
     }
     case 'toggle': document.execCommand('insertHTML', false,
       '<details class="note-toggle" open><summary>Titre</summary><div><br></div></details><p><br></p>'); break;
+    // sous-page façon Notion : une note enfant + un bloc-lien dans la note courante
+    case 'page': {
+      if (!editingNote) noteRecordFromForm($('noteTitle').value.trim(), sanitizeNoteHtml($('noteBody').innerHTML));
+      const cid = uid();
+      state.notes.push({ id: cid, parentId: editingNote, title: '', body: '', color: noteDraftColor,
+        folderId: '', projectId: '', eventId: '', fav: false, updated: Date.now() });
+      const d = document.createElement('div');
+      d.className = 'note-page-link'; d.dataset.page = cid; d.contentEditable = 'false';
+      d.innerHTML = '<span class="npl-ico">' + iconSvg('document', 15) + '</span><span class="npl-title">Page sans titre</span>';
+      if (blk) { blk.after(d); if (!(blk.textContent || '').trim()) blk.remove(); }
+      else $('noteBody').appendChild(d);
+      if (!d.nextElementSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; d.after(p); }
+      notePageOpen(cid);   // enregistre la note courante puis ouvre la sous-page
+      break;
+    }
+    // tableau simple : inséré après le bloc courant (un tableau ne vit pas DANS un paragraphe)
+    case 'table': {
+      const tbl = nbMakeTable(3, 3);
+      if (blk) { blk.after(tbl); if (!(blk.textContent || '').trim()) blk.remove(); }
+      else $('noteBody').appendChild(tbl);
+      if (!tbl.nextElementSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; tbl.after(p); }
+      const r = document.createRange(); r.selectNodeContents(tbl.rows[0].cells[0]); r.collapse(true);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      noteAutosave();
+      break;
+    }
   }
+  noteAutosave(); nbBuildToc();
 }
 window.applyBlock = applyBlock;
+
+/* ---- Encadrés colorés : contour de la teinte choisie + fond assorti en transparence.
+   Le choix se fait d'un clic (sans glisser) sur la poignée ⋮⋮ du bloc. ---- */
+const BOX_TINTS = [
+  ['Bleu', '#337EA9'], ['Vert', '#448361'], ['Jaune', '#CB912F'], ['Orange', '#D9730D'],
+  ['Rouge', '#D44C47'], ['Rose', '#C14C8A'], ['Violet', '#9065B0'], ['Marron', '#976D57'],
+];
+function nbSetBoxTint(el, v) {
+  if (v === 'none') {
+    el.classList.remove('note-callout'); delete el.dataset.tint;
+    el.style.border = ''; el.style.background = '';
+  } else if (v === 'default') {
+    el.classList.add('note-callout'); delete el.dataset.tint;
+    el.style.border = ''; el.style.background = '';
+  } else {
+    el.classList.add('note-callout'); el.dataset.tint = v;
+    el.style.border = '1.5px solid ' + v;
+    el.style.background = v + '22';   // même teinte, en transparence
+  }
+  noteAutosave();
+}
+
+/* ---- Tableaux simples : création et petites opérations ---- */
+function nbMakeTable(cols, rows) {
+  const t = document.createElement('table');
+  t.className = 'note-table nt-head';
+  const cg = document.createElement('colgroup');
+  for (let c = 0; c < cols; c++) { const col = document.createElement('col'); col.style.width = (100 / cols) + '%'; cg.appendChild(col); }
+  t.appendChild(cg);
+  for (let r = 0; r < rows; r++) {
+    const tr = t.insertRow();
+    for (let c = 0; c < cols; c++) tr.insertCell().innerHTML = '<br>';
+  }
+  return t;
+}
+function ntAddRow(table) {
+  const n = table.rows[0] ? table.rows[0].cells.length : 3;
+  const tr = table.insertRow();
+  for (let i = 0; i < n; i++) tr.insertCell().innerHTML = '<br>';
+}
+function ntAddCol(table) {
+  const cg = table.querySelector('colgroup');
+  if (cg) { const col = document.createElement('col'); col.style.width = '120px'; cg.appendChild(col); }
+  [...table.rows].forEach(r => { r.insertCell().innerHTML = '<br>'; });
+  if (/px$/.test(table.style.width)) table.style.width = (parseFloat(table.style.width) + 120) + 'px';
+}
+function ntDelRow(table) { if (table.rows.length > 1) table.deleteRow(-1); }
+function ntDelCol(table) {
+  const n = table.rows[0] ? table.rows[0].cells.length : 0;
+  if (n <= 1) return;
+  [...table.rows].forEach(r => r.deleteCell(-1));
+  const cols = table.querySelectorAll('colgroup col');
+  if (cols.length) cols[cols.length - 1].remove();
+}
+/* ---- Pilule : étiquette colorée posée sur la sélection (ou recolorée / retirée) ---- */
+function ntMakePill(color) {
+  $('noteBody').focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  let n = sel.anchorNode; if (n && n.nodeType === 3) n = n.parentNode;
+  const pill = n && n.closest ? n.closest('.note-pill') : null;
+  if (pill && $('noteBody').contains(pill)) {
+    if (!color) { const p = pill.parentNode; while (pill.firstChild) p.insertBefore(pill.firstChild, pill); pill.remove(); }
+    else pill.style.background = color + '33';
+    sel.removeAllRanges(); noteAutosave(); return;
+  }
+  if (!color || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const span = document.createElement('span');
+  span.className = 'note-pill';
+  span.style.background = color + '33';
+  try { range.surroundContents(span); }
+  catch (e) { span.appendChild(range.extractContents()); range.insertNode(span); }
+  sel.removeAllRanges();
+  noteAutosave();
+}
+// type actuel d'un bloc, pour cocher la bonne entrée du menu
+function nbKindOf(el) {
+  if (el.classList.contains('note-callout')) return 'callout';
+  const t = el.tagName;
+  if (t === 'H1') return 'h1';
+  if (t === 'H2') return 'h2';
+  if (t === 'H3' || t === 'H4') return 'h3';
+  if (t === 'BLOCKQUOTE') return 'quote';
+  if (t === 'PRE') return 'code';
+  if (t === 'UL') return el.classList.contains('note-todo') ? 'todo' : 'ul';
+  if (t === 'OL') return 'ol';
+  return 'p';
+}
+/* Transformer un bloc en un autre type. Les listes qu'on « aplatit » deviennent
+   une suite de blocs (une puce = un bloc) ; le reste passe par applyBlock. */
+function nbTransformBlock(el, kind) {
+  const isList = el.tagName === 'UL' || el.tagName === 'OL';
+  const wasBox = el.classList.contains('note-callout');
+  if (isList && ['p', 'h1', 'h2', 'h3', 'quote', 'code'].includes(kind)) {
+    const tag = { p: 'p', h1: 'h1', h2: 'h2', h3: 'h3', quote: 'blockquote', code: 'pre' }[kind];
+    const frag = document.createDocumentFragment();
+    [...el.querySelectorAll(':scope > li')].forEach(li => {
+      const b = document.createElement(tag);
+      while (li.firstChild) b.appendChild(li.firstChild);
+      b.querySelectorAll('input[type=checkbox]').forEach(c => c.remove());
+      frag.appendChild(b);
+    });
+    el.replaceWith(frag);
+  } else {
+    const r = document.createRange(); r.selectNodeContents(el); r.collapse(true);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    applyBlock(kind);
+    if (wasBox && kind !== 'callout') {
+      const b = caretBlock();
+      if (b) { b.classList.remove('note-callout'); b.style.border = ''; b.style.background = ''; delete b.dataset.tint; }
+    }
+  }
+  noteAutosave(); nbBuildToc();
+}
+function nbOpenBlockMenu() {
+  const el = nbHoverEl;
+  if (!el || !$('noteBody').contains(el) || el.tagName === 'HR') return;
+  const h = $('noteDragHandle');
+  // un bloc sous-page ne se transforme pas : on l'ouvre ou on le supprime
+  if (el.classList.contains('note-page-link')) {
+    openStyledMenu(h, [{ label: 'Sous-page', items: [
+      { value: 'pl-open', label: 'Ouvrir la page' },
+      { value: 'pl-del', label: 'Supprimer la sous-page' },
+    ] }], '', v => {
+      if (v === 'pl-open') notePageOpen(el.dataset.page);
+      else if (v === 'pl-del') { el.remove(); noteAutosave(); nbHideHandle(); }
+    });
+    return;
+  }
+  // un tableau a son propre menu : lignes, colonnes, en-tête
+  if (el.tagName === 'TABLE') {
+    openStyledMenu(h, [{ label: 'Tableau', items: [
+      { value: 't-row', label: 'Ajouter une ligne' },
+      { value: 't-col', label: 'Ajouter une colonne' },
+      { value: 't-delrow', label: 'Supprimer la dernière ligne' },
+      { value: 't-delcol', label: 'Supprimer la dernière colonne' },
+      { value: 't-head', label: el.classList.contains('nt-head') ? 'Retirer l’en-tête' : 'Afficher l’en-tête' },
+      { value: 't-del', label: 'Supprimer le tableau' },
+    ] }], '', v => {
+      if (v === 't-row') ntAddRow(el);
+      else if (v === 't-col') ntAddCol(el);
+      else if (v === 't-delrow') ntDelRow(el);
+      else if (v === 't-delcol') ntDelCol(el);
+      else if (v === 't-head') el.classList.toggle('nt-head');
+      else if (v === 't-del') el.remove();
+      noteAutosave(); nbBuildToc();
+    });
+    return;
+  }
+  const kind = nbKindOf(el);
+  const cur = el.classList.contains('note-callout') ? (el.dataset.tint || 'default') : kind;
+  const ico = t => `<span class="sm-ico">${t}</span>`;
+  openStyledMenu(h, [
+    { label: 'Transformer en', items: [
+      { value: 'p', label: 'Texte', icon: ico('T') },
+      { value: 'h1', label: 'Titre 1', icon: ico('H1') },
+      { value: 'h2', label: 'Titre 2', icon: ico('H2') },
+      { value: 'h3', label: 'Titre 3', icon: ico('H3') },
+      { value: 'ul', label: 'Liste à puces', icon: ico('•') },
+      { value: 'ol', label: 'Liste numérotée', icon: ico('1.') },
+      { value: 'todo', label: 'Liste de tâches', icon: ico('☑') },
+      { value: 'quote', label: 'Citation', icon: ico('❝') },
+      { value: 'code', label: 'Code', icon: ico('&lt;&gt;') },
+    ] },
+    { label: 'Encadré', items: [
+      { value: 'none', label: 'Aucun (texte simple)', dot: '' },
+      { value: 'default', label: 'Gris (défaut)', dot: '#787774' },
+    ] },
+    { label: 'Encadré coloré', items: BOX_TINTS.map(([n, c]) => ({ value: c, label: n, dot: c })) },
+  ], cur, v => {
+    if (v === 'none' || v === 'default' || v.startsWith('#')) nbSetBoxTint(el, v);
+    else nbTransformBlock(el, v);
+  });
+}
+
+/* ---------- Puces et cases colorées ----------
+   La puce ou la case à cocher prend la couleur posée au début du texte de sa
+   ligne, via la variable CSS --mk lue par ::marker et ::before. */
+function nbSyncMarkerColors() {
+  $('noteBody').querySelectorAll('li, summary').forEach(li => {
+    let col = null;
+    const tw = document.createTreeWalker(li, NodeFilter.SHOW_TEXT);
+    let tn;
+    while ((tn = tw.nextNode())) {
+      if (tn.parentElement.closest(li.tagName) !== li) break;     // élément imbriqué du même type : on s'arrête
+      if (!tn.textContent.replace(/[\u200b\s]/g, '')) continue;   // rien de visible : suivant
+      let el = tn.parentElement;
+      while (el && el !== li) { if (el.style && el.style.color) { col = el.style.color; break; } el = el.parentElement; }
+      break;
+    }
+    if (col) li.style.setProperty('--mk', col); else li.style.removeProperty('--mk');
+  });
+}
+
+/* ---------- Drag & drop des blocs de la note (style Notion) ----------
+   La poignée (⋮⋮) et la ligne d'insertion vivent HORS de #noteBody : le HTML
+   enregistré reste propre. V1 : blocs de premier niveau (paragraphe, titre,
+   liste entière, encadré…), à la souris. */
+let nbDragEl = null, nbHoverEl = null, nbDropRef = null, nbDropBefore = true, nbDragJustEnded = 0;
+function nbHideHandle() { $('noteDragHandle').classList.add('hidden'); nbHoverEl = null; }
+function nbHideLine() { $('noteDropLine').classList.add('hidden'); nbDropRef = null; }
+function nbPlaceHandle(el) {
+  nbHoverEl = el;
+  const h = $('noteDragHandle'), r = el.getBoundingClientRect();
+  h.style.left = (r.left - 24) + 'px';
+  h.style.top = (r.top + Math.max(0, Math.min((r.height - 22) / 2, 3))) + 'px';
+  h.classList.remove('hidden');
+}
+function nbOnMove(e) {
+  const ov = $('noteOverlay');
+  if (!ov.classList.contains('show') || ov.classList.contains('reading') || nbDragEl) return;
+  const h = $('noteDragHandle');
+  if (styledMenuAnchor === h && !$('styledMenu').classList.contains('hidden')) return;   // menu couleur ouvert : on fige la poignée
+  if (e.target === h || h.contains(e.target)) return;   // on survole la poignée : on ne la cache pas
+  const body = $('noteBody'), r = body.getBoundingClientRect();
+  if (e.clientY < r.top || e.clientY > r.bottom || e.clientX < r.left - 30 || e.clientX > r.right) { nbHideHandle(); return; }
+  let cible = null;
+  for (const b of body.children) {
+    const br = b.getBoundingClientRect();
+    if (e.clientY >= br.top - 2 && e.clientY <= br.bottom + 2) { cible = b; break; }
+  }
+  if (cible) nbPlaceHandle(cible); else nbHideHandle();
+}
+// conteneur qui défile : la note elle-même en modale, le corps de la fenêtre en plein écran
+function nbScrollBox() {
+  return $('noteOverlay').classList.contains('doc') ? $('noteOverlay').querySelector('.modal-body') : $('noteBody');
+}
+
+/* ---- Sommaire (plein écran) : liste des titres de la note, un clic fait défiler ---- */
+/* Panneau de droite (mode pleine page) : arborescence des sous-pages de la note
+   ouverte, avec les sous-pages imbriquées repliables, pour naviguer directement. */
+function notePageChildren(id) {
+  const n = state.notes.find(x => x.id === id);
+  if (!n || !n.body) return [];
+  return [...n.body.matchAll(/data-page="([^"]+)"/g)].map(m => m[1])
+    .filter(cid => state.notes.some(x => x.id === cid));
+}
+const nbPagesClosed = new Set();   // sous-pages repliées dans le panneau (le temps de la session)
+function nbPageNode(id, lv, seen) {
+  const n = state.notes.find(x => x.id === id);
+  const kids = seen.has(id) ? [] : notePageChildren(id);   // garde-fou contre les boucles
+  seen.add(id);
+  const closed = nbPagesClosed.has(id);
+  const chev = kids.length
+    ? `<span class="npg-chev ${closed ? '' : 'open'}" data-tog="${id}" title="${closed ? 'Afficher' : 'Replier'} les sous-pages">${ICON_CHEV}</span>`
+    : '<span class="npg-gap"></span>';
+  let html = `<div class="npg-item" style="padding-left:${6 + lv * 16}px" data-page="${id}">${chev}${iconSvg('document', 14)}<span class="npg-t">${esc(n && n.title ? n.title : 'Page sans titre')}</span></div>`;
+  if (!closed) html += kids.map(k => nbPageNode(k, lv + 1, seen)).join('');
+  return html;
+}
+function nbBuildPages() {
+  const box = $('notePages');
+  const links = [...$('noteBody').querySelectorAll('.note-page-link')].map(d => d.dataset.page)
+    .filter(id => state.notes.some(x => x.id === id));
+  if (!links.length) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+  const seen = new Set(editingNote ? [editingNote] : []);
+  box.innerHTML = '<div class="ntoc-cap">Sous-pages</div>' + links.map(id => nbPageNode(id, 0, seen)).join('');
+  box.classList.remove('hidden');
+}
+function nbBuildToc() {
+  nbBuildPages();   // le panneau des sous-pages suit les mêmes rafraîchissements que le sommaire
+  const toc = $('noteToc');
+  const heads = [...$('noteBody').querySelectorAll(':scope > h1, :scope > h2, :scope > h3, :scope > h4')];
+  if (!heads.length) { toc.innerHTML = ''; toc.classList.add('hidden'); return; }
+  toc.innerHTML = '<div class="ntoc-cap">Sommaire</div>' + heads.map((h, i) => {
+    const lv = Math.min(+h.tagName[1], 3);
+    return `<div class="ntoc-item lv${lv}" data-i="${i}">${esc((h.textContent || '').trim() || 'Sans titre')}</div>`;
+  }).join('');
+  toc.classList.remove('hidden');
+}
+
+/* ---------- Menu « : » : émojis et icônes insérés au clavier ---------- */
+const EMOJI_LIB = [
+  ['sourire', '😊'], ['rire', '😂'], ['clin', '😉'], ['amour', '😍'], ['coeur', '❤️'],
+  ['coeur bleu', '💙'], ['etoile', '⭐'], ['feu', '🔥'], ['fete', '🎉'], ['pouce', '👍'],
+  ['ok', '👌'], ['muscle', '💪'], ['priere', '🙏'], ['bravo', '👏'], ['penser', '🤔'],
+  ['dormir', '😴'], ['triste', '😢'], ['pleurer', '😭'], ['colere', '😡'], ['peur', '😱'],
+  ['malade', '🤒'], ['fatigue', '🥱'], ['cool', '😎'], ['ange', '😇'], ['soleil', '☀️'],
+  ['lune', '🌙'], ['nuage', '☁️'], ['pluie', '🌧️'], ['arc en ciel', '🌈'], ['fleur', '🌸'],
+  ['plante', '🌱'], ['arbre', '🌳'], ['trefle', '🍀'], ['pomme', '🍎'], ['pizza', '🍕'],
+  ['gateau', '🎂'], ['cafe', '☕'], ['the', '🍵'], ['eau', '💧'], ['maison', '🏠'],
+  ['voiture', '🚗'], ['avion', '✈️'], ['train', '🚆'], ['velo', '🚲'], ['valise', '🧳'],
+  ['travail', '💼'], ['ordinateur', '💻'], ['telephone', '📱'], ['mail', '✉️'], ['livre', '📚'],
+  ['crayon', '✏️'], ['note', '📝'], ['dossier', '📁'], ['calendrier', '📅'], ['horloge', '🕐'],
+  ['epingle', '📌'], ['trombone', '📎'], ['loupe', '🔍'], ['cle', '🔑'], ['cadenas', '🔒'],
+  ['ampoule', '💡'], ['cible', '🎯'], ['fusee', '🚀'], ['trophee', '🏆'], ['medaille', '🥇'],
+  ['cadeau', '🎁'], ['ballon', '🎈'], ['musique', '🎵'], ['photo', '📷'], ['cinema', '🎬'],
+  ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '🧘'], ['argent', '💰'],
+  ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '🛒'], ['sante', '🩺'],
+  ['pilule', '💊'], ['cerveau', '🧠'], ['soin', '❤️‍🩹'], ['zen', '🧘‍♀️'], ['valide', '✅'],
+  ['croix', '❌'], ['attention', '⚠️'], ['question', '❓'], ['exclamation', '❗'], ['interdit', '🚫'],
+  ['etincelles', '✨'], ['eclair', '⚡'], ['yeux', '👀'], ['salut', '👋'], ['chat', '🐱'],
+  ['chien', '🐶'], ['papillon', '🦋'], ['drapeau rouge', '🚩'],
+];
+let emojiIdx = 0, emojiItems = [];
+function svgNoteIco(name) {
+  return `<svg class="note-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON_LIB[name] || ''}</svg>`;
+}
+function normTxt(t) { return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+// « : » en début de mot suivi d'au moins une lettre, juste avant le curseur
+function colonContext() {
+  const s = window.getSelection();
+  if (!s.rangeCount || !s.isCollapsed) return null;
+  const node = s.anchorNode;
+  if (!node || node.nodeType !== 3 || !$('noteBody').contains(node)) return null;
+  const m = node.textContent.slice(0, s.anchorOffset).match(/(^|[\s\u00a0]):([\p{L}0-9]{1,20})$/u);
+  if (!m) return null;
+  const len = m[2].length + 1;
+  return { node, start: s.anchorOffset - len, len, query: m[2] };
+}
+function hideEmojiMenu() { $('emojiMenu').classList.add('hidden'); emojiItems = []; }
+function showEmojiMenu(ctx) {
+  const q = normTxt(ctx.query || '');
+  const emo = EMOJI_LIB.filter(([n]) => normTxt(n).includes(q)).map(([n, ch]) => ({ t: 'e', n, ch }));
+  const ico = ICON_NAMES.filter(n => normTxt(n).includes(q)).map(n => ({ t: 'i', n }));
+  emojiItems = emo.concat(ico).slice(0, 8);
+  if (!emojiItems.length) { hideEmojiMenu(); return; }
+  emojiIdx = 0;
+  const m = $('emojiMenu');
+  m.innerHTML = emojiItems.map((it, i) =>
+    `<div class="sl-item ${i === 0 ? 'on' : ''}" data-i="${i}"><span class="em-ch">${it.t === 'e' ? it.ch : svgNoteIco(it.n)}</span><span class="sl-n">${esc(it.n)}</span><span class="sl-h">${it.t === 'e' ? 'émoji' : 'icône'}</span></div>`).join('');
+  m.classList.remove('hidden');
+  const r = caretBlockRect();
+  if (r) {
+    const mr = m.getBoundingClientRect();
+    m.style.left = Math.max(8, Math.min(r.left, innerWidth - mr.width - 8)) + 'px';
+    m.style.top = (r.bottom + 6 + mr.height > innerHeight ? Math.max(8, r.top - mr.height - 6) : r.bottom + 6) + 'px';
+  }
+}
+function markEmojiActive() {
+  const items = $$('#emojiMenu .sl-item');
+  items.forEach((el, i) => el.classList.toggle('on', i === emojiIdx));
+  const on = items[emojiIdx];
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function applyEmoji(i) {
+  const it = emojiItems[i]; if (!it) return;
+  const ctx = colonContext();
+  if (ctx) {
+    const r = document.createRange();
+    r.setStart(ctx.node, ctx.start);
+    r.setEnd(ctx.node, ctx.start + ctx.len);
+    r.deleteContents();
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  hideEmojiMenu();
+  $('noteBody').focus();
+  if (it.t === 'e') document.execCommand('insertText', false, it.ch + ' ');
+  else document.execCommand('insertHTML', false, svgNoteIco(it.n) + '&nbsp;');
+  noteAutosave();
+}
 
 function renderNoteColorPicker() { $('noteColorPicker').innerHTML = paletteHtml(noteDraftColor, 'pickNoteColor', 'note'); }
 window.pickNoteColor = c => { noteDraftColor = c; rememberColor(c); renderNoteColorPicker(); };
@@ -5358,7 +6245,20 @@ function deleteNote(id, ev) {
   if (ev) ev.stopPropagation();
   const n = state.notes.find(x => x.id === id);
   if (!confirm(`Supprimer la note « ${n ? (n.title || notePreview(n.body).slice(0, 20)) : ''} » ?\nCette action est définitive.`)) return;
-  state.notes = state.notes.filter(x => x.id !== id);
+  // suppression en cascade des sous-pages + retrait du bloc-lien dans la note parente
+  const drop = new Set([id]);
+  let grew = true;
+  while (grew) { grew = false; state.notes.forEach(x => { if (x.parentId && drop.has(x.parentId) && !drop.has(x.id)) { drop.add(x.id); grew = true; } }); }
+  state.notes = state.notes.filter(x => !drop.has(x.id));
+  state.notes.forEach(p => {
+    if (p.body && p.body.indexOf('data-page="' + id + '"') !== -1) {
+      const box = document.createElement('div');
+      box.innerHTML = p.body;
+      box.querySelectorAll('.note-page-link[data-page="' + id + '"]').forEach(el => el.remove());
+      p.body = box.innerHTML;
+      p.updated = Date.now();
+    }
+  });
   save(); closeModals(); render();
 }
 window.deleteNote = deleteNote;
@@ -6959,10 +7859,13 @@ const notesForProject = pid => (state.notes || []).filter(n =>
    pas un événement). Même section, même bouton — seule la source change. */
 const notesForEvent = eid => (state.notes || []).filter(n => n.eventId === eid)
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
-// `cible` : 'p' pour un projet, 'e' pour un événement
+// notes rattachées directement à une tâche (comme pour un événement)
+const notesForTask = tid => (state.notes || []).filter(n => n.taskId === tid)
+  .sort((a, b) => (b.updated || 0) - (a.updated || 0));
+// `cible` : 'p' pour un projet, 'e' pour un événement, 't' pour une tâche
 function notesSectionHtml(cible, id) {
-  const notes = cible === 'e' ? notesForEvent(id) : notesForProject(id);
-  const vide = cible === 'e' ? 'Aucune note rattachée à cet événement.' : 'Aucune note rattachée à ce projet.';
+  const notes = cible === 'e' ? notesForEvent(id) : cible === 't' ? notesForTask(id) : notesForProject(id);
+  const vide = cible === 'e' ? 'Aucune note rattachée à cet événement.' : cible === 't' ? 'Aucune note rattachée à cette tâche.' : 'Aucune note rattachée à ce projet.';
   return `<div class="page-section-title">Notes</div>`
     + (notes.length ? notes.map(n => `<div class="pd-note" onclick="openNoteFromPage('${n.id}')">
         <span class="pd-note-ico">${folderById(n.folderId) ? folderSvg(folderById(n.folderId).color, folderById(n.folderId).icon, 18) : `<span class="pill-dot" style="background:${dotOf(n.color || '#eae8e4')}"></span>`}</span>
@@ -6972,9 +7875,9 @@ function notesSectionHtml(cible, id) {
         </div>
       </div>`).join('')
       : `<div class="hint-txt">${vide}</div>`)
-    + `<button class="btn-ghost" style="margin-top:14px" onclick="addNoteTo('${cible}','${id}')">${ICON_PLUS} Ajouter une note</button>`;
+    + `<button class="btn-ghost" style="margin-top:14px" onclick="openNoteAttachMenu('${cible}','${id}',event)">${ICON_PLUS} Ajouter une note</button>`;
 }
-// ouvre une note depuis une page (projet, événement…) et y revient en fermant
+// ouvre une note depuis une page (projet, événement, tâche…) et y revient en fermant
 function openNoteFromPage(id) {
   if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
   openNote(id);
@@ -6991,6 +7894,57 @@ function addNoteTo(cible, id) {
 window.addNoteTo = addNoteTo;
 const addNoteToProject = pid => addNoteTo('p', pid);
 window.addNoteToProject = addNoteToProject;
+
+/* ---- Rattacher une note existante (projet / événement / tâche) ----
+   Le bouton « Ajouter une note » propose soit une note vierge, soit une note
+   déjà existante — y compris ses sous-pages imbriquées — à rattacher directement. */
+let noteAttachCtx = null;   // { cible, id }
+const noteAttachClosed = new Set();   // sous-pages repliées dans ce sélecteur (le temps de la session)
+function noteAttachChildren(pid) {
+  return (state.notes || []).filter(n => (n.parentId || '') === (pid || ''))
+    .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+}
+function noteAttachNode(n, lv) {
+  if (lv > 20) return '';   // garde-fou
+  const kids = noteAttachChildren(n.id);
+  const closed = noteAttachClosed.has(n.id);
+  const chev = kids.length
+    ? `<span class="na-chev ${closed ? '' : 'open'}" data-tog="${n.id}">${ICON_CHEV}</span>`
+    : '<span class="na-gap"></span>';
+  let html = `<div class="na-item" style="padding-left:${lv * 16}px" data-note="${n.id}">${chev}${iconSvg('document', 14)}<span class="npg-t">${esc(n.title || 'Page sans titre')}</span></div>`;
+  if (!closed) html += kids.map(k => noteAttachNode(k, lv + 1)).join('');
+  return html;
+}
+function noteAttachMenuHtml() {
+  const roots = noteAttachChildren('');
+  const tree = roots.length ? roots.map(n => noteAttachNode(n, 0)).join('') : '<div class="na-empty">Aucune note pour l\'instant.</div>';
+  return `<div class="na-new" data-new="1">${ICON_PLUS}<span>Nouvelle note</span></div><div class="na-sep"></div>${tree}`;
+}
+function openNoteAttachMenu(cible, id, e) {
+  e.stopPropagation();
+  noteAttachCtx = { cible, id };
+  const m = $('noteAttachMenu');
+  m.innerHTML = noteAttachMenuHtml();
+  m.classList.remove('hidden');
+  const r = e.currentTarget.getBoundingClientRect();
+  const mr = m.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - mr.width - 8)) + 'px';
+  m.style.top = (r.bottom + 6 + mr.height > innerHeight ? Math.max(8, r.top - mr.height - 6) : r.bottom + 6) + 'px';
+}
+window.openNoteAttachMenu = openNoteAttachMenu;
+function closeNoteAttachMenu() { $('noteAttachMenu').classList.add('hidden'); noteAttachCtx = null; }
+function attachExistingNote(id) {
+  const n = state.notes.find(x => x.id === id);
+  const ctx = noteAttachCtx;
+  if (!n || !ctx) return;
+  n.projectId = ''; n.eventId = ''; n.taskId = '';
+  if (ctx.cible === 'p') n.projectId = ctx.id;
+  else if (ctx.cible === 'e') n.eventId = ctx.id;
+  else if (ctx.cible === 't') n.taskId = ctx.id;
+  n.updated = Date.now();
+  save(); render(); renderPage();
+  closeNoteAttachMenu();
+}
 /* ---------- Sélecteur d'icône ---------- */
 let iconCtx = null;   // { coll, id }
 function openIconPicker(coll, id) {
@@ -7051,7 +8005,8 @@ function taskPageExtra(t) {
         </div>`;
       }).join('')
       : `<div class="hint-txt">Aucune sous-tâche. Découpe cette tâche en étapes si elle est trop grosse.</div>`)
-    + `<button class="btn-ghost" style="margin-top:14px" onclick="addSubtask('${t.id}')">${ICON_PLUS} Ajouter une sous-tâche</button>`;
+    + `<button class="btn-ghost" style="margin-top:14px" onclick="addSubtask('${t.id}')">${ICON_PLUS} Ajouter une sous-tâche</button>`
+    + notesSectionHtml('t', t.id);
 }
 
 /* Crée une sous-tâche : on rouvrira la fiche du parent après l'ajout. */
@@ -8610,12 +9565,14 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health' };
+const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', bilan: 'bilan' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
     const space = SECTION_SPACE[btn.dataset.section];
-    if (space && e.target.closest('.nav-label')) { openSpace(space); return; }
+    // section sans panneau à déplier (ex. Bilan) : tout le bouton ouvre l'espace
+    const hasPanel = !!document.querySelector(`.nav-panel[data-panel="${btn.dataset.section}"]`);
+    if (space && (!hasPanel || e.target.closest('.nav-label'))) { openSpace(space); return; }
     toggleNavSection(btn.dataset.section);
   };
 });
@@ -8649,11 +9606,192 @@ $('saveNoteBtn').onclick = saveNote;
 $('deleteNoteBtn').onclick = () => { if (editingNote) deleteNote(editingNote); };
 $('noteZoomBtn').onclick = toggleNoteDoc;
 $('noteReadBtn').onclick = toggleNoteRead;
+$('noteBackBtn').onclick = () => {
+  const n = state.notes.find(x => x.id === editingNote);
+  if (n && n.parentId) notePageOpen(n.parentId);
+};
+// panneau des sous-pages (mode pleine page) : le chevron replie, un clic ouvre la sous-page
+$('notePages').onclick = e => {
+  const tg = e.target.closest('.npg-chev');
+  if (tg) {
+    const id = tg.dataset.tog;
+    nbPagesClosed.has(id) ? nbPagesClosed.delete(id) : nbPagesClosed.add(id);
+    nbBuildPages();
+    return;
+  }
+  const it = e.target.closest('.npg-item');
+  if (it) notePageOpen(it.dataset.page);
+};
+// clic sur une entrée du sommaire : on défile jusqu'au titre correspondant
+$('noteToc').addEventListener('click', e => {
+  const it = e.target.closest('.ntoc-item'); if (!it) return;
+  const heads = $('noteBody').querySelectorAll(':scope > h1, :scope > h2, :scope > h3, :scope > h4');
+  const h = heads[+it.dataset.i];
+  if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+// menu « Ajouter une note » (page projet/événement/tâche) : créer, ou piocher une note existante
+$('noteAttachMenu').onclick = e => {
+  const tog = e.target.closest('.na-chev');
+  if (tog) {
+    const id = tog.dataset.tog;
+    noteAttachClosed.has(id) ? noteAttachClosed.delete(id) : noteAttachClosed.add(id);
+    $('noteAttachMenu').innerHTML = noteAttachMenuHtml();
+    return;
+  }
+  if (e.target.closest('[data-new]')) { const ctx = noteAttachCtx; closeNoteAttachMenu(); if (ctx) addNoteTo(ctx.cible, ctx.id); return; }
+  const it = e.target.closest('.na-item');
+  if (it) attachExistingNote(it.dataset.note);
+};
+document.addEventListener('mousedown', e => {
+  if (noteAttachCtx && !e.target.closest('#noteAttachMenu')) closeNoteAttachMenu();
+});
 // sauvegarde automatique différée pendant la frappe (titre et corps)
 $('noteTitle').addEventListener('input', () => noteAutosave());
-$('noteBody').addEventListener('input', () => noteAutosave());
-// une case cochée dans l'éditeur est un vrai changement (pas une frappe) : on enregistre aussi
-$('noteBody').addEventListener('click', e => { if (e.target.closest('.note-todo li')) noteAutosave(); });
+$('noteBody').addEventListener('input', () => { noteAutosave(); nbBuildToc(); nbSyncMarkerColors(); });
+// une case cochée dans l'éditeur est un vrai changement (pas une frappe) : on enregistre aussi ;
+// un clic sur un bloc sous-page ouvre cette sous-page (sauf juste après un drag)
+$('noteBody').addEventListener('click', e => {
+  const pl = e.target.closest('.note-page-link');
+  if (pl && Date.now() - nbDragJustEnded > 300) { e.preventDefault(); notePageOpen(pl.dataset.page); return; }
+  if (e.target.closest('.note-todo li')) noteAutosave();
+});
+
+/* ---- Drag & drop des blocs : poignée + ligne d'insertion (V1) ---- */
+$('noteOverlay').addEventListener('mousemove', nbOnMove);
+$('noteOverlay').addEventListener('scroll', () => { nbHideHandle(); if (!nbDragEl) nbHideLine(); }, true);
+$('noteDragHandle').addEventListener('dragstart', e => {
+  if (!nbHoverEl || !$('noteBody').contains(nbHoverEl)) { e.preventDefault(); return; }
+  nbDragEl = nbHoverEl;
+  nbDragEl.classList.add('nb-dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', ''); } catch (err) {}
+  try { e.dataTransfer.setDragImage(nbDragEl, 12, 12); } catch (err) {}
+  setTimeout(nbHideHandle, 0);   // masquer la poignée tout de suite annulerait le drag (Chrome)
+});
+$('noteDragHandle').addEventListener('dragend', () => {
+  if (nbDragEl) nbDragEl.classList.remove('nb-dragging');
+  nbDragEl = null; nbDragJustEnded = Date.now(); nbHideLine(); nbHideHandle();
+});
+// clic simple (sans glisser) sur la poignée : menu de transformation / couleur de l'encadré
+$('noteDragHandle').addEventListener('click', e => {
+  e.preventDefault();
+  if (Date.now() - nbDragJustEnded < 300) return;   // un vrai drag vient de se terminer
+  nbOpenBlockMenu();
+});
+$('noteOverlay').addEventListener('dragover', e => {
+  if (!nbDragEl) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const sc = nbScrollBox(), sr = sc.getBoundingClientRect();   // défilement auto près des bords
+  if (e.clientY < sr.top + 28) sc.scrollTop -= 12; else if (e.clientY > sr.bottom - 28) sc.scrollTop += 12;
+  const blocs = [...$('noteBody').children].filter(b => b !== nbDragEl);
+  if (!blocs.length) { nbHideLine(); return; }
+  let ref = null, avant = true;
+  for (const b of blocs) {
+    const br = b.getBoundingClientRect();
+    if (e.clientY < br.top + br.height / 2) { ref = b; avant = true; break; }
+    ref = b; avant = false;
+  }
+  nbDropRef = ref; nbDropBefore = avant;
+  const line = $('noteDropLine'), rr = ref.getBoundingClientRect(), nr = $('noteBody').getBoundingClientRect();
+  line.style.left = (nr.left + 6) + 'px';
+  line.style.width = (nr.width - 12) + 'px';
+  line.style.top = ((avant ? rr.top : rr.bottom) - 1) + 'px';
+  line.classList.remove('hidden');
+});
+$('noteOverlay').addEventListener('drop', e => {
+  if (!nbDragEl) return;
+  e.preventDefault();
+  if (nbDropRef && nbDropRef !== nbDragEl) {
+    if (nbDropBefore) nbDropRef.before(nbDragEl); else nbDropRef.after(nbDragEl);
+    noteAutosave(); nbBuildToc();
+  }
+  nbHideLine();
+});
+$('noteOverlay').addEventListener('dragleave', e => {
+  if (nbDragEl && !e.relatedTarget) nbHideLine();   // on sort de la fenêtre : plus de ligne
+});
+
+/* ---- Tableaux : redimensionner une colonne en tirant le bord droit d'une cellule ---- */
+let ntRes = null;
+function ntEdgeAt(e) {
+  const td = e.target && e.target.closest ? e.target.closest('.note-table td') : null;
+  if (!td || !$('noteBody').contains(td)) return null;
+  const r = td.getBoundingClientRect();
+  return (e.clientX > r.right - 5 && e.clientX <= r.right + 2) ? td : null;
+}
+$('noteBody').addEventListener('mousemove', e => {
+  if (!ntRes) $('noteBody').style.cursor = ntEdgeAt(e) ? 'col-resize' : '';
+});
+$('noteBody').addEventListener('mousedown', e => {
+  const td = ntEdgeAt(e); if (!td) return;
+  e.preventDefault();
+  const table = td.closest('table'), cols = table.querySelectorAll('colgroup col');
+  if (!cols[td.cellIndex]) return;
+  // on fige toutes les largeurs en pixels au début du geste : le tirage devient prévisible
+  const cells = table.rows[0] ? [...table.rows[0].cells] : [];
+  cells.forEach((c, i) => { if (cols[i]) cols[i].style.width = c.getBoundingClientRect().width + 'px'; });
+  table.style.width = table.getBoundingClientRect().width + 'px';
+  ntRes = { col: cols[td.cellIndex], table, startX: e.clientX,
+    colW: parseFloat(cols[td.cellIndex].style.width), tblW: parseFloat(table.style.width) };
+});
+document.addEventListener('mousemove', e => {
+  if (!ntRes) return;
+  const d = Math.max(40 - ntRes.colW, e.clientX - ntRes.startX);
+  ntRes.col.style.width = (ntRes.colW + d) + 'px';
+  ntRes.table.style.width = (ntRes.tblW + d) + 'px';
+});
+document.addEventListener('mouseup', () => { if (ntRes) { ntRes = null; noteAutosave(); } });
+// Tab dans une cellule : cellule suivante (Maj+Tab : précédente) ; en bout de tableau, nouvelle ligne
+$('noteBody').addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const s = window.getSelection(); if (!s.rangeCount) return;
+  let n = s.anchorNode; if (n && n.nodeType === 3) n = n.parentNode;
+  const td = n && n.closest ? n.closest('.note-table td') : null;
+  if (!td) return;
+  e.preventDefault();
+  const table = td.closest('table');
+  let cells = [...table.querySelectorAll('td')];
+  let i = cells.indexOf(td) + (e.shiftKey ? -1 : 1);
+  if (i >= cells.length) { ntAddRow(table); noteAutosave(); cells = [...table.querySelectorAll('td')]; }
+  const cible = cells[Math.max(0, Math.min(i, cells.length - 1))];
+  const r = document.createRange(); r.selectNodeContents(cible); r.collapse(true);
+  s.removeAllRanges(); s.addRange(r);
+});
+// ---- Pilule : bouton de la barre de sélection ; on garde la sélection pendant le choix de couleur ----
+$('nbPill').addEventListener('mousedown', e => e.preventDefault());
+$('nbPill').addEventListener('click', () => {
+  const s = window.getSelection(); if (!s.rangeCount) return;
+  const saved = s.getRangeAt(0).cloneRange();
+  openStyledMenu($('nbPill'), [{ label: 'Pilule', items: [
+    { value: 'none', label: 'Retirer la pilule', dot: '' },
+    ...BOX_TINTS.map(([n, c]) => ({ value: c, label: n, dot: c })),
+  ] }], '', v => {
+    const s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(saved);
+    ntMakePill(v === 'none' ? null : v);
+  });
+});
+/* ---- Menu dépliant : le titre s'édite au clic, la flèche (à gauche) replie/déplie ---- */
+$('noteBody').addEventListener('click', e => {
+  const sm = e.target.closest ? e.target.closest('summary') : null;
+  if (!sm || !$('noteBody').contains(sm)) return;
+  const r = sm.getBoundingClientRect();
+  if (e.clientX > r.left + 24) e.preventDefault();   // clic sur le texte : édition, pas de bascule
+});
+// Entrée dans le titre d'un menu dépliant : on passe au contenu au lieu de casser le bloc
+$('noteBody').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.shiftKey) return;
+  let n = window.getSelection().anchorNode; if (n && n.nodeType === 3) n = n.parentNode;
+  const sm = n && n.closest ? n.closest('summary') : null;
+  if (!sm || !$('noteBody').contains(sm)) return;
+  e.preventDefault();
+  const det = sm.parentElement;
+  det.open = true;
+  let first = sm.nextElementSibling;
+  if (!first) { first = document.createElement('div'); first.innerHTML = '<br>'; det.appendChild(first); }
+  const r = document.createRange(); r.selectNodeContents(first); r.collapse(true);
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+});
 // barre de mise en forme : chaque bouton porte sa commande. onmousedown preventDefault
 // pour ne PAS perdre la sélection dans la zone d'écriture au moment du clic.
 /* ---------- Barre flottante à la sélection (façon Notion) ---------- */
@@ -8684,10 +9822,12 @@ document.addEventListener('selectionchange', () => {
   showBubble();
 });
 
-/* ---------- Menu « / » ---------- */
+/* ---------- Menu « / » et menu « : » ---------- */
 $('noteBody').addEventListener('input', () => {
   const ctx = slashContext();
   if (ctx) showSlashMenu(ctx); else hideSlashMenu();
+  const ec = colonContext();
+  if (ec) showEmojiMenu(ec); else hideEmojiMenu();
 });
 $('noteBody').addEventListener('keydown', e => {
   if ($('slashMenu').classList.contains('hidden')) return;
@@ -8696,11 +9836,21 @@ $('noteBody').addEventListener('keydown', e => {
   else if (e.key === 'Enter') { e.preventDefault(); applyBlock(slashItems[slashIdx].k); }
   else if (e.key === 'Escape') { e.preventDefault(); hideSlashMenu(); }
 });
+// navigation clavier du menu « : »
+$('noteBody').addEventListener('keydown', e => {
+  if ($('emojiMenu').classList.contains('hidden')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); emojiIdx = (emojiIdx + 1) % emojiItems.length; markEmojiActive(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); emojiIdx = (emojiIdx - 1 + emojiItems.length) % emojiItems.length; markEmojiActive(); }
+  else if (e.key === 'Enter') { e.preventDefault(); applyEmoji(emojiIdx); }
+  else if (e.key === 'Escape') { e.preventDefault(); hideEmojiMenu(); }
+});
+$('emojiMenu').addEventListener('mousedown', e => e.preventDefault());   // garder le curseur dans la note
+$('emojiMenu').onclick = e => { const it = e.target.closest('.sl-item'); if (it) applyEmoji(+it.dataset.i); };
 /* Entrée depuis un encadré en ligne : on SORT de l'encadré au lieu de le couper
    en deux (ce qui fabriquait un mini-encadré vide à chaque saut de ligne). */
 $('noteBody').addEventListener('keydown', e => {
   if (e.key !== 'Enter' || e.shiftKey) return;
-  if (!$('slashMenu').classList.contains('hidden')) return;   // le menu « / » gère déjà Entrée
+  if (!$('slashMenu').classList.contains('hidden') || !$('emojiMenu').classList.contains('hidden')) return;   // les menus « / » et « : » gèrent déjà Entrée
   // Entrée sur une puce/case VIDE = sortir de la liste (comme Notion), au lieu
   // de fabriquer une puce vide de plus qu'on ne sait pas retirer
   const li = selLi();
