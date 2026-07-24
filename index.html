@@ -520,6 +520,11 @@
   .note-row .del { opacity: 0; color: var(--text-soft); font-size: 15px; flex: none; background: none; border: none; cursor: pointer; }
   .note-row:hover .del { opacity: 1; }
   .note-row:hover .note-date { display: none; }   /* la croix prend la place de la date au survol */
+  /* un contact CRM tient sur UNE ligne : couleur de statut + nom */
+  .crm-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; cursor: pointer; margin-bottom: 2px; }
+  .crm-row:hover { background: var(--surface-2); }
+  .crm-row .swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+  .crm-row .name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* glisser-déposer des notes vers les dossiers */
   .note-card[draggable="true"] { cursor: grab; }
   .note-card.dragging { opacity: .45; }
@@ -814,6 +819,9 @@
   .ptable tbody tr { cursor: pointer; }
   .ptable tbody tr:hover td { background: var(--surface-2); }
   .pt-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+  .pt-name.sub { font-weight: 400; color: var(--text-soft); }
+  .ptr-task td { background: var(--bg); }
+  .ptr-task:hover td { background: var(--surface-2); }
   .pt-prog .pbar { display: inline-block; width: 90px; vertical-align: middle; }
   .pt-pct { font-size: 12px; color: var(--text-soft); margin-left: 8px; }
   .pt-num { text-align: center; color: var(--text-soft); }
@@ -859,6 +867,31 @@
   /* le choix du nombre de jours vit dans la barre d'outils : il ne doit pas
      prendre la largeur pleine que les <select> ont dans les formulaires */
   #dayBlockPick { width: auto; min-width: 0; margin: 0 0 0 8px; padding: 6px 8px; font-size: 13px; }
+
+  /* ---- Suivi santé ---- */
+  .health-mini { display: flex; gap: 4px; padding: 4px 8px; }
+  .health-dot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+  .health-entry { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 16px; }
+  .health-entry-head { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 12px; }
+  .health-entry-head input[type="date"] { margin-left: auto; }
+  .health-mood-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .health-mood-btn { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; color: var(--text-soft); }
+  .health-mood-btn:hover { border-color: var(--accent); }
+  .health-mood-btn.on { border-color: transparent; font-weight: 600; }
+  .health-field-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .health-field-row label { font-size: 12.5px; color: var(--text-soft); }
+  .health-field-row input[type="number"] { width: 80px; }
+  .health-check { display: flex; align-items: center; gap: 6px; }
+  .health-note { width: 100%; min-height: 50px; resize: vertical; font-family: var(--font-sans); font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
+  .health-chart-wrap { margin-top: 22px; }
+  .health-chart { width: 100%; height: 204px; margin-top: 6px; }
+  .hc-grid { stroke: var(--border); stroke-width: 1; }
+  .hc-grid-mid { stroke: var(--border-strong); }
+  .hc-line { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  .hc-bar { fill: var(--accent-soft); }
+  .hc-cycle { fill: #c0564f; }
+  .hc-label { font-size: 8.5px; fill: var(--text-faint); }
+  .hc-axis { font-size: 8.5px; fill: var(--text-faint); }
 
   /* ---- Icônes ---- */
   .lib-ico { flex: none; vertical-align: -2px; }
@@ -955,7 +988,7 @@
 
   /* ---------- Tâche posée par-dessus un événement (semaine/jour) ---------- */
   .task-block {
-    position: absolute; z-index: 6; left: 14px; right: 4px; min-height: 22px;
+    position: absolute; z-index: 6; left: 26px; right: 4px; min-height: 22px;
     background: var(--surface); border: 1px dashed var(--border);
     border-radius: 7px; padding: 3px 7px; font-size: 11px; overflow: hidden;
     cursor: pointer; box-shadow: 0 2px 7px rgba(0,0,0,.2);
@@ -1393,6 +1426,27 @@
       <div class="nav-panel" data-panel="notes">
         <div id="noteList"></div>
       </div>
+
+      <!-- CRM -->
+      <button class="nav-item" data-section="crm">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="1.8"/><path d="M5.5 16c0-1.7 1.3-2.6 3-2.6s3 .9 3 2.6"/><path d="M14 9.5h4M14 13h4"/></svg>
+        <span class="nav-label">CRM</span>
+        <span class="nav-add" id="addCrmBtn" title="Nouveau contact" role="button">＋</span>
+        <svg class="nav-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <div class="nav-panel" data-panel="crm">
+        <div id="crmList"></div>
+      </div>
+
+      <!-- Suivi santé -->
+      <button class="nav-item" data-section="health">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M7 12h2l1.5-4 3 8 1.5-4H17"/></svg>
+        <span class="nav-label">Suivi santé</span>
+        <svg class="nav-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <div class="nav-panel" data-panel="health">
+        <div id="healthPreview"></div>
+      </div>
     </nav>
   </aside>
   <!-- fond sombre quand le tiroir de la barre latérale est ouvert (mobile) -->
@@ -1729,6 +1783,7 @@
       <div class="color-picker" id="habitColorPicker"></div>
       <label style="margin-top:16px">Icône</label>
       <button class="btn-ghost" id="habitIconBtn" style="display:inline-flex;align-items:center;gap:8px">Choisir…</button>
+      <label class="health-check" style="margin-top:16px"><input type="checkbox" id="habitTrackHealth"> Suivre aussi dans le Suivi santé (ex. traitement)</label>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost btn-danger hidden" id="deleteHabitBtn">Supprimer</button>
@@ -2521,6 +2576,8 @@ function render() {
   renderCategories();
   renderHabits();
   renderNotes();
+  renderCrmSidebar();
+  renderHealthSidebar();
   renderPeriodTitle();
   if (!isSpaceView(state.view)) lastCalView = state.view;   // pour que l'onglet « Calendrier » y revienne
   renderTabbar();
@@ -2540,6 +2597,8 @@ function render() {
   if (state.view === 'tasks') renderTasksSpace();
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
+  else if (state.view === 'crm') renderCrmSpace();
+  else if (state.view === 'health') renderHealthSpace();
   else if (state.view === 'month') renderMonth();
   else if (state.view === 'agenda') renderAgenda();
   else renderTimeGrid(viewDayCount());
@@ -2555,7 +2614,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['tasks', 'projects', 'notes'];
+const SPACE_VIEWS = ['tasks', 'projects', 'notes', 'crm', 'health'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -3459,11 +3518,46 @@ function projKpisHtml(list) {
 function projTableHtml(list) {
   const cfg = projSpaceCfg();
   const th = (key, label) => `<th class="${cfg.sort === key ? 'on' : ''}" onclick="setProjSort('${key}')" title="Trier par ${label.toLowerCase()}">${label}</th>`;
+  const today = ymd(new Date());
+  const chevTd = (ouvert, action, titre) =>
+    `<span class="sub-chev ${ouvert ? 'open' : ''}" onclick="${action}" title="${titre}">${ICON_CHEV}</span>`;
+
+  // une tâche (et récursivement ses sous-tâches), en ligne de tableau indentée
+  function ligneTacheRow(t, depth) {
+    const enfants = subtasksOf(t.id);
+    const plie = subCollapsed(t.id);
+    const ouvre = `openPage('tasks','${t.id}')`;
+    const late = !t.done && t.due && t.due < today;
+    const statutLabel = t.done ? 'Terminée' : late ? 'En retard' : 'À faire';
+    const statutColor = t.done ? '#d3e8cf' : late ? '#f2d3d0' : '#eae8e4';
+    const pr = hasSubtasks(t.id) ? subProgress(t.id) : null;
+    const next = enfants.filter(k => !k.done && k.due && k.due >= today).sort((a, b) => a.due.localeCompare(b.due))[0];
+    const dates = taskDated(t)
+      ? esc(fmtDateShort(taskFrom(t))) + (taskIsBar(t) ? ' → ' + esc(fmtDateShort(taskTo(t))) : '')
+      : 'sans date';
+    let h = `<tr class="ptr-task" onclick="${ouvre}">
+      <td style="padding-left:${10 + depth * 18}px"><span class="pt-name sub">${enfants.length ? chevTd(!plie, `toggleSubtasks('${t.id}',event)`, plie ? 'Afficher les sous-tâches' : 'Masquer les sous-tâches') : '<span class="sub-chev-gap"></span>'}${iconOf(t, 'tasks')} ${esc(t.title)}</span></td>
+      <td><span class="grp-pill" style="background:${statutColor};color:${inkOn(statutColor)}">${statutLabel}</span></td>
+      <td class="pt-prog">${pr ? `<span class="pbar"><div style="width:${pr.pct}%;background:var(--accent)"></div></span><span class="pt-pct">${pr.pct} %</span>` : '·'}</td>
+      <td class="pt-num">${pr ? pr.done + '/' + pr.total : '·'}</td>
+      <td class="pt-num">·</td>
+      <td class="pt-next">${next ? esc(next.title) + ' · ' + esc(formatDue(next.due)) : '·'}</td>
+      <td class="pt-dates">${dates}</td>
+    </tr>`;
+    if (!plie) h += enfants
+      .sort((a, b) => (taskFrom(a) || '9999').localeCompare(taskFrom(b) || '9999'))
+      .map(x => ligneTacheRow(x, depth + 1)).join('');
+    return h;
+  }
+
   const rows = list.map(p => {
     const st = projStats(p);
     const [, stLabel, stColor] = PROJ_STATUTS.find(([k]) => k === projStatut(p));
-    return `<tr onclick="openPage('projects','${p.id}')">
-      <td><span class="pt-name"><span class="pill-dot" style="background:${dotOf(p.color)};width:9px;height:9px;border-radius:50%;flex:none"></span>${iconOf(p, 'projects')} ${esc(p.name)}</span></td>
+    const taches = topLevelTasks(state.tasks.filter(t => t.projectId === p.id))
+      .sort((a, b) => (taskFrom(a) || '9999').localeCompare(taskFrom(b) || '9999'));
+    const plie = projCollapsed(p.id);
+    let h = `<tr onclick="openPage('projects','${p.id}')">
+      <td><span class="pt-name">${taches.length ? chevTd(!plie, `toggleProjRow('${p.id}',event)`, plie ? 'Afficher les tâches' : 'Masquer les tâches') : '<span class="sub-chev-gap"></span>'}<span class="pill-dot" style="background:${dotOf(p.color)};width:9px;height:9px;border-radius:50%;flex:none"></span>${iconOf(p, 'projects')} ${esc(p.name)}</span></td>
       <td><span class="grp-pill" style="background:${stColor};color:${inkOn(stColor)}">${esc(stLabel)}</span></td>
       <td class="pt-prog"><span class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></span><span class="pt-pct">${st.pct} %</span></td>
       <td class="pt-num">${st.done}/${st.total}</td>
@@ -3471,6 +3565,8 @@ function projTableHtml(list) {
       <td class="pt-next">${st.next ? esc(st.next.title) + ' · ' + esc(formatDue(st.next.due)) : '·'}</td>
       <td class="pt-dates">${esc(projDatesText(p))}</td>
     </tr>`;
+    if (!plie) h += taches.map(t => ligneTacheRow(t, 1)).join('');
+    return h;
   }).join('');
   return `<div class="ptable-wrap"><table class="ptable">
     <thead><tr>${th('nom', 'Projet')}${th('statut', 'Statut')}${th('avancement', 'Avancement')}<th>Tâches</th><th>En retard</th><th>Prochaine tâche</th>${th('echeance', 'Échéance')}</tr></thead>
@@ -3738,7 +3834,7 @@ function projTimelineHtml(list) {
   // une tâche : barre fine si elle dure, losange si elle tient sur une date
   function ligneTache(t, depth) {
     const col = taskColor(t);
-    const enfants = subtasksOf(t.id).filter(taskDated);
+    const enfants = subtasksOf(t.id);
     const plie = subCollapsed(t.id);
     const ouvre = `openPage('tasks','${t.id}')`;
     let forme = '';
@@ -3758,7 +3854,7 @@ function projTimelineHtml(list) {
       enfants.length ? chev(!plie, `toggleSubtasks('${t.id}',event)`, plie ? 'Afficher les sous-tâches' : 'Masquer les sous-tâches') : '',
       forme, ouvre, t.title, iconOf(t, 'tasks'),
       pr ? `<span class="tl-count">${pr.done}/${pr.total}</span>` : '');
-    if (!plie) h += enfants.sort((a, b) => taskFrom(a).localeCompare(taskFrom(b))).map(x => ligneTache(x, depth + 1)).join('');
+    if (!plie) h += enfants.sort((a, b) => (taskFrom(a) || '9999').localeCompare(taskFrom(b) || '9999')).map(x => ligneTache(x, depth + 1)).join('');
     return h;
   }
 
@@ -3766,8 +3862,8 @@ function projTimelineHtml(list) {
     const st = projStats(p);
     const left = pct(projStart(p));
     const w = Math.max(1.5, pct(projEnd(p)) - left);
-    const taches = topLevelTasks(state.tasks.filter(t => t.projectId === p.id && taskDated(t)))
-      .sort((a, b) => taskFrom(a).localeCompare(taskFrom(b)));
+    const taches = topLevelTasks(state.tasks.filter(t => t.projectId === p.id))
+      .sort((a, b) => (taskFrom(a) || '9999').localeCompare(taskFrom(b) || '9999'));
     const plie = projCollapsed(p.id);
 
     const barre = `<div class="tl-bar" style="left:${left}%;width:${w}%;background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)}"
@@ -4015,6 +4111,7 @@ function openHabitModal(id) {
     ? { color: h.color || PALETTE[1], icon: h.icon || '', times: habitTimes(h).slice(), days: habitDays(h).slice() }
     : { color: PALETTE[1], icon: '', times: ['08:00'], days: [1, 2, 3, 4, 5, 6, 0] };
   $('habitName').value = h ? h.name : '';
+  $('habitTrackHealth').checked = !!(h && h.trackHealth);
   renderHabitTimes();
   renderHabitDows();
   renderHabitColor();
@@ -4059,7 +4156,7 @@ $('habitAddTime') && ($('habitAddTime').onclick = () => { habitDraft.times.push(
 function saveHabit() {
   const name = $('habitName').value.trim();
   if (!name) { $('habitName').focus(); return; }
-  const data = { name, times: habitDraft.times.slice().sort(), days: habitDraft.days.slice().sort(), color: habitDraft.color, icon: habitDraft.icon };
+  const data = { name, times: habitDraft.times.slice().sort(), days: habitDraft.days.slice().sort(), color: habitDraft.color, icon: habitDraft.icon, trackHealth: $('habitTrackHealth').checked };
   if (editingHabit) Object.assign(state.habits.find(x => x.id === editingHabit), data);
   else state.habits.push({ id: uid(), ...data });
   save(); closeModals(); render();
@@ -4244,6 +4341,341 @@ function eventPeopleHtml(e) {
   return `<div class="ev-people"><span class="ev-people-ico">${ICON_PEOPLE}</span>${esc(names.join(', '))}</div>`;
 }
 const ICON_PEOPLE = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M18 14a6 6 0 0 1 3 5"/></svg>';
+
+/* ============================================================
+   CRM (léger) — clients & contacts
+   ------------------------------------------------------------
+   Pas de nouvelle notion de données : on enrichit la table personnalisée
+   « Personnes » (celle qui sert déjà aux contacts liés aux événements/projets,
+   voir peopleTableId ci-dessus) de 3 colonnes utiles à un suivi commercial —
+   Statut, Dernier contact, Tags — plutôt que de dupliquer les contacts dans
+   un système parallèle. Les id de colonnes/options sont mémorisés dans state
+   (crmTableId/crmStatutProp/crmDateProp/crmTagsProp/crmStatutOpts) pour rester
+   valables même si elle renomme la table ou les colonnes ensuite.
+   ============================================================ */
+const CRM_STATUTS = { prospect: ['Prospect', '#eae8e4'], actif: ['Client actif', '#d3e8cf'], inactif: ['Inactif', '#f2d3d0'] };
+function ensureCrmSchema() {
+  let tid = state.crmTableId && (state.customTables || []).some(t => t.id === state.crmTableId) ? state.crmTableId : peopleTableId();
+  if (!tid) {
+    tid = uid();
+    state.customTables.push({ id: tid, name: 'Personnes' });
+    state.customRecords[tid] = [];
+  }
+  state.crmTableId = tid;
+  const schema = schemaOf(tid);
+  if (!state.crmStatutOpts) state.crmStatutOpts = {};
+  if (!schema.find(p => p.id === state.crmStatutProp)) {
+    const opts = Object.keys(CRM_STATUTS).map(k => {
+      const id = uid();
+      state.crmStatutOpts[k] = id;
+      return { id, label: CRM_STATUTS[k][0], color: CRM_STATUTS[k][1] };
+    });
+    const prop = { id: uid(), name: 'Statut', type: 'select', options: opts };
+    schema.push(prop);
+    state.crmStatutProp = prop.id;
+  }
+  if (!schema.find(p => p.id === state.crmDateProp)) {
+    const prop = { id: uid(), name: 'Dernier contact', type: 'date' };
+    schema.push(prop);
+    state.crmDateProp = prop.id;
+  }
+  if (!schema.find(p => p.id === state.crmTagsProp)) {
+    const prop = { id: uid(), name: 'Tags', type: 'text' };
+    schema.push(prop);
+    state.crmTagsProp = prop.id;
+  }
+  // colonne « type de relation » DÉJÀ créée par elle (Client/Amis/Famille/Collègue…) :
+  // jamais fabriquée ici, seulement repérée par nom, pour distinguer pro/perso dans une
+  // seule et même table plutôt que de la dupliquer.
+  const relProp = schema.find(p => p.id === state.crmRelationProp)
+    || schema.find(p => p.type === 'select' && /relation/i.test(p.name));
+  state.crmRelationProp = relProp ? relProp.id : null;
+  return tid;
+}
+const crmRecords = () => (state.customRecords[ensureCrmSchema()] || []);
+const crmStatutOf = rec => (rec.props || {})[state.crmStatutProp] || '';
+function crmStatutInfo(key) {
+  const tid = ensureCrmSchema();
+  const prop = schemaOf(tid).find(p => p.id === state.crmStatutProp);
+  const o = (prop.options || []).find(o => o.id === key);
+  return o || { label: 'Sans statut', color: '#eae8e4' };
+}
+// propriété « type de relation » (repérée, pas créée) : ses options servent de vues Pro/Perso
+function crmRelationProp() {
+  ensureCrmSchema();
+  if (!state.crmRelationProp) return null;
+  return schemaOf(state.crmTableId).find(p => p.id === state.crmRelationProp) || null;
+}
+const crmRelationOf = rec => state.crmRelationProp ? (rec.props || {})[state.crmRelationProp] || '' : '';
+function crmRelationInfo(key) {
+  const prop = crmRelationProp();
+  const o = prop && (prop.options || []).find(o => o.id === key);
+  return o || { label: 'Sans relation', color: '#eae8e4' };
+}
+function createCrmContact() {
+  const tid = ensureCrmSchema();
+  const id = uid();
+  const props = {};
+  if (state.crmStatutOpts.prospect) props[state.crmStatutProp] = state.crmStatutOpts.prospect;
+  state.customRecords[tid].push({ id, title: '', props });
+  if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
+  save();
+  openPage(tid, id);
+}
+window.createCrmContact = createCrmContact;
+
+function crmSpaceCfg() {
+  if (!state.crmSpace) state.crmSpace = { filter: 'tous', rel: 'tous' };
+  if (state.crmSpace.rel === undefined) state.crmSpace.rel = 'tous';
+  return state.crmSpace;
+}
+function setCrmFilter(f) { crmSpaceCfg().filter = f; save(); renderCrmSpace(); }
+window.setCrmFilter = setCrmFilter;
+function setCrmRel(v) { crmSpaceCfg().rel = v; save(); renderCrmSpace(); }
+window.setCrmRel = setCrmRel;
+
+function renderCrmSidebar() {
+  const box = $('crmList');
+  if (!box) return;
+  const tid = ensureCrmSchema();
+  const list = crmRecords().slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  if (!list.length) { box.innerHTML = `<div class="proj-empty">Aucun contact. Clique sur ＋ pour en ajouter un.</div>`; return; }
+  box.innerHTML = list.slice(0, 30).map(r => {
+    // la couleur de la relation (Client/Amis/Famille…) est plus parlante que le statut commercial
+    const rel = state.crmRelationProp ? crmRelationInfo(crmRelationOf(r)) : null;
+    const col = rel && rel.color ? rel.color : crmStatutInfo(crmStatutOf(r)).color;
+    return `<div class="crm-row" onclick="openPage('${tid}','${r.id}')" title="Ouvrir la fiche">
+      <span class="swatch" style="background:${dotOf(col)}"></span>
+      <div class="name">${esc(r.title || 'Sans nom')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCrmSpace() {
+  const tid = ensureCrmSchema();
+  const cfg = crmSpaceCfg();
+  const all = crmRecords();
+  const dateProp = state.crmDateProp, tagsProp = state.crmTagsProp;
+  const relProp = crmRelationProp();
+  const tab = (v, label) => `<span class="space-tab ${cfg.filter === v ? 'on' : ''}" onclick="setCrmFilter('${v}')">${label}</span>`;
+  const relTab = (v, label) => `<span class="space-tab ${cfg.rel === v ? 'on' : ''}" onclick="setCrmRel('${v}')">${label}</span>`;
+
+  let list = all;
+  if (cfg.filter !== 'tous') list = list.filter(r => crmStatutOf(r) === state.crmStatutOpts[cfg.filter]);
+  if (relProp && cfg.rel !== 'tous') list = list.filter(r => crmRelationOf(r) === cfg.rel);
+
+  // vues Pro/Perso : une par valeur de SA propriété « type de relation », plutôt que d'en deviner le sens
+  const relTabsHtml = relProp
+    ? `<span class="space-tabs">${relTab('tous', 'Tout')}${(relProp.options || []).map(o => relTab(o.id, o.label)).join('')}</span>`
+    : '';
+
+  let html = `<div class="space">
+    <div class="space-head">
+      <span class="space-title">CRM</span>
+      <span class="space-count">${all.length} contact${all.length > 1 ? 's' : ''}</span>
+      <span class="space-tabs">${tab('tous', 'Tous statuts')}${tab('prospect', 'Prospects')}${tab('actif', 'Actifs')}${tab('inactif', 'Inactifs')}</span>
+    </div>
+    ${relTabsHtml ? `<div class="space-head" style="margin-top:-6px">${relTabsHtml}</div>` : ''}
+    <div class="space-bar">
+      <span class="space-add" onclick="createCrmContact()">${ICON_PLUS} Nouveau contact</span>
+    </div>`;
+
+  if (!list.length) {
+    canvas.innerHTML = html + `<div class="space-empty">Aucun contact ne correspond à ces filtres pour l'instant.</div></div>`;
+    return;
+  }
+
+  html += `<div class="pcards">` + list.map(r => {
+    const st = crmStatutInfo(crmStatutOf(r));
+    const rel = relProp ? crmRelationInfo(crmRelationOf(r)) : null;
+    const last = (r.props || {})[dateProp];
+    const tags = (r.props || {})[tagsProp];
+    const sub = personSub(tid, r);
+    const bord = rel && rel.color ? rel.color : st.color;
+    return `<div class="pcard crm-card" style="border-left-color:${dotOf(bord)}" onclick="openPage('${tid}','${r.id}')">
+      <div class="pcard-name"><span class="person-av">${esc(initials(r.title))}</span>${esc(r.title || 'Sans nom')}</div>
+      ${sub ? `<div class="pcard-dates">${esc(sub)}</div>` : ''}
+      <div class="pcard-foot">${rel ? `<span class="grp-pill" style="background:${rel.color};color:${inkOn(rel.color)}">${esc(rel.label)}</span>` : ''}<span class="grp-pill" style="background:${st.color};color:${inkOn(st.color)}">${esc(st.label)}</span>${last ? `<span>dernier contact : ${esc(fmtDateShort(last))}</span>` : ''}</div>
+      ${tags ? `<div class="pcard-phase">${esc(tags)}</div>` : ''}
+    </div>`;
+  }).join('') + '</div></div>';
+  canvas.innerHTML = html;
+}
+
+/* ============================================================
+   SUIVI SANTÉ (sommeil, humeur, cycle)
+   ------------------------------------------------------------
+   Une entrée par jour (state.healthLogs, unique par date). Remplir même
+   partiellement vaut mieux que ne pas remplir du tout — pensé pour un suivi
+   de bipolarité où la régularité compte plus que l'exhaustivité. Échelle
+   d'humeur symétrique dépression ↔ stable ↔ hypomanie (plutôt qu'un simple
+   bien/pas bien) pour repérer les deux sens de la variation, avec une case
+   « règles ce jour » à côté pour chercher des liens avec le cycle.
+   ============================================================ */
+const MOOD_SCALE = [
+  { v: -3, label: 'Dépression forte', color: '#92a8d1' },
+  { v: -2, label: 'Dépression', color: '#aebfdb' },
+  { v: -1, label: 'Un peu bas', color: '#cdd6e8' },
+  { v: 0, label: 'Stable', color: '#d3e8cf' },
+  { v: 1, label: 'Un peu haut', color: '#f6dfb5' },
+  { v: 2, label: 'Hypomanie', color: '#eec089' },
+  { v: 3, label: 'Hypomanie forte', color: '#e2985e' },
+];
+const moodInfo = v => MOOD_SCALE.find(m => m.v === v);
+const healthLogFor = date => (state.healthLogs || []).find(h => h.date === date);
+function healthUpsert(date, patch) {
+  if (!state.healthLogs) state.healthLogs = [];
+  let log = healthLogFor(date);
+  if (!log) { log = { id: uid(), date, mood: null, sleepHours: null, cycle: false, note: '' }; state.healthLogs.push(log); }
+  Object.assign(log, patch);
+  save();
+}
+// jour actuellement affiché/modifié dans l'espace (pas persisté : on revient à aujourd'hui à chaque ouverture)
+let healthEditDate = ymd(new Date());
+function setHealthMood(v) { healthUpsert(healthEditDate, { mood: v }); renderHealthSpace(); renderHealthSidebar(); }
+window.setHealthMood = setHealthMood;
+function setHealthSleep(v) { healthUpsert(healthEditDate, { sleepHours: v === '' ? null : Number(v) }); renderHealthSpace(); }
+window.setHealthSleep = setHealthSleep;
+function setHealthCycle(v) { healthUpsert(healthEditDate, { cycle: v }); renderHealthSpace(); }
+window.setHealthCycle = setHealthCycle;
+function setHealthNote(v) { healthUpsert(healthEditDate, { note: v }); }
+window.setHealthNote = setHealthNote;
+function setHealthEditDate(v) { healthEditDate = v || ymd(new Date()); renderHealthSpace(); }
+window.setHealthEditDate = setHealthEditDate;
+function healthGoToday() { setHealthEditDate(ymd(new Date())); }
+window.healthGoToday = healthGoToday;
+
+// aperçu dans la barre latérale : 7 derniers jours, un point coloré par jour (comme les habitudes en vue mois)
+function renderHealthSidebar() {
+  const box = $('healthPreview');
+  if (!box) return;
+  const days = [...Array(7)].map((_, i) => ymd(addDays(new Date(), -(6 - i))));
+  box.innerHTML = `<div class="health-mini">` + days.map(ds => {
+    const log = healthLogFor(ds);
+    const m = log && log.mood != null ? moodInfo(log.mood) : null;
+    return `<span class="health-dot" style="background:${m ? dotOf(m.color) : 'var(--border-strong)'}" title="${esc(fmtDateShort(ds))}${m ? ' · ' + esc(m.label) : ' · pas renseigné'}"></span>`;
+  }).join('') + `</div>`;
+}
+
+// petit graphique SVG : humeur (ligne + points), sommeil (barres), cycle (points), sur les N derniers jours
+// habitudes cochées « à suivre dans le Suivi santé » (ex. traitement matin/soir),
+// occurrences prévues pour une date donnée — réutilise le pointage des Habitudes,
+// aucune double saisie.
+function healthTrackedHabitsOn(dateStr) {
+  return habitsOn(parseYmd(dateStr)).filter(occ => occ.habit.trackHealth);
+}
+// proportion prise ce jour-là (null = rien de prévu ce jour-là)
+function healthMedRatio(dateStr) {
+  const occs = healthTrackedHabitsOn(dateStr);
+  if (!occs.length) return null;
+  const done = occs.filter(o => habitIsDone(o.habit.id, dateStr, o.time)).length;
+  return done / occs.length;
+}
+
+function healthChartHtml(n) {
+  const days = [...Array(n)].map((_, i) => ymd(addDays(new Date(), -(n - 1 - i))));
+  const W = 620, x0 = 10, x1 = 610, step = (x1 - x0) / (n - 1);
+  const yMood = v => 104 - (v + 3) * 15;   // échelle -3..3 → 104..14 px
+  const xAt = i => x0 + i * step;
+
+  let grid = '';
+  for (let g = -3; g <= 3; g++) grid += `<line x1="${x0}" y1="${yMood(g)}" x2="${x1}" y2="${yMood(g)}" class="hc-grid ${g === 0 ? 'hc-grid-mid' : ''}"/>`;
+
+  const pts = days.map((d, i) => {
+    const log = healthLogFor(d);
+    return (log && log.mood != null) ? { x: xAt(i), y: yMood(log.mood), color: moodInfo(log.mood).color, d } : null;
+  });
+  // relie les points consécutifs connus : un jour sans donnée coupe le trait plutôt que de l'interpoler
+  let path = '', seg = [];
+  pts.forEach((p, i) => {
+    if (p) seg.push(`${p.x},${p.y}`);
+    if (!p || i === pts.length - 1) { if (seg.length > 1) path += `<polyline points="${seg.join(' ')}" class="hc-line"/>`; seg = []; }
+  });
+  const dots = pts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="2.6" fill="${dotOf(p.color)}"><title>${esc(fmtDateShort(p.d))}</title></circle>`).join('');
+
+  const bars = days.map((d, i) => {
+    const log = healthLogFor(d);
+    if (!log || log.sleepHours == null) return '';
+    const h = Math.max(2, Math.min(1, log.sleepHours / 10) * 34);
+    return `<rect x="${xAt(i) - 2.5}" y="${150 - h}" width="5" height="${h}" rx="1.5" class="hc-bar"><title>${esc(fmtDateShort(d))} · ${log.sleepHours} h</title></rect>`;
+  }).join('');
+
+  const cycles = days.map((d, i) => {
+    const log = healthLogFor(d);
+    if (!log || !log.cycle) return '';
+    return `<circle cx="${xAt(i)}" cy="164" r="2.6" class="hc-cycle"><title>${esc(fmtDateShort(d))} · règles</title></circle>`;
+  }).join('');
+
+  // traitement : plein = tout pris, anneau = pris en partie, vide = rien pris ce jour prévu
+  const PRIO_LIKE = { full: '#7ba36f', partial: '#cfa055', empty: '#d98a8a' };
+  const meds = days.map((d, i) => {
+    const r = healthMedRatio(d);
+    if (r == null) return '';
+    const key = r === 1 ? 'full' : r === 0 ? 'empty' : 'partial';
+    const col = PRIO_LIKE[key];
+    return `<circle cx="${xAt(i)}" cy="176" r="2.4" class="hc-med" style="${key === 'full' ? `fill:${col}` : `fill:none;stroke:${col};stroke-width:1.3`}"><title>${esc(fmtDateShort(d))} · traitement ${Math.round(r * 100)} %</title></circle>`;
+  }).join('');
+
+  const labels = days.map((d, i) => {
+    if (i % 5 !== 0 && i !== n - 1) return '';
+    const dd = parseYmd(d);
+    return `<text x="${xAt(i)}" y="196" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} 204" class="health-chart" preserveAspectRatio="none">
+    ${grid}${path}${dots}${bars}${cycles}${meds}${labels}
+    <text x="2" y="17" class="hc-axis">Hypomanie</text>
+    <text x="2" y="107" class="hc-axis">Dépression</text>
+    <text x="2" y="119" class="hc-axis">Sommeil</text>
+    <text x="2" y="167" class="hc-axis">Cycle</text>
+    <text x="2" y="179" class="hc-axis">Traitement</text>
+  </svg>`;
+}
+
+function renderHealthSpace() {
+  const log = healthLogFor(healthEditDate) || {};
+  const isToday = healthEditDate === ymd(new Date());
+  const mood = log.mood;
+  const nbEntrees = (state.healthLogs || []).filter(h => h.mood != null || h.sleepHours != null).length;
+  const medOccs = healthTrackedHabitsOn(healthEditDate);
+
+  const moodPicker = MOOD_SCALE.map(m => `<button type="button" class="health-mood-btn ${mood === m.v ? 'on' : ''}"
+    style="${mood === m.v ? `background:${m.color};color:${inkOn(m.color)}` : ''}"
+    onclick="setHealthMood(${m.v})" title="${esc(m.label)}">${esc(m.label)}</button>`).join('');
+
+  const html = `<div class="space">
+    <div class="space-head">
+      <span class="space-title">Suivi santé</span>
+      <span class="space-count">${nbEntrees} entrée${nbEntrees > 1 ? 's' : ''}</span>
+    </div>
+
+    <div class="health-entry">
+      <div class="health-entry-head">
+        <span>${isToday ? "Aujourd'hui" : esc(fmtDateLong(healthEditDate))}</span>
+        <input type="date" value="${healthEditDate}" max="${ymd(new Date())}" onchange="setHealthEditDate(this.value)">
+        ${!isToday ? `<span class="space-tab" onclick="healthGoToday()">Revenir à aujourd'hui</span>` : ''}
+      </div>
+      ${medOccs.length ? `<div class="health-field-row" style="margin-bottom:14px">
+        <label>Traitement</label>
+        ${medOccs.map(occ => habitChip(occ, healthEditDate)).join('')}
+      </div>` : ''}
+      <div class="health-mood-picker">${moodPicker}</div>
+      <div class="health-field-row">
+        <label>Sommeil (heures)</label>
+        <input type="number" step="0.5" min="0" max="24" value="${log.sleepHours ?? ''}" onchange="setHealthSleep(this.value)" placeholder="ex : 7">
+        <label class="health-check"><input type="checkbox" ${log.cycle ? 'checked' : ''} onchange="setHealthCycle(this.checked)"> Règles ce jour</label>
+      </div>
+      <textarea class="health-note" placeholder="Note libre (facultatif)…" onchange="setHealthNote(this.value)">${esc(log.note || '')}</textarea>
+    </div>
+
+    <div class="health-chart-wrap">
+      <div class="space-sort-lbl">30 derniers jours</div>
+      ${healthChartHtml(30)}
+    </div>
+  </div>`;
+  canvas.innerHTML = html;
+}
+
 const folderLabelOf = id => id && folderById(id) ? folderById(id).name : 'Aucun dossier';
 function updateNoteFieldButtons() {
   $('noteFolderBtn').textContent = folderLabelOf(noteDraftFolder);
@@ -8127,7 +8559,7 @@ $('signupBtn').onclick = () => doLogin(true);
 $('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(false); });
 // sur mobile, choisir un élément de la barre latérale referme le tiroir
 document.querySelector('.sidebar').addEventListener('click', e => {
-  if (isMobile() && e.target.closest('.nav-label, .cat-row, .proj-row, .note-row, .habit-row, .filter-tabs, .mini-day')) closeDrawer();
+  if (isMobile() && e.target.closest('.nav-label, .cat-row, .proj-row, .note-row, .habit-row, .crm-row, .filter-tabs, .mini-day')) closeDrawer();
 });
 $('hexInput').onchange = e => {
   const c = e.target.value;
@@ -8178,7 +8610,7 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes' };
+const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
@@ -8212,6 +8644,7 @@ $('deleteHabitBtn').onclick = () => { if (editingHabit) deleteHabit(editingHabit
 $('habitIconBtn').onclick = () => openIconPicker('habitDraft', null);
 
 $('addNoteBtn').onclick = e => { e.stopPropagation(); openNote(); };
+$('addCrmBtn').onclick = e => { e.stopPropagation(); if (!state.navOpen.crm) toggleNavSection('crm'); createCrmContact(); };
 $('saveNoteBtn').onclick = saveNote;
 $('deleteNoteBtn').onclick = () => { if (editingNote) deleteNote(editingNote); };
 $('noteZoomBtn').onclick = toggleNoteDoc;
