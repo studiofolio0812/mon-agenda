@@ -369,14 +369,19 @@
     font-size: 14px; line-height: 1.6; color: var(--text); }
   .note-body:focus { outline: none; border-color: var(--accent); }
   .note-body ul { padding-left: 22px; margin: 6px 0; }
+  /* la puce (ou la flèche d'un menu dépliant) prend la couleur posée au début du
+     texte de sa ligne, via la variable --mk calculée par nbSyncMarkerColors —
+     ces deux règles avaient été oubliées lors de l'intégration du 24/07. */
+  .note-body li::marker, .note-card-body li::marker { color: var(--mk, currentColor); }
+  .note-body summary::marker, .note-card-body summary::marker { color: var(--mk, currentColor); }
   /* zone encadrée / surlignée dans une note (éditeur ET tuile) */
   .note-box { border: 1.5px solid var(--border-strong); border-radius: 6px; padding: 1px 6px; }
   /* liste à cocher — styles partagés par l'éditeur et les tuiles de l'espace Notes */
   .note-todo { list-style: none; padding-left: 2px; margin: 6px 0; }
   .note-todo li { position: relative; padding-left: 26px; margin: 3px 0; }
   .note-todo li::before { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px;
-    border: 1.5px solid var(--border-strong); border-radius: 4px; background: var(--surface); }
-  .note-todo li.done::before { content: '✓'; background: var(--accent); border-color: var(--accent);
+    border: 1.5px solid var(--mk, var(--border-strong)); border-radius: 4px; background: var(--surface); }
+  .note-todo li.done::before { content: '✓'; background: var(--mk, var(--accent)); border-color: var(--mk, var(--accent));
     color: #fff; font-size: 12px; line-height: 15px; text-align: center; }
   .note-todo li.done { color: var(--text-faint); text-decoration: line-through; }
   /* étoile favori (en-tête d'éditeur, cartes, listes) */
@@ -834,7 +839,10 @@
   .bl-wrap { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 10px; }
   .bl-chart-box { flex: 1 1 440px; min-width: 300px; }
   .bl-donut-box { flex: 0 0 220px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .bl-bars { width: 100%; height: auto; }
+  /* hauteur fixe plutôt que "auto" : avec un viewBox très large en vue Mois (~30 barres),
+     "auto" calcule la hauteur depuis le ratio largeur/hauteur du viewBox et écrase le
+     graphique en une bande plate — signalé le 2026-07-25. */
+  .bl-bars { width: 100%; height: 260px; }
   .bl-grid { stroke: var(--border); stroke-width: 1; }
   .bl-axis { font-size: 9.5px; fill: var(--text-faint); }
   .bl-donut { width: 148px; height: 148px; }
@@ -844,6 +852,13 @@
   .bl-legend-row { display: flex; align-items: center; gap: 8px; }
   .bl-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
   .bl-legend-val { margin-left: auto; color: var(--text-faint); white-space: nowrap; }
+  .bl-toggle { display: inline-flex; flex: none; width: 14px; height: 14px; align-items: center; justify-content: center;
+    border-radius: 4px; color: var(--text-faint); cursor: pointer; transition: transform .15s; }
+  .bl-toggle:hover { background: var(--border); color: inherit; }
+  .bl-toggle.open { transform: rotate(90deg); }
+  .bl-toggle-gap { width: 14px; flex: none; }
+  .bl-legend-sub { padding-left: 4px; color: var(--text-faint); }
+  .bl-legend-sub .bl-legend-dot { width: 7px; height: 7px; }
 
   .grp-head { font-size: 11.5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
     color: var(--text-faint); margin: 22px 0 2px; display: flex; align-items: center; gap: 8px; }
@@ -5152,12 +5167,46 @@ function evMinutes(e) {
   const mins = (eh * 60 + em) - (sh * 60 + sm);
   return mins > 0 ? mins : 0;
 }
-// à quel groupe rattacher un événement pour le bilan : son projet en priorité, sinon son agenda
+// à quel groupe rattacher un événement pour le bilan : son projet en priorité, sinon son agenda.
+// Un événement posé sur une LISTE (sous-agenda) remonte au niveau de l'agenda parent : le détail
+// par liste se consulte via le toggle de la légende (bilanSubBreakdown), pas en groupe séparé.
 function bilanGroupOf(e) {
   if (e.projectId) { const p = projById(e.projectId); if (p) return { key: 'p:' + p.id, label: p.name, color: p.color }; }
-  if (e.catId) { const c = catById(e.catId); if (c) return { key: 'c:' + c.id, label: c.name, color: catColor(c) }; }
+  if (e.catId) {
+    const c = catById(e.catId);
+    if (c) { const top = catParent(c) || c; return { key: 'c:' + top.id, label: top.name, color: catColor(top) }; }
+  }
   return { key: 'none', label: 'Sans agenda', color: '#cfcac2' };
 }
+// répartition par sous-agenda (liste) à l'intérieur d'un agenda parent, sur la période affichée —
+// alimente le toggle de la légende, pour ne pas noyer le bilan global dans le détail par défaut
+function bilanSubBreakdown(days, topCatId) {
+  const rows = new Map();
+  days.forEach(k => {
+    timedEventsOn(parseYmd(k)).forEach(e => {
+      if (e.projectId) return;   // déjà compté dans son projet, pas dans un agenda
+      const mins = evMinutes(e);
+      if (!mins || !e.catId) return;
+      const c = catById(e.catId);
+      if (!c) return;
+      const top = catParent(c) || c;
+      if (top.id !== topCatId) return;
+      const subKey = c.parentId ? c.id : '__direct__';
+      const label = c.parentId ? c.name : `Directement sur ${top.name}`;
+      if (!rows.has(subKey)) rows.set(subKey, { label, color: catColor(c), total: 0 });
+      rows.get(subKey).total += mins;
+    });
+  });
+  return [...rows.values()].sort((a, b) => b.total - a.total);
+}
+// jeu de clés de groupe repliées/dépliées dans la légende du Bilan (le temps de la session)
+const bilanExpanded = new Set();
+function bilanToggleExpand(key, ev) {
+  ev && ev.stopPropagation();
+  bilanExpanded.has(key) ? bilanExpanded.delete(key) : bilanExpanded.add(key);
+  renderBilanSpace();
+}
+window.bilanToggleExpand = bilanToggleExpand;
 // totaux (par groupe, et par groupe+jour) sur la période affichée
 function bilanData() {
   const days = bilanDays();
@@ -5167,7 +5216,7 @@ function bilanData() {
       const mins = evMinutes(e);
       if (!mins) return;
       const g = bilanGroupOf(e);
-      if (!groups.has(g.key)) groups.set(g.key, { label: g.label, color: g.color, total: 0, perDay: {} });
+      if (!groups.has(g.key)) groups.set(g.key, { key: g.key, label: g.label, color: g.color, total: 0, perDay: {} });
       const row = groups.get(g.key);
       row.total += mins;
       row.perDay[k] = (row.perDay[k] || 0) + mins;
@@ -5243,11 +5292,26 @@ function renderBilanSpace() {
   const joursActifs = days.filter(k => groups.some(g => g.perDay[k])).length;
   const moy = joursActifs ? totalMin / joursActifs : 0;
 
-  const legend = groups.length ? groups.map(g => `<div class="bl-legend-row">
+  const legend = groups.length ? groups.map(g => {
+    const topId = g.key.startsWith('c:') ? g.key.slice(2) : null;
+    const peutDeplier = topId && hasSubCats(topId);
+    const deplie = peutDeplier && bilanExpanded.has(g.key);
+    const toggle = peutDeplier
+      ? `<span class="bl-toggle ${deplie ? 'open' : ''}" onclick="bilanToggleExpand('${g.key}',event)" title="${deplie ? 'Voir le total de l’agenda' : 'Voir la répartition par liste'}">${ICON_CHEV}</span>`
+      : '<span class="bl-toggle-gap"></span>';
+    const sousLignes = deplie ? bilanSubBreakdown(days, topId).map(s => `<div class="bl-legend-row bl-legend-sub">
+        <span class="bl-toggle-gap"></span>
+        <span class="bl-legend-dot" style="background:${dotOf(s.color)}"></span>
+        <span>${esc(s.label)}</span>
+        <span class="bl-legend-val">${fmtMinutes(s.total)} · ${Math.round((s.total / g.total) * 100)}%</span>
+      </div>`).join('') : '';
+    return `<div class="bl-legend-row">
+      ${toggle}
       <span class="bl-legend-dot" style="background:${dotOf(g.color)}"></span>
       <span>${esc(g.label)}</span>
       <span class="bl-legend-val">${fmtMinutes(g.total)} · ${Math.round((g.total / totalMin) * 100)}%</span>
-    </div>`).join('') : `<div class="proj-empty">Aucun créneau chronométré sur cette période. Ajoute une heure de début et de fin à tes événements pour les voir ici.</div>`;
+    </div>${sousLignes}`;
+  }).join('') : `<div class="proj-empty">Aucun créneau chronométré sur cette période. Ajoute une heure de début et de fin à tes événements pour les voir ici.</div>`;
 
   const html = `<div class="space">
     <div class="space-head">
