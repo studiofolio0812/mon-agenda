@@ -548,8 +548,11 @@
     word-break: break-word; font-size: .95em; }
   .note-table.nt-head tr:first-child td { background: var(--surface-2); font-weight: 600; }
   /* ---- Pilules : petites étiquettes colorées, dans les tableaux ou ailleurs ---- */
-  .note-pill { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: .85em;
+  .note-pill { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: .85em; border: 1.5px solid transparent;
     font-weight: 600; line-height: 1.7; }
+  /* ---- Style code en ligne : chasse fixe + petit fond (gris par défaut, ou une teinte BOX_TINTS), sans lisere ---- */
+  .note-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em;
+    padding: 1px 5px; border-radius: 4px; background: rgba(120, 119, 116, .13); }
   /* petite icône textuelle dans les menus (T, H1, •…) */
   .sm-ico { width: 20px; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-soft); flex: none; }
 
@@ -2087,6 +2090,7 @@
     <button type="button" class="nb-btn" id="nbLink" title="Ajouter un lien">🔗</button>
     <button type="button" class="nb-btn" id="nbBox" title="Encadrer">▢</button>
     <button type="button" class="nb-btn" id="nbPill" title="Pilule colorée">⬭</button>
+    <button type="button" class="nb-btn" id="nbCode" title="Style code">&lt;/&gt;</button>
     <button type="button" class="nb-btn" id="nbClear" title="Tout enlever (revenir au texte simple)">⌫</button>
   </div>
   <div class="nb-link hidden">
@@ -4769,13 +4773,8 @@ window.toggleProjRow = toggleProjRow;
 function projTimelineHtml(list) {
   const dated = list.filter(projScheduled);
   const undated = list.filter(p => !projScheduled(p));
-  /* Tâches datées sans projet. Une fois TERMINÉES on les retire : ce sont des
-     tâches de passage (« faire les courses ») qui, cumulées, rendraient cette
-     liste interminable. Les tâches d'un projet, elles, restent : leur historique
-     fait partie du projet. */
-  const orphelines = topLevelTasks(state.tasks.filter(t => taskDated(t) && !projById(t.projectId) && !t.done));
 
-  if (!dated.length && !orphelines.length) {
+  if (!dated.length) {
     return `<div class="space-empty">Aucun projet n'a de dates pour l'instant.<br>
       Ouvre un projet et donne-lui une date de début pour le voir apparaître ici.</div>`;
   }
@@ -4916,11 +4915,6 @@ function projTimelineHtml(list) {
     if (!plie) h += taches.map(t => ligneTache(t, 1)).join('');
     return h;
   }).join('');
-
-  if (orphelines.length) {
-    html += `<div class="tl-sep">Tâches sans projet</div>`
-      + orphelines.sort((a, b) => taskFrom(a).localeCompare(taskFrom(b))).map(t => ligneTache(t, 0)).join('');
-  }
 
   html += '</div>';
   if (undated.length) {
@@ -6943,8 +6937,8 @@ window.applyBlock = applyBlock;
 /* ---- Encadrés colorés : contour de la teinte choisie + fond assorti en transparence.
    Le choix se fait d'un clic (sans glisser) sur la poignée ⋮⋮ du bloc. ---- */
 const BOX_TINTS = [
-  ['Bleu', '#337EA9'], ['Vert', '#448361'], ['Jaune', '#CB912F'], ['Orange', '#D9730D'],
-  ['Rouge', '#D44C47'], ['Rose', '#C14C8A'], ['Violet', '#9065B0'], ['Marron', '#976D57'],
+  ['Bleu', '#1E88C7'], ['Sarcelle', '#1B9C8E'], ['Vert', '#2F9E5B'], ['Jaune', '#F0A934'],
+  ['Orange', '#EF6C1B'], ['Rouge', '#E0433D'], ['Rose', '#E0508F'], ['Violet', '#8452C7'], ['Marron', '#A0693F'],
 ];
 function nbSetBoxTint(el, v) {
   if (v === 'none') {
@@ -7002,7 +6996,7 @@ function ntMakePill(color) {
   const pill = n && n.closest ? n.closest('.note-pill') : null;
   if (pill && $('noteBody').contains(pill)) {
     if (!color) { const p = pill.parentNode; while (pill.firstChild) p.insertBefore(pill.firstChild, pill); pill.remove(); }
-    else pill.style.background = color + '33';
+    else { pill.style.background = color + '33'; pill.style.border = '1.5px solid ' + color; }
     sel.removeAllRanges(); noteAutosave(); return;
   }
   if (!color || sel.isCollapsed) return;
@@ -7010,6 +7004,30 @@ function ntMakePill(color) {
   const span = document.createElement('span');
   span.className = 'note-pill';
   span.style.background = color + '33';
+  span.style.border = '1.5px solid ' + color;
+  try { range.surroundContents(span); }
+  catch (e) { span.appendChild(range.extractContents()); range.insertNode(span); }
+  sel.removeAllRanges();
+  noteAutosave();
+}
+/* Style code en ligne : même logique que la pilule (fond en teinte BOX_TINTS ou gris par
+   défaut), mais sans bordure — la couleur du texte reste libre (nbColor) par-dessus. */
+function ntMakeCode(v) {
+  $('noteBody').focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  let n = sel.anchorNode; if (n && n.nodeType === 3) n = n.parentNode;
+  const code = n && n.closest ? n.closest('.note-code') : null;
+  if (code && $('noteBody').contains(code)) {
+    if (v === 'none') { const p = code.parentNode; while (code.firstChild) p.insertBefore(code.firstChild, code); code.remove(); }
+    else code.style.background = v === 'default' ? '' : v + '33';
+    sel.removeAllRanges(); noteAutosave(); return;
+  }
+  if (v === 'none' || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const span = document.createElement('span');
+  span.className = 'note-code';
+  if (v !== 'default') span.style.background = v + '33';
   try { range.surroundContents(span); }
   catch (e) { span.appendChild(range.extractContents()); range.insertNode(span); }
   sel.removeAllRanges();
@@ -11364,6 +11382,19 @@ $('nbPill').addEventListener('click', () => {
     ntMakePill(v === 'none' ? null : v);
   });
 });
+$('nbCode').addEventListener('mousedown', e => e.preventDefault());
+$('nbCode').addEventListener('click', () => {
+  const s = window.getSelection(); if (!s.rangeCount) return;
+  const saved = s.getRangeAt(0).cloneRange();
+  openStyledMenu($('nbCode'), [{ label: 'Style code', items: [
+    { value: 'none', label: 'Retirer le style code', dot: '' },
+    { value: 'default', label: 'Gris (défaut)', dot: '#787774' },
+    ...BOX_TINTS.map(([n, c]) => ({ value: c, label: n, dot: c })),
+  ] }], '', v => {
+    const s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(saved);
+    ntMakeCode(v);
+  });
+});
 /* ---- Menu dépliant : le titre s'édite au clic, la flèche (à gauche) replie/déplie ---- */
 $('noteBody').addEventListener('click', e => {
   const sm = e.target.closest ? e.target.closest('summary') : null;
@@ -11454,6 +11485,16 @@ $('noteBody').addEventListener('keydown', e => {
     const blk = caretBlock();
     const p = document.createElement('p'); p.innerHTML = '<br>';
     if (blk && blk.parentNode) blk.after(p); else $('noteBody').appendChild(p);
+    caretToEnd(p);
+    return;
+  }
+  // Entrée dans un encadré de bloc = en sortir aussi (sinon le navigateur duplique le
+  // bloc coloré à chaque saut de ligne, ce qui donne des encadrés vides en cascade)
+  const blkCallout = caretBlock();
+  if (blkCallout && blkCallout.classList && blkCallout.classList.contains('note-callout')) {
+    e.preventDefault();
+    const p = document.createElement('p'); p.innerHTML = '<br>';
+    blkCallout.after(p);
     caretToEnd(p);
   }
 });
