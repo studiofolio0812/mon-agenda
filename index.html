@@ -813,9 +813,8 @@
      aérés que la barre latérale : c'est un endroit où l'on s'installe, pas une liste
      de coin d'écran. */
   .space { padding: 22px 26px 48px; max-width: 920px; margin: 0 auto; }
-  /* La chronologie a besoin de toute la largeur : les libellés étaient tronqués
-     alors que les côtés de l'écran restaient vides. Les autres vues gardent leur
-     colonne centrée, plus confortable à lire. */
+  /* Les espaces denses (Mes tâches, Projets, Bilan) utilisent toute la largeur :
+     les côtés de l'écran restaient vides alors que le contenu était à l'étroit. */
   .space.wide { max-width: none; }
   .space-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   .space-title { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
@@ -882,6 +881,17 @@
   .grp-band .sub-chev { color: inherit; width: 15px; }
   .grp-band-row td { padding: 0; border: 0; background: none; }
   .grp-band-row:hover { background: none; }
+  /* poignée de glisser-déposer à gauche des lignes de la vue liste */
+  .tbl-th-drag { width: 24px; padding: 0; }
+  td.tbl-th-drag { text-align: center; }
+  .row-drag { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 22px;
+    border-radius: 5px; color: var(--text-faint); opacity: 0; cursor: grab; transition: opacity .12s, background .12s; }
+  .tbl-row:hover .row-drag { opacity: .55; }
+  .row-drag:hover { opacity: 1; background: var(--border); color: var(--text); }
+  .row-drag:active { cursor: grabbing; }
+  .tbl-row.dragging { opacity: .4; }
+  .tbl-row.grp-over td { background: var(--accent-soft); }
+  .grp-band-row.grp-over .grp-band { box-shadow: inset 0 0 0 2px var(--accent); }
   .tbl-table { width: 100%; border-collapse: collapse; margin: 0 0 6px; }
   .tbl-table thead th { text-align: left; font-size: 10.5px; font-weight: 500; color: var(--text-faint);
     text-transform: uppercase; letter-spacing: .03em; padding: 3px 8px 6px; white-space: nowrap; }
@@ -1049,6 +1059,58 @@
   .hc-label { font-size: 9.5px; fill: var(--text-faint); }
   .hc-axis { font-size: 9.5px; fill: var(--text-faint); }
 
+  /* ---- Images (fiches + notes) ---- */
+  .pd-imgs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+  .pd-img { position: relative; }
+  .pd-img img { width: 118px; height: 118px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; display: block; }
+  .pd-img-del { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(30,27,24,.55); color: #fff; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; opacity: 0; transition: opacity .12s; padding: 0; }
+  .pd-img:hover .pd-img-del { opacity: 1; }
+  .note-img { max-width: min(440px, 100%); border-radius: 8px; display: block; margin: 8px 0; }
+  .note-card-body .note-img { max-height: 140px; width: auto; max-width: 100%; }
+  #imgLightbox { position: fixed; inset: 0; background: rgba(20,18,16,.78); display: flex; align-items: center; justify-content: center; z-index: 400; cursor: zoom-out; }
+  #imgLightbox img { max-width: 92vw; max-height: 92vh; border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+
+  /* ---- Images de notes v2 : figures, rangees, toolbar, rognage, jauge ---- */
+  .note-fig { position: relative; margin: 8px 0; width: min(440px, 100%); max-width: 100%; }
+  .note-fig[data-align="center"] { margin-left: auto; margin-right: auto; }
+  .note-fig[data-align="right"] { margin-left: auto; }
+  .note-fig .note-img { width: 100%; max-width: 100%; margin: 0; display: block; border-radius: 8px; cursor: pointer; }
+  .note-fig.sel { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+  .note-figcap { font-size: 12px; color: var(--text-faint); margin-top: 4px; outline: none; min-height: 15px; }
+  .note-figcap[data-cap-align="center"] { text-align: center; }
+  .note-figcap[data-cap-align="right"] { text-align: right; }
+  .note-figcap:empty::before { content: attr(data-ph); opacity: .6; }
+  .fig-h { position: absolute; top: calc(50% - 21px); width: 6px; height: 42px; border-radius: 4px; background: rgba(30,27,24,.55); border: 1px solid rgba(255,255,255,.75); opacity: 0; cursor: ew-resize; transition: opacity .12s; z-index: 3; touch-action: none; }
+  .fig-h-l { left: 6px; } .fig-h-r { right: 6px; }
+  .note-fig:hover .fig-h { opacity: 1; }
+  .note-imgrow { display: flex; gap: 10px; margin: 8px 0; align-items: flex-start; }
+  .note-imgrow .note-fig { margin: 0; flex: none; min-width: 0; }
+  .note-fig.drop-l { box-shadow: -4px 0 0 0 var(--accent); }
+  .note-fig.drop-r { box-shadow: 4px 0 0 0 var(--accent); }
+  #figToolbar { position: fixed; z-index: 90; display: flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 4px; box-shadow: 0 8px 28px rgba(0,0,0,.16); }
+  #figToolbar.hidden { display: none; }
+  .ft-btn { border: none; background: none; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 12px; color: var(--text-soft); display: inline-flex; align-items: center; line-height: 1; white-space: nowrap; }
+  .ft-btn:hover { background: var(--surface-2); }
+  .ft-btn.on { color: var(--accent); background: var(--surface-2); }
+  .ft-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 3px; }
+  #cropOverlay { position: fixed; inset: 0; z-index: 420; background: rgba(20,18,16,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+  .crop-stage { position: relative; }
+  .crop-stage img { display: block; max-width: 86vw; max-height: 72vh; }
+  .crop-sel { position: absolute; border: 1.5px dashed #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); cursor: move; touch-action: none; }
+  .crop-hd { position: absolute; width: 13px; height: 13px; background: #fff; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.4); touch-action: none; }
+  .hd-nw { top: -7px; left: -7px; cursor: nwse-resize; } .hd-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+  .hd-ne { top: -7px; right: -7px; cursor: nesw-resize; } .hd-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+  .crop-btns { display: flex; gap: 10px; }
+  .pd-img-crop { position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(30,27,24,.55); color: #fff; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; opacity: 0; transition: opacity .12s; padding: 0; }
+  .pd-img:hover .pd-img-crop { opacity: 1; }
+  .store-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-soft); margin-bottom: 6px; }
+  .store-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .store-bar > div { height: 100%; background: var(--accent); border-radius: 4px; }
+  .note-card-body .note-fig { width: 100% !important; margin: 6px 0; }
+  .note-card-body .note-imgrow { gap: 6px; }
+  .note-card-body .note-img { max-height: 130px; object-fit: cover; }
+  .note-card-body .fig-h { display: none; }
+  .note-card-body .note-figcap { font-size: 11px; }
   /* ---- Icônes ---- */
   .lib-ico { flex: none; vertical-align: -2px; }
   .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
@@ -1421,12 +1483,13 @@
   .hidden-chip { font-size: 11.5px; color: var(--text-soft); border: 1px dashed var(--border); border-radius: 20px; padding: 3px 9px; }
   .hidden-chip:hover { border-color: var(--accent); color: var(--accent); }
   /* ---- Améliorations Notes : icônes, envoyer vers, sous-dossiers, masquage ---- */
-  .note-card-tools { position: absolute; top: 6px; right: 6px; display: flex; align-items: center; gap: 1px; z-index: 2; }
+  .note-card-tools { display: inline-flex; align-items: center; gap: 1px; }
+  .ncf-right { display: inline-flex; align-items: center; gap: 7px; }
   .note-card-tools .note-card-fav { position: static; top: auto; right: auto; }
   .note-card-tools .nc-btn { background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 3px; line-height: 0; display: inline-flex; opacity: 0; transition: opacity var(--dur) var(--ease); }
   .note-card:hover .nc-btn { opacity: 1; }
   .note-card-tools .nc-btn:hover { color: var(--accent); }
-  .note-card-title { display: flex; align-items: center; gap: 7px; padding-right: 62px; }
+  .note-card-title { display: flex; align-items: center; gap: 7px; padding-right: 0; }
   .note-card-title .nct-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nc-icon-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; display: inline-flex; align-items: center; line-height: 0; flex: none; transition: transform var(--dur) var(--ease); }
   .nc-icon-btn:hover { transform: scale(1.15); }
@@ -2257,6 +2320,7 @@
       <div id="notifBox"></div>
 
       <label style="margin-top:20px;">Données</label>
+      <div id="storageBox" style="margin:4px 0 10px;"></div>
       <div class="row-2">
         <button class="btn-ghost" id="exportBtn" style="flex:1;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Exporter</button>
         <button class="btn-ghost" id="importBtn" style="flex:1;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg> Importer</button>
@@ -3684,6 +3748,7 @@ function renderTasksSpace() {
   const doneCollapsed = !!state.tasksDoneCollapsed;
 
   const theadHtml = `<thead><tr>
+    <th class="tbl-th-drag"></th>
     <th class="tbl-th-check"></th>
     <th>Tâche</th>
     ${showProj ? '<th>Projet</th>' : ''}
@@ -3712,7 +3777,7 @@ function renderTasksSpace() {
     return `<td class="tbl-cell" onclick="tblOpenPrio('${t.id}',event)"><span class="prio-pill" style="background:${tblTint(PRIO_COLOR[pr], .2)};color:${dotOf(PRIO_COLOR[pr])}"><span class="pill-dot" style="background:${PRIO_COLOR[pr]}"></span>${PRIO_LABEL[pr]}</span></td>`;
   };
 
-  const ligne = (t, sub) => {
+  const ligne = (t, sub, gkey) => {
     const late = !t.done && t.due && t.due < today;
     const enfants = subtasksOf(t.id);
     const pr = enfants.length ? subProgress(t.id) : null;
@@ -3725,7 +3790,8 @@ function renderTasksSpace() {
         ? `<span class="sub-chev ${plie ? '' : 'open'}" onclick="toggleSubtasks('${t.id}',event)" title="${plie ? 'Afficher' : 'Masquer'} les sous-tâches">${ICON_CHEV}</span>`
         : (sub ? '' : `<span class="sub-chev-gap"></span>`))
       : '';
-    return `<tr class="tbl-row ${t.done ? 'is-done' : ''} ${sub ? 'sub' : ''}">
+    return `<tr class="tbl-row ${t.done ? 'is-done' : ''} ${sub ? 'sub' : ''}" ondragover="listGrpOver(event,this)" ondragleave="this.classList.remove('grp-over')" ondrop="listGrpDrop(event,'${gkey}',this)">
+      <td class="tbl-th-drag">${sub ? '' : `<span class="row-drag" draggable="true" ondragstart="listRowDragStart(event,'${t.id}',this)" ondragend="listRowDragEnd(this)" title="Glisser vers un autre groupe">${ICON_GRIP}</span>`}</td>
       <td class="tbl-th-check"><div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></div></td>
       <td class="tbl-title" onclick="openPage('tasks','${t.id}')"><span class="tbl-title-in">${chev}${iconOf(t, 'tasks')} ${repIco(t)}${esc(t.title)}${(showSub && retards) ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}${(showSub && pr) ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}</span></td>
       ${showProj ? projCell(t) : ''}
@@ -3736,7 +3802,7 @@ function renderTasksSpace() {
     </tr>`;
   };
 
-  const nCols = 2 + (showProj ? 1 : 0) + (showCat ? 1 : 0) + (showDue ? 1 : 0) + (showPrio ? 1 : 0) + customCols.length;
+  const nCols = 3 + (showProj ? 1 : 0) + (showCat ? 1 : 0) + (showDue ? 1 : 0) + (showPrio ? 1 : 0) + customCols.length;
 
   /* Une SEULE table pour toute la liste : les colonnes s'alignent d'un groupe à
      l'autre. Avant, une table par groupe dimensionnait ses colonnes indépendamment
@@ -3745,23 +3811,23 @@ function renderTasksSpace() {
   let rows = '';
   groups.forEach(g => {
     if (g.done) {
-      rows += `<tr class="grp-band-row"><td colspan="${nCols}"><div class="grp-band done-head" onclick="toggleTasksDone()" title="${doneCollapsed ? 'Afficher' : 'Replier'} les tâches terminées"><span class="sub-chev ${doneCollapsed ? '' : 'open'}">${ICON_CHEV}</span><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
+      rows += `<tr class="grp-band-row" ondragover="listGrpOver(event,this)" ondragleave="this.classList.remove('grp-over')" ondrop="listGrpDrop(event,'done',this)"><td colspan="${nCols}"><div class="grp-band done-head" onclick="toggleTasksDone()" title="${doneCollapsed ? 'Afficher' : 'Replier'} les tâches terminées"><span class="sub-chev ${doneCollapsed ? '' : 'open'}">${ICON_CHEV}</span><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
       if (doneCollapsed) return;
     } else {
       /* couleur de bande dérivée de g.pill (couleurs de statut personnalisables) : teinte
          claire en fond, version soutenue pour le texte. « En retard » garde sa teinte rouge. */
       const tinted = g.pill ? `style="background:${tblTint(g.pill, .16)};color:${dotOf(g.pill)}"` : '';
-      rows += `<tr class="grp-band-row"><td colspan="${nCols}"><div class="grp-band ${g.late ? 'late' : ''}" ${tinted}><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
+      rows += `<tr class="grp-band-row" ondragover="listGrpOver(event,this)" ondragleave="this.classList.remove('grp-over')" ondrop="listGrpDrop(event,'${g.key}',this)"><td colspan="${nCols}"><div class="grp-band ${g.late ? 'late' : ''}" ${tinted}><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
     }
 
     g.items.forEach(t => {
-      rows += ligne(t, false);
+      rows += ligne(t, false, g.key);
       if (showSub && !subCollapsed(t.id)) {
         // les sous-tâches suivent leur parent, filtrées comme le reste de la vue
         let enf = subtasksOf(t.id);
         if (cfg.filter === 'active') enf = enf.filter(x => !x.done);
         else if (cfg.filter === 'done') enf = enf.filter(x => x.done);
-        rows += enf.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).map(x => ligne(x, true)).join('');
+        rows += enf.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).map(x => ligne(x, true, g.key)).join('');
       }
     });
   });
@@ -3813,6 +3879,10 @@ function kbDrop(e, key, el) {
   const t = state.tasks.find(x => x.id === kbDragId);
   kbDragId = null;
   if (!t) return;
+  applyGroupDrop(t, key);
+}
+/* Assigne à la tâche la valeur du groupe visé : logique partagée entre le kanban et la vue liste. */
+function applyGroupDrop(t, key) {
   const mode = tasksSpaceCfg().groupBy;
   if (key === 'done') t.done = true;
   else {
@@ -3828,12 +3898,39 @@ function kbDrop(e, key, el) {
       else if (key === 'week') t.due = ymd(addDays(startOfWeek(new Date()), 6));
       else if (key === 'later') t.due = ymd(addDays(new Date(), 14));
       else if (key === 'nodate') { t.due = ''; t.dueTime = ''; }
-      // « En retard » ne se fabrique pas : la carte revient simplement à sa place
+      // « En retard » ne se fabrique pas : la tâche revient simplement à sa place
     }
   }
   save(); render();
 }
 window.kbDragStart = kbDragStart; window.kbDragOver = kbDragOver; window.kbDrop = kbDrop;
+
+/* ---- Vue liste : poignée à gauche de chaque ligne pour glisser une tâche vers un autre groupe ---- */
+const ICON_GRIP = '<svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden="true"><circle cx="2.5" cy="2.5" r="1.3"/><circle cx="7.5" cy="2.5" r="1.3"/><circle cx="2.5" cy="7" r="1.3"/><circle cx="7.5" cy="7" r="1.3"/><circle cx="2.5" cy="11.5" r="1.3"/><circle cx="7.5" cy="11.5" r="1.3"/></svg>';
+let listDragId = null;
+function listRowDragStart(e, id, handle) {
+  listDragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+  const row = handle.closest('tr');
+  if (row) { try { e.dataTransfer.setDragImage(row, 24, 14); } catch (err) {} row.classList.add('dragging'); }
+}
+function listRowDragEnd(handle) {
+  const row = handle.closest('tr');
+  if (row) row.classList.remove('dragging');
+  listDragId = null;
+  $$('.grp-over').forEach(el => el.classList.remove('grp-over'));
+}
+function listGrpOver(e, el) { if (!listDragId) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; el.classList.add('grp-over'); }
+function listGrpDrop(e, key, el) {
+  e.preventDefault(); el.classList.remove('grp-over');
+  const t = state.tasks.find(x => x.id === listDragId);
+  listDragId = null;
+  if (!t) return;
+  applyGroupDrop(t, key);
+}
+window.listRowDragStart = listRowDragStart; window.listRowDragEnd = listRowDragEnd;
+window.listGrpOver = listGrpOver; window.listGrpDrop = listGrpDrop;
 
 /* ---- Kanban : choix du regroupement et des propriétés affichées sur les cartes ---- */
 function kbGroupChoices() {
@@ -4211,7 +4308,7 @@ function renderProjectsSpace() {
   const list = state.projects.slice();
   const tab = (m, label) => `<span class="space-tab ${cfg.mode === m ? 'on' : ''}" onclick="setProjSpace('${m}')">${label}</span>`;
 
-  let html = `<div class="space ${cfg.mode === 'timeline' || cfg.mode === 'table' ? 'wide' : ''}">
+  let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Projets</span>
       <span class="space-count">${list.length} projet${list.length > 1 ? 's' : ''}</span>
@@ -5416,14 +5513,13 @@ function noteCardHtml(n) {
   const col = dotOf(n.color || '#eae8e4');
   const ico = (n.icon && ICON_LIB[n.icon]) ? '<span class="nc-ico-svg">' + iconSvg(n.icon, 16, col) + '</span>' : '<span class="nc-ico-dot" style="background:' + col + '"></span>';
   return `<div class="note-card" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${col}" onclick="openNote('${n.id}')">
-      <div class="note-card-tools">
+      <div class="note-card-title"><button class="nc-icon-btn" onclick="openNoteIconMenu('${n.id}',event,this)" title="Changer l'icône">${ico}</button><span class="nct-txt">${esc(n.title || 'Sans titre')}</span></div>
+      <div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>
+      <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="ncf-right"><span class="note-card-date">${esc(noteDateLabel(n))}</span><span class="note-card-tools">
         <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
         <button class="nc-btn" onclick="openNoteSendMenu('${n.id}',event,this)" title="Envoyer vers…">${ICON_SEND}</button>
         <button class="nc-btn" onclick="toggleNoteHidden('${n.id}',event)" title="Masquer cette tuile">${ICON_EYE}</button>
-      </div>
-      <div class="note-card-title"><button class="nc-icon-btn" onclick="openNoteIconMenu('${n.id}',event,this)" title="Changer l'icône">${ico}</button><span class="nct-txt">${esc(n.title || 'Sans titre')}</span></div>
-      <div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>
-      <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="note-card-date">${esc(noteDateLabel(n))}</span></div>
+      </span></span></div>
     </div>`;
 }
 
@@ -6048,6 +6144,7 @@ function openNote(id, presetFolder) {
   // Entrée crée un <p> (pas un <div>/<br>) : les commandes de bloc restent au bon endroit
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   ensureNoteBlocks();
+  upgradeNoteImages();
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
   noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : n.taskId ? 't:' + n.taskId : '') : '';
@@ -6345,6 +6442,7 @@ const SLASH_BLOCKS = [
   { k: 'hr',      n: 'Séparateur',       h: 'Trait de séparation' },
   { k: 'toggle',  n: 'Menu dépliant',    h: 'Contenu repliable' },
   { k: 'table',   n: 'Tableau',          h: 'Tableau simple' },
+  { k: 'img',     n: 'Image',            h: 'Photo depuis ton appareil' },
   { k: 'page',    n: 'Page',             h: 'Sous-page dans la note' },
 ];
 let slashIdx = 0, slashItems = [];
@@ -6470,6 +6568,22 @@ function applyBlock(kind) {
       const r = document.createRange(); r.selectNodeContents(tbl.rows[0].cells[0]); r.collapse(true);
       const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
       noteAutosave();
+      break;
+    }
+    // image : choisie sur l'appareil, compressée puis insérée comme bloc
+    case 'img': {
+      const anchor = blk;
+      pickImages(srcs => {
+        let ref = anchor && anchor.isConnected ? anchor : null;
+        srcs.forEach(src => {
+          const fig = makeNoteFig(src);
+          if (ref) ref.after(fig); else $('noteBody').appendChild(fig);
+          ref = fig;
+        });
+        if (anchor && anchor.isConnected && !(anchor.textContent || '').trim()) anchor.remove();
+        if (ref && !ref.nextElementSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; ref.after(p); }
+        noteAutosave();
+      });
       break;
     }
   }
@@ -6844,6 +6958,10 @@ function sanitizeNoteHtml(html) {
       if (/^on/i.test(a.name) || (a.name === 'href' && /^javascript:/i.test(a.value))) el.removeAttribute(a.name);
     });
   });
+  // images : ni poignées ni états transitoires ; les légendes vides sont retirées
+  box.querySelectorAll('.fig-h').forEach(n => n.remove());
+  box.querySelectorAll('.note-fig').forEach(n => { n.classList.remove('sel', 'drop-l', 'drop-r'); n.removeAttribute('draggable'); });
+  box.querySelectorAll('figcaption.note-figcap').forEach(n => { if (!(n.textContent || '').trim()) n.remove(); });
   return box.innerHTML;
 }
 
@@ -7192,7 +7310,7 @@ const fmtMin = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).
 function wireTimeDrag() {
   $$('.tg-day-col').forEach(col => {
     col.addEventListener('mousedown', e => {
-      if (e.button !== 0 || e.target.closest('.ev-block, .task-block')) return; // ignore un clic sur un élément déjà posé
+      if (e.button !== 0 || e.target.closest('.ev-block, .task-block, .tg-habit')) return; // ignore un clic sur un élément déjà posé (événement, tâche, habitude)
       const rect = col.getBoundingClientRect();
       const toMin = y => Math.max(0, Math.min(1440, Math.round((y / 48 * 60) / 15) * 15));
       const sMin = toMin(e.clientY - rect.top);
@@ -7927,6 +8045,7 @@ function openSettings() {
   renderAccountBox();
   renderInstallBox();
   renderNotifBox();
+  renderStorageBox();
   $('settingsOverlay').classList.add('show');
 }
 function setAccent(c) { state.accent = c; save(); render(); openSettings(); }
@@ -8534,10 +8653,11 @@ function projectPageExtra(p) {
       }).join('')
       : `<div class="hint-txt">Aucune tâche dans ce projet pour l'instant.</div>`}
     <button class="btn-ghost" style="margin-top:14px" onclick="addTaskToProject('${p.id}')">${ICON_PLUS} Ajouter une tâche</button>
+    ${imagesSectionHtml('projects', p)}
     ${notesSectionHtml('p', p.id)}`;
 }
 // un événement n'a pas de sous-éléments : sa page se prolonge juste de ses notes
-function eventPageExtra(e) { return notesSectionHtml('e', e.id); }
+function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectionHtml('e', e.id); }
 
 /* Notes en rapport avec un projet : soit rattachées directement (note→projet),
    soit rangées dans un dossier lui-même lié à ce projet. */
@@ -8566,6 +8686,91 @@ function notesSectionHtml(cible, id) {
       : `<div class="hint-txt">${vide}</div>`)
     + `<button class="btn-ghost" style="margin-top:14px" onclick="openNoteAttachMenu('${cible}','${id}',event)">${ICON_PLUS} Ajouter une note</button>`;
 }
+/* ============ Images (projets, événements, notes) ============
+   Stockées en data-URL compressées (max 1200 px, JPEG) directement dans
+   l'enregistrement, pour rester dans la limite du localStorage (~5 Mo). */
+function compressImage(file) {
+  return new Promise((res, rej) => {
+    const rd = new FileReader();
+    rd.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        const sc = Math.min(1, MAX / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * sc));
+        c.height = Math.max(1, Math.round(img.height * sc));
+        const g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); // fond blanc : le JPEG n'a pas de transparence
+        g.drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = rej;
+      img.src = rd.result;
+    };
+    rd.onerror = rej;
+    rd.readAsDataURL(file);
+  });
+}
+// sélecteur de fichiers → data-URLs compressées
+function pickImages(cb) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = async () => {
+    const out = [];
+    for (const f of inp.files) { try { out.push(await compressImage(f)); } catch (e) { /* fichier illisible : on passe */ } }
+    if (out.length) cb(out);
+  };
+  inp.click();
+}
+function imagesSectionHtml(coll, rec) {
+  const imgs = rec.images || [];
+  return `<div class="page-section-title">Images</div>`
+    + (imgs.length ? `<div class="pd-imgs">` + imgs.map((src, i) =>
+        `<div class="pd-img"><img src="${src}" onclick="openImgLightbox('${coll}','${rec.id}',${i})" title="Clique pour agrandir"><button class="pd-img-crop" onclick="cropRecImage('${coll}','${rec.id}',${i},event)" title="Rogner">✂</button><button class="pd-img-del" onclick="removeImage('${coll}','${rec.id}',${i},event)" title="Retirer cette image">✕</button></div>`).join('') + `</div>`
+      : `<div class="hint-txt">Aucune image.</div>`)
+    + `<button class="btn-ghost" style="margin-top:14px" onclick="addImageTo('${coll}','${rec.id}')">${ICON_PLUS} Ajouter une image</button>`;
+}
+function addImageTo(coll, id) {
+  const rec = collArr(coll).find(x => x.id === id);
+  if (!rec) return;
+  pickImages(srcs => {
+    rec.images = (rec.images || []).concat(srcs);
+    try {
+      save();
+      if (JSON.stringify(state).length > 4500000) alert("Attention : le stockage local approche de sa limite (environ 5 Mo). Pense à retirer d'anciennes images.");
+    } catch (err) {
+      rec.images.splice(rec.images.length - srcs.length, srcs.length);
+      save();
+      alert("Stockage local plein : impossible d'ajouter ces images. Retire quelques images pour libérer de la place.");
+    }
+    renderPage();
+  });
+}
+function removeImage(coll, id, i, ev) {
+  if (ev) ev.stopPropagation();
+  const rec = collArr(coll).find(x => x.id === id);
+  if (!rec || !rec.images) return;
+  rec.images.splice(i, 1);
+  save(); renderPage();
+}
+// visionneuse plein écran : clic ou Échap pour fermer
+function openLightboxSrc(src) {
+  const o = document.createElement('div');
+  o.id = 'imgLightbox';
+  const im = document.createElement('img');
+  im.src = src; o.appendChild(im);
+  const onKey = ev => { if (ev.key === 'Escape') close(); };
+  const close = () => { o.remove(); document.removeEventListener('keydown', onKey); };
+  o.onclick = close;
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(o);
+}
+function openImgLightbox(coll, id, i) {
+  const rec = collArr(coll).find(x => x.id === id);
+  if (rec && rec.images && rec.images[i]) openLightboxSrc(rec.images[i]);
+}
+window.addImageTo = addImageTo; window.removeImage = removeImage; window.openImgLightbox = openImgLightbox;
 // ouvre une note depuis une page (projet, événement, tâche…) et y revient en fermant
 function openNoteFromPage(id) {
   if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
@@ -10411,6 +10616,343 @@ function ntEdgeAt(e) {
 }
 $('noteBody').addEventListener('mousemove', e => {
   if (!ntRes) $('noteBody').style.cursor = ntEdgeAt(e) ? 'col-resize' : '';
+});
+// double-clic sur une image de note : plein écran
+/* ============ Images de notes v2 : figure, barre d'outils, redimensionnement,
+   legende, rognage, rangees cote a cote, collage, jauge de stockage ============ */
+
+const ICON_AL_L = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg>';
+const ICON_AL_C = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M5.5 18h13"/></svg>';
+const ICON_AL_R = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M10 12h10M7 18h13"/></svg>';
+
+// poignees de redimensionnement + drag actif sur une figure
+function figWireHandles(f) {
+  f.draggable = true;
+  ['l', 'r'].forEach(side => {
+    if (f.querySelector('.fig-h-' + side)) return;
+    const h = document.createElement('span');
+    h.className = 'fig-h fig-h-' + side;
+    h.contentEditable = 'false';
+    f.appendChild(h);
+  });
+}
+function makeNoteFig(src) {
+  const f = document.createElement('figure');
+  f.className = 'note-fig'; f.contentEditable = 'false'; f.dataset.align = 'left';
+  const im = document.createElement('img');
+  im.className = 'note-img'; im.src = src; im.title = 'Clic : options · double-clic : plein écran';
+  f.appendChild(im);
+  figWireHandles(f);
+  return f;
+}
+// les images des anciennes notes (simples <img>) sont enveloppees dans une figure
+function upgradeNoteImages() {
+  const box = $('noteBody');
+  box.querySelectorAll('img.note-img').forEach(im => {
+    if (im.closest('.note-fig')) return;
+    const f = document.createElement('figure');
+    f.className = 'note-fig'; f.contentEditable = 'false'; f.dataset.align = 'left';
+    im.before(f); f.appendChild(im);
+  });
+  box.querySelectorAll('.note-fig').forEach(figWireHandles);
+}
+
+/* ---- Barre d'outils flottante d'une image ---- */
+let figSel = null;
+function figToolbarEl() {
+  let t = $('figToolbar');
+  if (t) return t;
+  t = document.createElement('div');
+  t.id = 'figToolbar'; t.className = 'hidden';
+  document.body.appendChild(t);
+  t.addEventListener('mousedown', e => e.preventDefault());   // ne pas voler le focus de l'editeur
+  t.addEventListener('click', e => {
+    const b = e.target.closest('.ft-btn');
+    if (!b || !figSel) return;
+    const f = figSel, act = b.dataset.act, img = f.querySelector('img');
+    if (act === 'al-left' || act === 'al-center' || act === 'al-right') f.dataset.align = act.slice(3);
+    else if (act === 'caption') {
+      const cap = f.querySelector('.note-figcap');
+      if (cap) cap.remove();
+      else {
+        const c = document.createElement('figcaption');
+        c.className = 'note-figcap'; c.contentEditable = 'true';
+        c.dataset.capAlign = 'left'; c.dataset.ph = 'Ajoute une légende\u2026';
+        f.appendChild(c);
+        setTimeout(() => c.focus(), 0);
+      }
+    }
+    else if (act.indexOf('cap-') === 0) { const cap = f.querySelector('.note-figcap'); if (cap) cap.dataset.capAlign = act.slice(4); }
+    else if (act === 'crop') { hideFigToolbar(); openCropper(img.src, out => { img.src = out; noteAutosave(); }); return; }
+    else if (act === 'zoom') { hideFigToolbar(); openLightboxSrc(img.src); return; }
+    else if (act === 'detach') {
+      const row = f.closest('.note-imgrow');
+      if (row) { row.after(f); f.style.width = ''; unwrapRowIfLonely(row); }
+    }
+    else if (act === 'del') {
+      const row = f.closest('.note-imgrow');
+      f.remove(); if (row) unwrapRowIfLonely(row);
+      hideFigToolbar(); noteAutosave();
+      return;
+    }
+    noteAutosave();
+    showFigToolbar(f);   // rafraichit les etats actifs et la position
+  });
+  return t;
+}
+function showFigToolbar(f) {
+  if (figSel && figSel !== f) figSel.classList.remove('sel');
+  figSel = f; f.classList.add('sel');
+  const t = figToolbarEl();
+  const cap = f.querySelector('.note-figcap');
+  const A = f.dataset.align || 'left';
+  const CA = cap ? (cap.dataset.capAlign || 'left') : 'left';
+  const inRow = !!f.closest('.note-imgrow');
+  const b = (act, label, title, on) => '<button class="ft-btn ' + (on ? 'on' : '') + '" data-act="' + act + '" title="' + title + '">' + label + '</button>';
+  t.innerHTML = (inRow ? '' :
+      b('al-left', ICON_AL_L, 'Aligner à gauche', A === 'left')
+    + b('al-center', ICON_AL_C, 'Centrer', A === 'center')
+    + b('al-right', ICON_AL_R, 'Aligner à droite', A === 'right')
+    + '<span class="ft-sep"></span>')
+    + b('caption', 'Légende', cap ? 'Retirer la légende' : 'Ajouter une légende', !!cap)
+    + (cap ? b('cap-left', ICON_AL_L, 'Légende à gauche', CA === 'left')
+           + b('cap-center', ICON_AL_C, 'Légende centrée', CA === 'center')
+           + b('cap-right', ICON_AL_R, 'Légende à droite', CA === 'right') : '')
+    + '<span class="ft-sep"></span>'
+    + b('crop', '\u2702', 'Rogner', false)
+    + b('zoom', '\u26F6', 'Plein écran', false)
+    + (inRow ? b('detach', '\u2934', 'Sortir de la rangée', false) : '')
+    + b('del', '\uD83D\uDDD1', 'Supprimer l\'image', false);
+  t.classList.remove('hidden');
+  const r = f.getBoundingClientRect(), tr = t.getBoundingClientRect();
+  t.style.left = Math.max(8, Math.min(r.left + r.width / 2 - tr.width / 2, innerWidth - tr.width - 8)) + 'px';
+  t.style.top = Math.max(8, r.top - tr.height - 8) + 'px';
+}
+function hideFigToolbar() {
+  if (figSel) figSel.classList.remove('sel');
+  figSel = null;
+  const t = $('figToolbar');
+  if (t) t.classList.add('hidden');
+}
+
+/* ---- Rangees d'images (2 a 3 cote a cote) ---- */
+function rowBalance(row) {
+  const figs = row.querySelectorAll('.note-fig');
+  const n = figs.length;
+  figs.forEach(f => { f.style.width = 'calc(' + (100 / n).toFixed(3) + '% - ' + Math.round(10 * (n - 1) / n) + 'px)'; });
+}
+function unwrapRowIfLonely(row) {
+  const figs = row.querySelectorAll('.note-fig');
+  if (figs.length <= 1) {
+    if (figs[0]) { figs[0].style.width = ''; row.before(figs[0]); }
+    row.remove();
+  } else rowBalance(row);
+}
+let dragFig = null;
+const clearFigDrop = () => $$('#noteBody .note-fig.drop-l, #noteBody .note-fig.drop-r').forEach(x => x.classList.remove('drop-l', 'drop-r'));
+$('noteBody').addEventListener('dragstart', e => {
+  const f = e.target.closest && e.target.closest('.note-fig');
+  if (!f) return;
+  dragFig = f; hideFigToolbar();
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', 'note-fig'); } catch (err) {}
+});
+$('noteBody').addEventListener('dragend', () => { clearFigDrop(); dragFig = null; });
+$('noteBody').addEventListener('dragover', e => {
+  if (!dragFig) return;
+  const t = e.target.closest && e.target.closest('.note-fig');
+  clearFigDrop();
+  if (!t || t === dragFig) return;
+  const row = t.closest('.note-imgrow');
+  const n = row ? row.querySelectorAll('.note-fig').length : 1;
+  if (n >= 3 && !(row && row.contains(dragFig))) return;   // 3 images maximum par rangee
+  e.preventDefault();
+  const r = t.getBoundingClientRect();
+  t.classList.add(e.clientX < r.left + r.width / 2 ? 'drop-l' : 'drop-r');
+});
+$('noteBody').addEventListener('drop', e => {
+  // 1) depot d'une image de la note sur une autre : rangee cote a cote
+  if (dragFig) {
+    const t = e.target.closest && e.target.closest('.note-fig');
+    if (t && t !== dragFig) {
+      const avant = t.classList.contains('drop-l');
+      clearFigDrop();
+      e.preventDefault(); e.stopPropagation();
+      const srcRow = dragFig.closest('.note-imgrow');
+      let row = t.closest('.note-imgrow');
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'note-imgrow'; row.contentEditable = 'false';
+        t.before(row); row.appendChild(t);
+      }
+      if (avant) t.before(dragFig); else t.after(dragFig);
+      if (srcRow && srcRow !== row) unwrapRowIfLonely(srcRow);
+      rowBalance(row);
+      dragFig = null;
+      noteAutosave();
+      return;
+    }
+    clearFigDrop();
+    return;   // ailleurs : deplacement natif du bloc par le navigateur
+  }
+  // 2) depot de fichiers image depuis l'ordinateur
+  const files = [...((e.dataTransfer && e.dataTransfer.files) || [])].filter(f => /^image\//.test(f.type));
+  if (!files.length) return;
+  e.preventDefault();
+  if (document.caretRangeFromPoint) {
+    const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+    if (r) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  }
+  insertImageFilesAtCaret(files);
+});
+
+/* ---- Coller / deposer des images ---- */
+async function insertImageFilesAtCaret(files) {
+  const srcs = [];
+  for (const f of files) { try { srcs.push(await compressImage(f)); } catch (err) { /* fichier illisible : ignore */ } }
+  if (!srcs.length) return;
+  let ref = null;
+  try { ref = caretBlock(); } catch (err) {}
+  if (ref && !$('noteBody').contains(ref)) ref = null;
+  srcs.forEach(src => {
+    const fig = makeNoteFig(src);
+    if (ref) ref.after(fig); else $('noteBody').appendChild(fig);
+    ref = fig;
+  });
+  if (ref && !ref.nextElementSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; ref.after(p); }
+  noteAutosave();
+}
+$('noteBody').addEventListener('paste', e => {
+  const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => /^image\//.test(f.type));
+  if (!files.length) return;
+  e.preventDefault();
+  insertImageFilesAtCaret(files);
+});
+
+/* ---- Selection d'une image au clic ---- */
+$('noteBody').addEventListener('click', e => {
+  const f = e.target.closest('.note-fig');
+  if (f && !e.target.closest('.note-figcap') && !e.target.closest('.fig-h')) showFigToolbar(f);
+  else hideFigToolbar();
+});
+document.addEventListener('click', e => {
+  if (figSel && !e.target.closest('#figToolbar') && !e.target.closest('.note-fig')) hideFigToolbar();
+});
+document.addEventListener('scroll', () => hideFigToolbar(), true);
+
+/* ---- Redimensionnement a la poignee ---- */
+$('noteBody').addEventListener('pointerdown', e => {
+  const h = e.target.closest('.fig-h');
+  if (!h) return;
+  e.preventDefault(); e.stopPropagation();
+  const f = h.closest('.note-fig');
+  const pw = f.parentElement.getBoundingClientRect().width;
+  const w0 = f.getBoundingClientRect().width;
+  const x0 = e.clientX, gauche = h.classList.contains('fig-h-l');
+  const facteur = (f.dataset.align === 'center' && !f.closest('.note-imgrow')) ? 2 : 1;
+  hideFigToolbar();
+  const move = ev => {
+    const dx = (ev.clientX - x0) * (gauche ? -1 : 1) * facteur;
+    const w = Math.max(60, Math.min(pw, w0 + dx));
+    f.style.width = (Math.round(w / pw * 1000) / 10) + '%';
+  };
+  const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); noteAutosave(); };
+  document.addEventListener('pointermove', move);
+  document.addEventListener('pointerup', up);
+});
+
+/* ---- Rognage ---- */
+function openCropper(src, onDone) {
+  const o = document.createElement('div');
+  o.id = 'cropOverlay';
+  o.innerHTML = '<div class="crop-stage"><img><div class="crop-sel hidden"><span class="crop-hd hd-nw"></span><span class="crop-hd hd-ne"></span><span class="crop-hd hd-sw"></span><span class="crop-hd hd-se"></span></div></div>'
+    + '<div class="crop-btns"><button class="btn-ghost" data-c="cancel">Annuler</button><button class="btn-primary" data-c="ok">Rogner</button></div>';
+  document.body.appendChild(o);
+  const img = o.querySelector('img'), sel = o.querySelector('.crop-sel');
+  let box = null;
+  const place = () => { sel.style.left = box.x + 'px'; sel.style.top = box.y + 'px'; sel.style.width = box.w + 'px'; sel.style.height = box.h + 'px'; };
+  img.onload = () => {
+    const W = img.clientWidth, H = img.clientHeight;
+    box = { x: W * 0.1, y: H * 0.1, w: W * 0.8, h: H * 0.8 };
+    sel.classList.remove('hidden');
+    place();
+  };
+  img.src = src;
+  o.addEventListener('pointerdown', e => {
+    const hd = e.target.closest('.crop-hd');
+    const surSel = e.target.closest('.crop-sel');
+    if (!box || (!hd && !surSel)) return;
+    e.preventDefault();
+    const W = img.clientWidth, H = img.clientHeight;
+    const x0 = e.clientX, y0 = e.clientY, b0 = { x: box.x, y: box.y, w: box.w, h: box.h };
+    const move = ev => {
+      const dx = ev.clientX - x0, dy = ev.clientY - y0;
+      if (!hd) {
+        box.x = Math.max(0, Math.min(W - b0.w, b0.x + dx));
+        box.y = Math.max(0, Math.min(H - b0.h, b0.y + dy));
+      } else {
+        const ouest = hd.classList.contains('hd-nw') || hd.classList.contains('hd-sw');
+        const nord = hd.classList.contains('hd-nw') || hd.classList.contains('hd-ne');
+        let x1 = ouest ? b0.x + dx : b0.x, w1 = ouest ? b0.w - dx : b0.w + dx;
+        let y1 = nord ? b0.y + dy : b0.y, h1 = nord ? b0.h - dy : b0.h + dy;
+        if (x1 < 0) { w1 += x1; x1 = 0; }
+        if (y1 < 0) { h1 += y1; y1 = 0; }
+        w1 = Math.max(24, Math.min(w1, W - x1));
+        h1 = Math.max(24, Math.min(h1, H - y1));
+        box = { x: x1, y: y1, w: w1, h: h1 };
+      }
+      place();
+    };
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  });
+  const onKey = ev => { if (ev.key === 'Escape') fermer(); };
+  const fermer = () => { o.remove(); document.removeEventListener('keydown', onKey); };
+  document.addEventListener('keydown', onKey);
+  o.querySelector('[data-c="cancel"]').onclick = fermer;
+  o.querySelector('[data-c="ok"]').onclick = () => {
+    if (!box) { fermer(); return; }
+    const sx = img.naturalWidth / img.clientWidth, sy = img.naturalHeight / img.clientHeight;
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(box.w * sx));
+    c.height = Math.max(1, Math.round(box.h * sy));
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, box.x * sx, box.y * sy, box.w * sx, box.h * sy, 0, 0, c.width, c.height);
+    const out = c.toDataURL('image/jpeg', 0.85);
+    fermer();
+    onDone(out);
+  };
+}
+// rogner une image d'une fiche projet / evenement
+function cropRecImage(coll, id, i, ev) {
+  if (ev) ev.stopPropagation();
+  const rec = collArr(coll).find(x => x.id === id);
+  if (!rec || !rec.images || !rec.images[i]) return;
+  openCropper(rec.images[i], out => { rec.images[i] = out; save(); renderPage(); });
+}
+window.cropRecImage = cropRecImage;
+
+/* ---- Jauge de stockage (reglages) ---- */
+function renderStorageBox() {
+  const box = $('storageBox');
+  if (!box) return;
+  let raw = '';
+  try { raw = localStorage.getItem('mon-agenda-v1') || ''; } catch (e) {}
+  const LIMITE = 5 * 1024 * 1024;
+  const pct = Math.min(100, Math.max(1, Math.round(raw.length / LIMITE * 100)));
+  const mo = (raw.length / 1048576).toFixed(2).replace('.', ',');
+  const alerte = pct >= 80;
+  box.innerHTML = '<div class="store-line"><span>Espace utilisé</span><span>' + mo + ' Mo sur ~5 Mo</span></div>'
+    + '<div class="store-bar"><div style="width:' + pct + '%' + (alerte ? ';background:#d98a8a' : '') + '"></div></div>'
+    + (alerte ? '<p class="hint-txt" style="margin-top:6px">Le stockage approche de sa limite : pense à retirer quelques images.</p>' : '');
+}
+
+
+$('noteBody').addEventListener('dblclick', e => {
+  const im = e.target.closest('img.note-img');
+  if (im) openLightboxSrc(im.src);
 });
 $('noteBody').addEventListener('mousedown', e => {
   const td = ntEdgeAt(e); if (!td) return;
