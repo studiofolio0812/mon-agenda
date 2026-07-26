@@ -1407,8 +1407,11 @@
 
   /* ---- vue kanban ---- */
   .kanban { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
-  .kb-col { background: var(--kb-tint, var(--surface-2)); border-radius: 12px; padding: 10px; min-width: 220px; width: 220px; flex-shrink: 0; transition: background .12s; }
+  .kb-col { position: relative; background: var(--kb-tint, var(--surface-2)); border-radius: 12px; padding: 10px; min-width: 220px; width: 220px; flex-shrink: 0; transition: background .12s; }
   .kb-col.kb-over { background: var(--accent-soft); }
+  .kb-resize { position: absolute; top: 6px; right: -6px; bottom: 6px; width: 10px; cursor: col-resize; z-index: 5; }
+  .kb-resize::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; border-radius: 2px; background: transparent; }
+  .kb-resize:hover::after { background: var(--accent); opacity: .5; }
   .kb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
   .kb-count { font-size: 11px; color: var(--text-soft); font-weight: 600; }
   .kb-cards { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
@@ -1457,6 +1460,33 @@
   .flt-chip-k { color: var(--text-faint); }
   .flt-chip-x { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; cursor: pointer; color: var(--text-faint); font-size: 10px; }
   .flt-chip-x:hover { background: var(--border); color: var(--text); }
+  .flt-menu-wide { width: 320px; }
+  .flt-row { display: flex; align-items: center; gap: 6px; padding: 4px 8px; flex-wrap: wrap; }
+  .flt-prop-sel, .flt-cond-sel, .flt-val-input { font-size: 12px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); max-width: 108px; }
+  .flt-val-input { max-width: 120px; }
+  .flt-row-del { cursor: pointer; color: var(--text-faint); font-size: 11px; padding: 2px; }
+  .flt-row-del:hover { color: var(--text); }
+  .flt-group { border-left: 2px solid var(--border); margin: 4px 0 4px 10px; padding-left: 6px; }
+  .flt-joiner { font-size: 10px; font-weight: 700; color: var(--text-faint); padding: 2px 8px; cursor: pointer; letter-spacing: .04em; }
+  .flt-joiner:hover { color: var(--accent); }
+  .flt-add-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px 4px; }
+  .flt-add-btn { font-size: 12px; color: var(--accent); cursor: pointer; }
+  .flt-add-btn:hover { text-decoration: underline; }
+  .flt-empty-hint { font-size: 12px; color: var(--text-faint); padding: 6px 8px; }
+  .flt-quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 0; }
+  .flt-chip-quick { cursor: pointer; }
+  .flt-chip-quick.on { background: var(--accent); color: #fff; }
+  .flt-chip-quick.on .flt-chip-k { color: #fff; }
+  .sort-dir-btn { cursor: pointer; color: var(--text-faint); font-size: 13px; padding: 0 2px; }
+  .sort-dir-btn:hover { color: var(--text); }
+  .sv-save-row { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .sv-save-row input { flex: 1; font-size: 12px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+  .side-filter-bar { display: flex; align-items: center; gap: 6px; padding: 2px 4px 8px; }
+  .side-toggle { font-size: 11px; color: var(--text-faint); cursor: pointer; padding: 2px 6px; border-radius: 10px; background: var(--surface-2); }
+  .side-toggle.on { color: var(--text-soft); }
+  .side-toggle:hover { color: var(--text); }
+  .side-badge { font-size: 10.5px; color: var(--text-faint); }
+  .side-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
   .kb-cell { font-size: 11.5px; color: var(--text-soft); }
   /* en-tête de colonne personnalisée : nom + bouton réglage */
   table.data-table th.col-custom { }
@@ -1664,8 +1694,10 @@
         <div class="filter-tabs" id="taskFilters">
           <button data-filter="active" class="active">À faire</button>
           <button data-filter="today">Aujourd'hui</button>
+          <button data-filter="nodate">Sans date</button>
           <button data-filter="done">Faites</button>
         </div>
+        <div class="side-filter-bar" id="taskSideBar"></div>
         <div id="projBanner"></div>
         <div id="taskList"></div>
       </div>
@@ -1677,6 +1709,7 @@
         <svg class="nav-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </button>
       <div class="nav-panel" data-panel="projects">
+        <div class="side-filter-bar" id="projSideBar"></div>
         <div id="projList"></div>
       </div>
 
@@ -3555,6 +3588,8 @@ function tasksSpaceCfg() {
   if (!state.tasksSpace.listProps) state.tasksSpace.listProps = { prio: true, project: true, cat: true, due: true, sub: true };
   if (!state.tasksSpace.kbHidden) state.tasksSpace.kbHidden = {};
   if (!state.tasksSpace.filters) state.tasksSpace.filters = [];
+  if (!state.tasksSpace.savedViews) state.tasksSpace.savedViews = [];
+  if (!state.tasksSpace.kbColWidths) state.tasksSpace.kbColWidths = {};
   return state.tasksSpace;
 }
 const PRIO_LABEL = { high: 'Haute', med: 'Moyenne', low: 'Basse' };
@@ -3656,6 +3691,22 @@ function tblSetDue(id, ev) {
 }
 window.tblOpenProj = tblOpenProj; window.tblOpenCat = tblOpenCat; window.tblOpenPrio = tblOpenPrio; window.tblSetDue = tblSetDue;
 
+function taskKpisHtml() {
+  const today = ymd(new Date());
+  const weekStart = ymd(startOfWeek(new Date()));
+  const all = state.tasks;
+  const aFaire = all.filter(t => !t.done).length;
+  const enRetard = all.filter(t => !t.done && t.due && t.due < today).length;
+  const completeeSemaine = all.filter(t => t.done && t.doneAt && ymd(new Date(t.doneAt)) >= weekStart).length;
+  const sansDate = all.filter(t => !t.done && !t.due).length;
+  const kpi = (val, label, cls = '') => `<div class="kpi ${cls}"><div class="kpi-val">${val}</div><div class="kpi-lbl">${label}</div></div>`;
+  return `<div class="kpis">
+    ${kpi(aFaire, 'tâche' + (aFaire > 1 ? 's' : '') + ' à faire')}
+    ${kpi(enRetard, 'en retard', enRetard ? 'warn' : '')}
+    ${kpi(completeeSemaine, 'complétée' + (completeeSemaine > 1 ? 's' : '') + ' cette semaine')}
+    ${kpi(sansDate, 'sans date')}
+  </div>`;
+}
 function renderTasksSpace() {
   const cfg = tasksSpaceCfg();
   const today = ymd(new Date());
@@ -3663,9 +3714,9 @@ function renderTasksSpace() {
   if (cfg.filter === 'active') list = list.filter(t => !t.done);
   else if (cfg.filter === 'done') list = list.filter(t => t.done);
   // filtres par propriété (ET entre propriétés, OU entre valeurs d'une même propriété)
-  (cfg.filters || []).forEach(f => { if (f.values && f.values.length) list = list.filter(t => matchTaskFilter(t, f)); });
+  list = list.filter(t => fltMatch('tasks', t));
   // tri de base : par échéance, les sans-date à la fin
-  list.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.title || '').localeCompare(b.title || ''));
+  list.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.title || '').localeCompare(b.title || '', undefined, {sensitivity:'base'}));
 
   const groups = groupTasks(list, cfg.groupBy);
   const nTodo = state.tasks.filter(t => !t.done).length;
@@ -3673,13 +3724,14 @@ function renderTasksSpace() {
   const tab = (key, label, active) =>
     `<span class="space-tab ${active ? 'on' : ''}" onclick="setTasksSpace('${key}')">${label}</span>`;
 
-  const nFilters = (cfg.filters || []).reduce((n, f) => n + (f.values && f.values.length ? 1 : 0), 0) + (cfg.filter !== 'active' ? 1 : 0);
+  const nFilters = fltCount(fltEnsureTree(cfg)) + (cfg.filter !== 'active' ? 1 : 0);
 
   let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Mes tâches</span>
       <span class="space-count">${nTodo} à faire</span>
     </div>
+    ${taskKpisHtml()}
     <div class="space-bar">
       <span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span>
       <span style="flex:1"></span>
@@ -3691,10 +3743,13 @@ function renderTasksSpace() {
       <span class="space-tab ${taskFilterOpen ? 'on' : ''}" onclick="toggleTaskFilter(event)">Filtrer${nFilters ? ` <span class="flt-badge">${nFilters}</span>` : ''}</span>
       <span class="space-sep">·</span>
       <span class="space-tab ${kbPropsOpen ? 'on' : ''}" onclick="kbToggleProps(event)">Propriétés</span>
+      <span class="space-sep">·</span>
+      <span class="space-tab ${svOpenTasks ? 'on' : ''}" onclick="svToggle('tasks',event)">Vues</span>
     </div>
-    ${taskFilterChipsHtml()}
+    ${fltQuickChipsHtml('tasks')}
     ${kbPropsOpen ? kbPropsMenuHtml() : ''}
-    ${taskFilterOpen ? taskFilterMenuHtml() : ''}`;
+    ${taskFilterOpen ? fltMenuHtml('tasks') : ''}
+    ${svOpenTasks ? svMenuHtml('tasks') : ''}`;
 
   if (!groups.length) {
     html += `<div class="space-empty">Rien ici pour l'instant.<br>Clique sur « Ajouter une tâche » pour commencer.</div></div>`;
@@ -3729,8 +3784,10 @@ function renderTasksSpace() {
           </div>
         </div>`;
       }).join('');
-      return `<div class="kb-col"${g.pill ? ` style="--kb-tint:${tblTint(g.pill, .1)}"` : ''} ondragover="kbDragOver(event,this)" ondragleave="this.classList.remove('kb-over')" ondrop="kbDrop(event,'${g.key}',this)">
-        <div class="kb-head ${g.late ? 'late' : ''}"><span class="kb-head-l">${titre} <span class="grp-n">· ${g.items.length}</span></span><button class="kb-hide" onclick="kbHideGroup('${g.key}',event)" title="Masquer / épingler ce groupe">${ICON_EYE_OFF}</button></div><div class="kb-cards">${cartes}</div></div>`;
+      const kbw = kbColWidth(cfg, g.key);
+      const kbTint = g.pill ? `--kb-tint:${tblTint(g.pill, .1)};` : '';
+      return `<div class="kb-col" style="${kbTint}width:${kbw}px;min-width:${kbw}px" ondragover="kbDragOver(event,this)" ondragleave="this.classList.remove('kb-over')" ondrop="kbDrop(event,'${g.key}',this)">
+        <div class="kb-head ${g.late ? 'late' : ''}"><span class="kb-head-l">${titre} <span class="grp-n">· ${g.items.length}</span></span><button class="kb-hide" onclick="kbHideGroup('${g.key}',event)" title="Masquer / épingler ce groupe">${ICON_EYE_OFF}</button></div><div class="kb-cards">${cartes}</div><div class="kb-resize" onmousedown="kbColResizeStart(event,'${g.key}')" ondblclick="kbColResizeReset(event,'${g.key}')" title="Glisser pour redimensionner · double-clic pour réinitialiser"></div></div>`;
     }).join('') + kbPinnedRailHtml(pinnedCols) + '</div></div>';
     canvas.innerHTML = html;
     return;
@@ -3881,12 +3938,14 @@ function kbDrop(e, key, el) {
   if (!t) return;
   applyGroupDrop(t, key);
 }
+/* Marque une tâche faite/à faire et garde la date de complétion (utile pour le bandeau KPI). */
+function setTaskDone(t, val) { t.done = val; t.doneAt = val ? new Date().toISOString() : null; }
 /* Assigne à la tâche la valeur du groupe visé : logique partagée entre le kanban et la vue liste. */
 function applyGroupDrop(t, key) {
   const mode = tasksSpaceCfg().groupBy;
-  if (key === 'done') t.done = true;
+  if (key === 'done') setTaskDone(t, true);
   else {
-    t.done = false;
+    setTaskDone(t, false);
     if (mode === 'project') t.projectId = key;
     else if (mode === 'prio') t.prio = key;
     else if (mode === 'cat') t.catId = key;
@@ -3954,10 +4013,10 @@ window.kbGroupMenu = kbGroupMenu;
 let kbPropsOpen = false;
 let taskFilterOpen = false;
 function spaceProps() { const cfg = tasksSpaceCfg(); return cfg.layout === 'kanban' ? cfg.cardProps : cfg.listProps; }
-function kbToggleProps(e) { e.stopPropagation(); kbPropsOpen = !kbPropsOpen; taskFilterOpen = false; renderTasksSpace(); }
+function kbToggleProps(e) { e.stopPropagation(); kbPropsOpen = !kbPropsOpen; taskFilterOpen = false; svOpenTasks = false; renderTasksSpace(); }
 function kbToggleProp(k, e) { e.stopPropagation(); const cp = spaceProps(); cp[k] = !cp[k]; save(); renderTasksSpace(); }
 // un clic ailleurs referme les menus (propriétés / filtres)
-document.addEventListener('click', () => { if ((kbPropsOpen || taskFilterOpen) && state.view === 'tasks') { kbPropsOpen = false; taskFilterOpen = false; renderTasksSpace(); } });
+document.addEventListener('click', () => { if ((kbPropsOpen || taskFilterOpen || svOpenTasks) && state.view === 'tasks') { kbPropsOpen = false; taskFilterOpen = false; svOpenTasks = false; renderTasksSpace(); } });
 function kbPropsMenuHtml() {
   const cp = spaceProps();
   const kanban = tasksSpaceCfg().layout === 'kanban';
@@ -4024,6 +4083,48 @@ function kbPinnedRailHtml(pinned) {
 }
 window.kbHideGroup = kbHideGroup; window.kbShowGroup = kbShowGroup;
 
+/* ---- Kanban : largeur de colonne réglable (mémorisée par regroupement) ---- */
+function kbColWidth(cfg, key) {
+  const store = cfg.kbColWidths || (cfg.kbColWidths = {});
+  const forGroup = store[cfg.groupBy] || (store[cfg.groupBy] = {});
+  return forGroup[key] || 220;
+}
+let kbResize = null;
+function kbColResizeStart(e, key) {
+  e.preventDefault(); e.stopPropagation();
+  const col = e.target.closest('.kb-col');
+  if (!col) return;
+  const cfg = tasksSpaceCfg();
+  kbResize = { key, groupBy: cfg.groupBy, startX: e.clientX, startW: col.getBoundingClientRect().width, col };
+  document.addEventListener('mousemove', kbColResizeMove);
+  document.addEventListener('mouseup', kbColResizeEnd);
+}
+function kbColResizeMove(e) {
+  if (!kbResize) return;
+  const w = Math.max(160, Math.min(520, Math.round(kbResize.startW + (e.clientX - kbResize.startX))));
+  kbResize.col.style.width = w + 'px';
+  kbResize.col.style.minWidth = w + 'px';
+}
+function kbColResizeEnd() {
+  if (!kbResize) return;
+  const w = parseInt(kbResize.col.style.width, 10);
+  const cfg = tasksSpaceCfg();
+  if (!cfg.kbColWidths) cfg.kbColWidths = {};
+  if (!cfg.kbColWidths[kbResize.groupBy]) cfg.kbColWidths[kbResize.groupBy] = {};
+  cfg.kbColWidths[kbResize.groupBy][kbResize.key] = w;
+  kbResize = null;
+  document.removeEventListener('mousemove', kbColResizeMove);
+  document.removeEventListener('mouseup', kbColResizeEnd);
+  save();
+}
+function kbColResizeReset(e, key) {
+  e.preventDefault(); e.stopPropagation();
+  const cfg = tasksSpaceCfg();
+  if (cfg.kbColWidths && cfg.kbColWidths[cfg.groupBy]) delete cfg.kbColWidths[cfg.groupBy][key];
+  save(); renderTasksSpace();
+}
+window.kbColResizeStart = kbColResizeStart; window.kbColResizeReset = kbColResizeReset;
+
 /* ---- Colonne personnalisée dans la table (vue Liste), en lecture seule ---- */
 function tblCustomCell(t, p) {
   if (p.type === 'select') {
@@ -4036,121 +4137,288 @@ function tblCustomCell(t, p) {
   return s ? `<td class="tbl-custom">${esc(s)}</td>` : `<td class="tbl-custom tbl-custom-empty">—</td>`;
 }
 
-/* ---- Filtres de l'espace Mes tâches (Liste + Kanban) ---- */
-function taskFilterProps() {
-  const props = [
-    { key: 'status', label: 'Statut', radio: true, options: [{ v: 'active', label: 'À faire' }, { v: 'done', label: 'Terminées' }, { v: 'all', label: 'Toutes' }] },
-    { key: 'cat', label: 'Agenda', options: state.categories.map(c => ({ v: c.id, label: c.name })) },
-    { key: 'project', label: 'Projet', options: state.projects.map(p => ({ v: p.id, label: p.name })) },
-    { key: 'prio', label: 'Priorité', options: [{ v: 'high', label: 'Haute' }, { v: 'med', label: 'Moyenne' }, { v: 'low', label: 'Basse' }] },
+/* ---- Filtres avancés facon Notion : partagés entre Mes tâches et Projets ---- */
+let svOpenTasks = false;
+let svOpenProjects = false;
+function fltFields(kind) {
+  if (kind === 'tasks') {
+    const f = [
+      { key: 'done', label: 'Faite', type: 'bool' },
+      { key: 'title', label: 'Titre', type: 'text' },
+      { key: 'due', label: 'Échéance', type: 'date' },
+      { key: 'prio', label: 'Priorité', type: 'select', options: [{ v: 'high', label: 'Haute' }, { v: 'med', label: 'Moyenne' }, { v: 'low', label: 'Basse' }] },
+      { key: 'catId', label: 'Agenda', type: 'select', options: state.categories.map(c => ({ v: c.id, label: c.name })) },
+      { key: 'projectId', label: 'Projet', type: 'select', options: state.projects.map(p => ({ v: p.id, label: p.name })) },
+      { key: 'parentId', label: 'Tâche parente', type: 'select', options: state.tasks.filter(t => hasSubtasks(t.id)).map(t => ({ v: t.id, label: t.title })) },
+    ];
+    schemaOf('tasks').filter(p => p.type === 'select').forEach(p => {
+      f.push({ key: 'p:' + p.id, label: p.name, type: 'select', options: (p.options || []).map(o => ({ v: o.id, label: o.label })) });
+    });
+    return f;
+  }
+  const f = [
+    { key: 'statut', label: 'Statut', type: 'select', options: PROJ_STATUTS.map(([k, l]) => ({ v: k, label: l })) },
+    { key: 'name', label: 'Nom', type: 'text' },
+    { key: 'start', label: 'Début', type: 'date' },
+    { key: 'end', label: 'Échéance', type: 'date' },
   ];
-  props.push({ key: 'due', label: 'Échéance', options: [
-    { v: 'overdue', label: 'En retard' },
-    { v: 'today', label: "Aujourd'hui" },
-    { v: 'week', label: 'Cette semaine' },
-    { v: 'next7', label: '7 prochains jours' },
-    { v: 'month', label: 'Ce mois-ci' },
-    { v: 'nodate', label: 'Sans échéance' },
-  ] });
-  schemaOf('tasks').filter(p => p.type === 'select').forEach(p => {
-    props.push({ key: 'p:' + p.id, label: p.name, options: (p.options || []).map(o => ({ v: o.id, label: o.label })) });
+  schemaOf('projects').filter(p => p.type === 'select').forEach(p => {
+    f.push({ key: 'p:' + p.id, label: p.name, type: 'select', options: (p.options || []).map(o => ({ v: o.id, label: o.label })) });
   });
-  return props;
+  return f;
 }
-function taskFilterEntry(prop) { return (tasksSpaceCfg().filters || []).find(f => f.prop === prop); }
-function toggleTaskFilter(e) { e.stopPropagation(); taskFilterOpen = !taskFilterOpen; kbPropsOpen = false; renderTasksSpace(); }
+function fltConds(type) {
+  if (type === 'bool') return [{ v: 'true', label: 'est coché' }, { v: 'false', label: "n'est pas coché" }];
+  if (type === 'text') return [{ v: 'contains', label: 'contient' }, { v: 'ncontains', label: 'ne contient pas' }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
+  if (type === 'date') return [{ v: 'is', label: 'est le' }, { v: 'before', label: 'avant le' }, { v: 'after', label: 'après le' }, { v: 'overdue', label: 'en retard' }, { v: 'thisweek', label: 'cette semaine' }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
+  return [{ v: 'is', label: 'est' }, { v: 'isnot', label: "n'est pas" }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
+}
+function fltCfg(kind) { return kind === 'tasks' ? tasksSpaceCfg() : projSpaceCfg(); }
+function fltEnsureTree(cfg) { if (!cfg.filterTree || !cfg.filterTree.items) cfg.filterTree = { id: 'root', op: 'and', items: [] }; return cfg.filterTree; }
+function fltUid() { return 'f' + Math.random().toString(36).slice(2, 9); }
+function fltPathArr(pathStr) { return pathStr === '' ? [] : String(pathStr).split('.').map(Number); }
+function fltNodeAt(root, path) { let n = root; path.forEach(i => n = n.items[i]); return n; }
+function fltParentAt(root, path) { let n = root; for (let k = 0; k < path.length - 1; k++) n = n.items[path[k]]; return n; }
+function fltRerender(kind) { save(); if (kind === 'tasks') renderTasksSpace(); else renderProjectsSpace(); }
+function fltAddCond(kind, pathStr, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const group = pathStr === '' ? root : fltNodeAt(root, fltPathArr(pathStr));
+  const field = fltFields(kind)[0];
+  group.items.push({ id: fltUid(), prop: field.key, cond: fltConds(field.type)[0].v, value: '' });
+  fltRerender(kind);
+}
+function fltAddGroup(kind, pathStr, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const group = pathStr === '' ? root : fltNodeAt(root, fltPathArr(pathStr));
+  group.items.push({ id: fltUid(), op: 'and', items: [] });
+  fltRerender(kind);
+}
+function fltRemove(kind, pathStr, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const path = fltPathArr(pathStr);
+  if (!path.length) return;
+  const parent = fltParentAt(root, path);
+  parent.items.splice(path[path.length - 1], 1);
+  fltRerender(kind);
+}
+function fltToggleOp(kind, pathStr, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const group = pathStr === '' ? root : fltNodeAt(root, fltPathArr(pathStr));
+  group.op = group.op === 'and' ? 'or' : 'and';
+  fltRerender(kind);
+}
+function fltSetProp(kind, pathStr, propKey, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const node = fltNodeAt(root, fltPathArr(pathStr));
+  node.prop = propKey;
+  const field = fltFields(kind).find(f => f.key === propKey);
+  node.cond = fltConds(field ? field.type : 'select')[0].v;
+  node.value = '';
+  fltRerender(kind);
+}
+function fltSetCond(kind, pathStr, condKey, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const node = fltNodeAt(root, fltPathArr(pathStr));
+  node.cond = condKey;
+  if (['empty', 'nempty', 'overdue', 'thisweek'].includes(condKey)) node.value = '';
+  fltRerender(kind);
+}
+function fltSetValueAndRender(kind, pathStr, value, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const node = fltNodeAt(root, fltPathArr(pathStr));
+  node.value = value;
+  fltRerender(kind);
+}
+function fltFieldRaw(kind, field, item) {
+  if (kind === 'tasks') {
+    if (field.key === 'done') return !!item.done;
+    if (field.key.startsWith('p:')) return (item.props || {})[field.key.slice(2)] || '';
+    return item[field.key] || '';
+  }
+  if (field.key === 'statut') return projStatut(item);
+  if (field.key === 'start') return projStart(item);
+  if (field.key === 'end') return projEnd(item);
+  if (field.key.startsWith('p:')) return (item.props || {})[field.key.slice(2)] || '';
+  return item[field.key] || '';
+}
+function fltMatchCond(kind, cond, item) {
+  const field = fltFields(kind).find(f => f.key === cond.prop);
+  if (!field) return true;
+  const raw = fltFieldRaw(kind, field, item);
+  if (field.type === 'bool') return !!raw === (cond.cond === 'true');
+  if (field.type === 'text') {
+    const s = String(raw || '').toLowerCase();
+    const v = String(cond.value || '').toLowerCase();
+    if (cond.cond === 'empty') return !s;
+    if (cond.cond === 'nempty') return !!s;
+    if (cond.cond === 'contains') return v ? s.includes(v) : true;
+    if (cond.cond === 'ncontains') return v ? !s.includes(v) : true;
+    return true;
+  }
+  if (field.type === 'date') {
+    if (cond.cond === 'empty') return !raw;
+    if (cond.cond === 'nempty') return !!raw;
+    if (!raw) return false;
+    const today2 = ymd(new Date());
+    if (cond.cond === 'overdue') return raw < today2;
+    if (cond.cond === 'thisweek') { const ws = ymd(startOfWeek(new Date())); const we = ymd(addDays(startOfWeek(new Date()), 6)); return raw >= ws && raw <= we; }
+    if (!cond.value) return true;
+    if (cond.cond === 'is') return raw === cond.value;
+    if (cond.cond === 'before') return raw < cond.value;
+    if (cond.cond === 'after') return raw > cond.value;
+    return true;
+  }
+  const v = raw || '';
+  if (cond.cond === 'empty') return !v;
+  if (cond.cond === 'nempty') return !!v;
+  if (!cond.value) return true;
+  if (cond.cond === 'is') return v === cond.value;
+  if (cond.cond === 'isnot') return v !== cond.value;
+  return true;
+}
+function fltMatchGroup(kind, group, item) {
+  if (!group.items || !group.items.length) return true;
+  const results = group.items.map(it => it.items ? fltMatchGroup(kind, it, item) : fltMatchCond(kind, it, item));
+  return group.op === 'or' ? results.some(Boolean) : results.every(Boolean);
+}
+function fltMatch(kind, item) { return fltMatchGroup(kind, fltEnsureTree(fltCfg(kind)), item); }
+function fltCount(group) {
+  if (!group || !group.items) return 0;
+  return group.items.reduce((n, it) => n + (it.items ? fltCount(it) : 1), 0);
+}
+function fltValueInputHtml(kind, field, cond, pathStr) {
+  if (field.type === 'bool' || ['empty', 'nempty', 'overdue', 'thisweek'].includes(cond.cond)) return '';
+  if (field.type === 'text') return `<input type="text" class="flt-val-input" value="${esc(cond.value || '')}" onclick="event.stopPropagation()" onchange="fltSetValueAndRender('${kind}','${pathStr}',this.value,event)" placeholder="valeur…">`;
+  if (field.type === 'date') return `<input type="date" class="flt-val-input" value="${esc(cond.value || '')}" onclick="event.stopPropagation()" onchange="fltSetValueAndRender('${kind}','${pathStr}',this.value,event)">`;
+  const opts = (field.options || []).map(o => `<option value="${esc(o.v)}" ${cond.value === o.v ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+  return `<select class="flt-val-input" onclick="event.stopPropagation()" onchange="fltSetValueAndRender('${kind}','${pathStr}',this.value,event)"><option value="">choisir…</option>${opts}</select>`;
+}
+function fltConditionHtml(kind, cond, pathStr) {
+  const fields = fltFields(kind);
+  const field = fields.find(f => f.key === cond.prop) || fields[0];
+  const propOpts = fields.map(f => `<option value="${esc(f.key)}" ${f.key === field.key ? 'selected' : ''}>${esc(f.label)}</option>`).join('');
+  const condOpts = fltConds(field.type).map(c => `<option value="${esc(c.v)}" ${c.v === cond.cond ? 'selected' : ''}>${esc(c.label)}</option>`).join('');
+  return `<div class="flt-row">
+      <select class="flt-prop-sel" onclick="event.stopPropagation()" onchange="fltSetProp('${kind}','${pathStr}',this.value,event)">${propOpts}</select>
+      <select class="flt-cond-sel" onclick="event.stopPropagation()" onchange="fltSetCond('${kind}','${pathStr}',this.value,event)">${condOpts}</select>
+      ${fltValueInputHtml(kind, field, cond, pathStr)}
+      <span class="flt-row-del" onclick="fltRemove('${kind}','${pathStr}',event)" title="Supprimer">✕</span>
+    </div>`;
+}
+function fltGroupHtml(kind, group, pathStr, isRoot) {
+  const rows = (group.items || []).map((it, i) => {
+    const childPath = pathStr === '' ? '' + i : pathStr + '.' + i;
+    return it.items ? `<div class="flt-group">${fltGroupHtml(kind, it, childPath, false)}</div>` : fltConditionHtml(kind, it, childPath);
+  });
+  const joined = rows.map((r, i) => i === 0 ? r : `<div class="flt-joiner" onclick="fltToggleOp('${kind}','${pathStr}',event)" title="Basculer et/ou">${group.op === 'and' ? 'ET' : 'OU'}</div>${r}`).join('');
+  const hint = (!group.items || !group.items.length) ? `<div class="flt-empty-hint">${isRoot ? 'Aucun filtre actif.' : 'Groupe vide.'}</div>` : '';
+  const controls = `<div class="flt-add-row">
+      <span class="flt-add-btn" onclick="fltAddCond('${kind}','${pathStr}',event)">+ Filtre</span>
+      <span class="flt-add-btn" onclick="fltAddGroup('${kind}','${pathStr}',event)">+ Groupe</span>
+      ${!isRoot ? `<span class="flt-row-del" onclick="fltRemove('${kind}','${pathStr}',event)" title="Supprimer le groupe">✕ groupe</span>` : ''}
+    </div>`;
+  return `${joined}${hint}${controls}`;
+}
+function fltQuickPresets(kind) {
+  if (kind === 'tasks') return [
+    { key: 'overdue', label: 'En retard', cond: { prop: 'due', cond: 'overdue', value: '' } },
+    { key: 'noproject', label: 'Sans projet', cond: { prop: 'projectId', cond: 'empty', value: '' } },
+    { key: 'thisweek', label: 'Cette semaine', cond: { prop: 'due', cond: 'thisweek', value: '' } },
+  ];
+  return [
+    { key: 'overdue', label: 'En retard', cond: { prop: 'statut', cond: 'is', value: 'retard' } },
+    { key: 'thisweek', label: 'Échéance cette semaine', cond: { prop: 'end', cond: 'thisweek', value: '' } },
+  ];
+}
+function fltQuickActive(kind, key) { return fltEnsureTree(fltCfg(kind)).items.some(it => it.quick === key); }
+function fltToggleQuick(kind, key, e) {
+  if (e) e.stopPropagation();
+  const root = fltEnsureTree(fltCfg(kind));
+  const idx = root.items.findIndex(it => it.quick === key);
+  if (idx >= 0) root.items.splice(idx, 1);
+  else { const preset = fltQuickPresets(kind).find(p => p.key === key); root.items.push(Object.assign({ id: fltUid(), quick: key }, preset.cond)); }
+  fltRerender(kind);
+}
+function fltQuickChipsHtml(kind) {
+  return `<div class="flt-quick">${fltQuickPresets(kind).map(p => `<span class="flt-chip flt-chip-quick ${fltQuickActive(kind, p.key) ? 'on' : ''}" onclick="fltToggleQuick('${kind}','${p.key}',event)">${esc(p.label)}</span>`).join('')}</div>`;
+}
+function fltMenuHtml(kind) {
+  const cfg = fltCfg(kind);
+  const root = fltEnsureTree(cfg);
+  const statusRow = kind === 'tasks' ? `<div class="flt-sec">Statut</div>
+      <div class="kbp-row" onclick="setTaskStatus('active',event)"><span class="kbp-radio ${(cfg.filter || 'active') === 'active' ? 'on' : ''}"></span><span>À faire</span></div>
+      <div class="kbp-row" onclick="setTaskStatus('done',event)"><span class="kbp-radio ${cfg.filter === 'done' ? 'on' : ''}"></span><span>Terminées</span></div>
+      <div class="kbp-row" onclick="setTaskStatus('all',event)"><span class="kbp-radio ${cfg.filter === 'all' ? 'on' : ''}"></span><span>Toutes</span></div>` : '';
+  return `<div class="kb-props flt-menu flt-menu-wide" onclick="event.stopPropagation()">
+      <div class="ntoc-cap">Filtrer</div>
+      ${statusRow}
+      ${fltQuickChipsHtml(kind)}
+      <div class="flt-sec">Filtre avancé</div>
+      ${fltGroupHtml(kind, root, '', true)}
+    </div>`;
+}
+let svTmp = 0;
+function svIsOpen(kind) { return kind === 'tasks' ? svOpenTasks : svOpenProjects; }
+function svSetOpen(kind, val) { if (kind === 'tasks') svOpenTasks = val; else svOpenProjects = val; }
+function svToggle(kind, e) {
+  if (e) e.stopPropagation();
+  svSetOpen(kind, !svIsOpen(kind));
+  if (kind === 'tasks') { taskFilterOpen = false; kbPropsOpen = false; renderTasksSpace(); }
+  else { projFilterOpen = false; projPropsOpen = false; projSortOpen = false; renderProjectsSpace(); }
+}
+function svFieldsToSave(kind) {
+  const cfg = fltCfg(kind);
+  if (kind === 'tasks') return { filterTree: cfg.filterTree, groupBy: cfg.groupBy, layout: cfg.layout, filter: cfg.filter };
+  return { filterTree: cfg.filterTree, sort: cfg.sort, sortDir: cfg.sortDir, mode: cfg.mode, properties: Object.assign({}, cfg.properties) };
+}
+function svSave(kind, e) {
+  if (e) e.stopPropagation();
+  const input = document.getElementById('svNameInput_' + kind);
+  const name = input && input.value.trim();
+  if (!name) return;
+  const cfg = fltCfg(kind);
+  if (!cfg.savedViews) cfg.savedViews = [];
+  cfg.savedViews.push({ id: fltUid(), name, data: svFieldsToSave(kind) });
+  save(); if (kind === 'tasks') renderTasksSpace(); else renderProjectsSpace();
+}
+function svApply(kind, id, e) {
+  if (e) e.stopPropagation();
+  const cfg = fltCfg(kind);
+  const v = (cfg.savedViews || []).find(x => x.id === id);
+  if (!v) return;
+  Object.assign(cfg, JSON.parse(JSON.stringify(v.data)));
+  svSetOpen(kind, false);
+  save(); if (kind === 'tasks') renderTasksSpace(); else renderProjectsSpace();
+}
+function svDelete(kind, id, e) {
+  if (e) e.stopPropagation();
+  const cfg = fltCfg(kind);
+  cfg.savedViews = (cfg.savedViews || []).filter(x => x.id !== id);
+  save(); if (kind === 'tasks') renderTasksSpace(); else renderProjectsSpace();
+}
+function svMenuHtml(kind) {
+  const cfg = fltCfg(kind);
+  const views = cfg.savedViews || [];
+  const rows = views.map(v => `<div class="kbp-row" style="justify-content:space-between"><span onclick="svApply('${kind}','${v.id}',event)" style="flex:1;cursor:pointer">${esc(v.name)}</span><span class="flt-chip-x" onclick="svDelete('${kind}','${v.id}',event)">✕</span></div>`).join('');
+  return `<div class="kb-props flt-menu" onclick="event.stopPropagation()">
+      <div class="ntoc-cap">Vues enregistrées</div>
+      ${rows || '<div class="flt-empty-hint">Aucune vue enregistrée pour l’instant.</div>'}
+      <div class="sv-save-row"><input id="svNameInput_${kind}" type="text" placeholder="Nom de la vue" onclick="event.stopPropagation()"><span class="flt-add-btn" onclick="svSave('${kind}',event)">Enregistrer</span></div>
+    </div>`;
+}
+function toggleTaskFilter(e) { e.stopPropagation(); taskFilterOpen = !taskFilterOpen; kbPropsOpen = false; svOpenTasks = false; renderTasksSpace(); }
 function setTaskStatus(v, e) { if (e) e.stopPropagation(); tasksSpaceCfg().filter = v; save(); renderTasksSpace(); }
-function toggleTaskFilterVal(prop, val, e) {
-  if (e) e.stopPropagation();
-  const cfg = tasksSpaceCfg();
-  if (!cfg.filters) cfg.filters = [];
-  let f = cfg.filters.find(x => x.prop === prop);
-  if (!f) { f = { prop, values: [] }; cfg.filters.push(f); }
-  f.values = f.values.includes(val) ? f.values.filter(v => v !== val) : f.values.concat(val);
-  if (!f.values.length) cfg.filters = cfg.filters.filter(x => x.prop !== prop);
-  save(); renderTasksSpace();
-}
-function clearTaskFilter(prop, e) {
-  if (e) e.stopPropagation();
-  const cfg = tasksSpaceCfg();
-  if (prop === 'status') cfg.filter = 'active';
-  else cfg.filters = (cfg.filters || []).filter(x => x.prop !== prop);
-  save(); renderTasksSpace();
-}
-function dueMatchesPreset(due, key) {
-  if (key === 'nodate') return !due;
-  if (!due) return false;
-  const d = new Date(due + 'T00:00:00');
-  const now = new Date(); now.setHours(0, 0, 0, 0);
-  const day = d.getTime(), t0 = now.getTime();
-  if (key === 'today') return day === t0;
-  if (key === 'overdue') return day < t0;
-  if (key === 'next7') { const end = new Date(now); end.setDate(end.getDate() + 7); return day >= t0 && day <= end.getTime(); }
-  if (key === 'week') {
-    const dow = (now.getDay() + 6) % 7;
-    const start = new Date(now); start.setDate(start.getDate() - dow);
-    const end = new Date(start); end.setDate(start.getDate() + 6);
-    return day >= start.getTime() && day <= end.getTime();
-  }
-  if (key === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  return true;
-}
-function matchTaskFilter(t, f) {
-  if (f.prop === 'cat') return f.values.includes(t.catId || '');
-  if (f.prop === 'project') return f.values.includes(t.projectId || '');
-  if (f.prop === 'prio') return f.values.includes(t.prio || 'med');
-  if (f.prop === 'due') return f.values.some(v => dueMatchesPreset(t.due, v));
-  if (f.prop.startsWith('p:')) {
-    const v = (t.props || {})[f.prop.slice(2)];
-    if (Array.isArray(v)) return v.some(x => f.values.includes(x));
-    return f.values.includes(v || '');
-  }
-  return true;
-}
-function filterValLabel(prop, val) {
-  const pd = taskFilterProps().find(p => p.key === prop);
-  const o = pd && pd.options.find(x => x.v === val);
-  return o ? o.label : val;
-}
-function taskFilterChipsHtml() {
-  const cfg = tasksSpaceCfg();
-  const chips = [];
-  if (cfg.filter && cfg.filter !== 'active') {
-    const lbl = cfg.filter === 'done' ? 'Terminées' : 'Toutes';
-    chips.push(`<span class="flt-chip"><span class="flt-chip-k">Statut :</span> ${lbl}<span class="flt-chip-x" onclick="clearTaskFilter('status',event)">✕</span></span>`);
-  }
-  (cfg.filters || []).forEach(f => {
-    if (!f.values || !f.values.length) return;
-    const pd = taskFilterProps().find(p => p.key === f.prop);
-    const name = pd ? pd.label : f.prop;
-    const vals = f.values.map(v => filterValLabel(f.prop, v)).join(', ');
-    chips.push(`<span class="flt-chip"><span class="flt-chip-k">${esc(name)} :</span> ${esc(vals)}<span class="flt-chip-x" onclick="clearTaskFilter('${f.prop}',event)">✕</span></span>`);
-  });
-  return chips.length ? `<div class="flt-chips">${chips.join('')}</div>` : '';
-}
-function taskFilterMenuHtml() {
-  const cfg = tasksSpaceCfg();
-  let html = '';
-  taskFilterProps().forEach(pd => {
-    if (!pd.options.length) return;
-    html += `<div class="flt-sec">${esc(pd.label)}</div>`;
-    if (pd.radio) {
-      pd.options.forEach(o => {
-        const on = (cfg.filter || 'active') === o.v;
-        html += `<div class="kbp-row" onclick="setTaskStatus('${o.v}',event)"><span class="kbp-radio ${on ? 'on' : ''}"></span><span>${esc(o.label)}</span></div>`;
-      });
-    } else {
-      const f = taskFilterEntry(pd.key);
-      pd.options.forEach(o => {
-        const on = !!f && f.values.includes(o.v);
-        html += `<div class="kbp-row" onclick="toggleTaskFilterVal('${pd.key}','${o.v}',event)"><span class="kbp-check ${on ? 'on' : ''}"></span><span>${esc(o.label)}</span></div>`;
-      });
-    }
-  });
-  return `<div class="kb-props flt-menu" onclick="event.stopPropagation()"><div class="ntoc-cap">Filtrer</div>${html}</div>`;
-}
+window.fltAddCond = fltAddCond; window.fltAddGroup = fltAddGroup; window.fltRemove = fltRemove; window.fltToggleOp = fltToggleOp;
+window.fltSetProp = fltSetProp; window.fltSetCond = fltSetCond; window.fltSetValueAndRender = fltSetValueAndRender; window.fltToggleQuick = fltToggleQuick;
+window.svToggle = svToggle; window.svApply = svApply; window.svDelete = svDelete; window.svSave = svSave;
 window.toggleTaskFilter = toggleTaskFilter; window.setTaskStatus = setTaskStatus;
-window.toggleTaskFilterVal = toggleTaskFilterVal; window.clearTaskFilter = clearTaskFilter;
 
 /* ============================================================
    ESPACE « PROJETS »
@@ -4160,8 +4428,29 @@ window.toggleTaskFilterVal = toggleTaskFilterVal; window.clearTaskFilter = clear
    ============================================================ */
 function projSpaceCfg() {
   if (!state.projSpace) state.projSpace = { mode: 'cards' };
+  if (state.projSpace.mode === 'list') state.projSpace.mode = 'table';
   if (!state.projSpace.sort) state.projSpace.sort = 'statut';
+  if (!state.projSpace.sortDir) state.projSpace.sortDir = 'asc';
+  if (!state.projSpace.filters) state.projSpace.filters = [];
+  if (!state.projSpace.savedViews) state.projSpace.savedViews = [];
+  if (!state.projSpace.properties) state.projSpace.properties = { statut: true, dates: true, progress: true, phase: true, late: true, next: true };
   return state.projSpace;
+}
+function toggleProjSortDir(e) { if (e) e.stopPropagation(); const cfg = projSpaceCfg(); cfg.sortDir = cfg.sortDir === 'desc' ? 'asc' : 'desc'; save(); renderProjectsSpace(); }
+window.toggleProjSortDir = toggleProjSortDir;
+const PROJ_SORT_LABEL = { statut: 'Statut', echeance: 'Échéance', avancement: 'Avancement', nom: 'Nom' };
+function setProjSortDir(d, e) { if (e) e.stopPropagation(); projSpaceCfg().sortDir = d; save(); renderProjectsSpace(); }
+function projToggleSort(e) { e.stopPropagation(); projSortOpen = !projSortOpen; projFilterOpen = false; projPropsOpen = false; svOpenProjects = false; renderProjectsSpace(); }
+function projSortMenuHtml() {
+  const cfg = projSpaceCfg();
+  const row = (k, label) => `<div class="kbp-row" onclick="setProjSort('${k}')"><span class="kbp-check ${cfg.sort === k ? 'on' : ''}"></span><span>${esc(label)}</span></div>`;
+  const dirRow = (d, label) => `<div class="kbp-row" onclick="setProjSortDir('${d}',event)"><span class="kbp-check ${cfg.sortDir === d ? 'on' : ''}"></span><span>${esc(label)}</span></div>`;
+  return `<div class="kb-props flt-menu" onclick="event.stopPropagation()">
+      <div class="ntoc-cap">Trier par</div>
+      ${row('statut', 'Statut')}${row('echeance', 'Échéance')}${row('avancement', 'Avancement')}${row('nom', 'Nom')}
+      <div class="ntoc-cap" style="margin-top:6px">Ordre</div>
+      ${dirRow('asc', 'Croissant')}${dirRow('desc', 'Décroissant')}
+    </div>`;
 }
 
 /* Statut d'un projet — DÉDUIT de ce qu'on sait déjà (dates + avancement) plutôt
@@ -4195,7 +4484,7 @@ function projPhase(p) {
 function sortProjects(list, mode) {
   const l = list.slice();
   const today = ymd(new Date());
-  if (mode === 'nom')        return l.sort((a, b) => a.name.localeCompare(b.name));
+  if (mode === 'nom')        return l.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
   if (mode === 'avancement') return l.sort((a, b) => projStats(b).pct - projStats(a).pct);
   if (mode === 'echeance')   return l.sort((a, b) => (projEnd(a) || '9999').localeCompare(projEnd(b) || '9999'));
   // par statut : on suit l'ordre d'urgence de PROJ_STATUTS
@@ -4246,10 +4535,12 @@ function projKpisHtml(list) {
    Le statut reste déduit (dates + avancement), fidèle au choix du reste de l'app. */
 function projTableHtml(list) {
   const cfg = projSpaceCfg();
+  const cp = cfg.properties;
   const th = (key, label) => `<th class="${cfg.sort === key ? 'on' : ''}" onclick="setProjSort('${key}')" title="Trier par ${label.toLowerCase()}">${label}</th>`;
   const today = ymd(new Date());
   const chevTd = (ouvert, action, titre) =>
     `<span class="sub-chev ${ouvert ? 'open' : ''}" onclick="${action}" title="${titre}">${ICON_CHEV}</span>`;
+  const customCols = schemaOf('projects').filter(sp => cp['p:' + sp.id]);
 
   // une tâche (et récursivement ses sous-tâches), en ligne de tableau indentée
   function ligneTacheRow(t, depth) {
@@ -4266,12 +4557,12 @@ function projTableHtml(list) {
       : 'sans date';
     let h = `<tr class="ptr-task" onclick="${ouvre}">
       <td style="padding-left:${10 + depth * 18}px"><span class="pt-name sub">${enfants.length ? chevTd(!plie, `toggleSubtasks('${t.id}',event)`, plie ? 'Afficher les sous-tâches' : 'Masquer les sous-tâches') : '<span class="sub-chev-gap"></span>'}${iconOf(t, 'tasks')} ${esc(t.title)}</span></td>
-      <td><span class="grp-pill" style="background:${statutColor};color:${inkOn(statutColor)}">${statutLabel}</span></td>
-      <td class="pt-prog">${pr ? `<span class="pbar"><div style="width:${pr.pct}%;background:var(--accent)"></div></span><span class="pt-pct">${pr.pct} %</span>` : '·'}</td>
-      <td class="pt-num">${pr ? pr.done + '/' + pr.total : '·'}</td>
-      <td class="pt-num">·</td>
-      <td class="pt-next">${next ? esc(next.title) + ' · ' + esc(formatDue(next.due)) : '·'}</td>
-      <td class="pt-dates">${dates}</td>
+      ${cp.statut ? `<td><span class="grp-pill" style="background:${statutColor};color:${inkOn(statutColor)}">${statutLabel}</span></td>` : ''}
+      ${cp.progress ? `<td class="pt-prog">${pr ? `<span class="pbar"><div style="width:${pr.pct}%;background:var(--accent)"></div></span><span class="pt-pct">${pr.pct} %</span>` : '·'}</td><td class="pt-num">${pr ? pr.done + '/' + pr.total : '·'}</td>` : ''}
+      ${cp.late ? `<td class="pt-num">·</td>` : ''}
+      ${cp.next ? `<td class="pt-next">${next ? esc(next.title) + ' · ' + esc(formatDue(next.due)) : '·'}</td>` : ''}
+      ${cp.dates ? `<td class="pt-dates">${dates}</td>` : ''}
+      ${customCols.map(() => '<td class="pt-num">·</td>').join('')}
     </tr>`;
     if (!plie) h += enfants
       .sort((a, b) => (taskFrom(a) || '9999').localeCompare(taskFrom(b) || '9999'))
@@ -4287,54 +4578,67 @@ function projTableHtml(list) {
     const plie = projCollapsed(p.id);
     let h = `<tr onclick="openPage('projects','${p.id}')">
       <td><span class="pt-name">${taches.length ? chevTd(!plie, `toggleProjRow('${p.id}',event)`, plie ? 'Afficher les tâches' : 'Masquer les tâches') : '<span class="sub-chev-gap"></span>'}<span class="pill-dot" style="background:${dotOf(p.color)};width:9px;height:9px;border-radius:50%;flex:none"></span>${iconOf(p, 'projects')} ${esc(p.name)}</span></td>
-      <td><span class="grp-pill" style="background:${stColor};color:${inkOn(stColor)}">${esc(stLabel)}</span></td>
-      <td class="pt-prog"><span class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></span><span class="pt-pct">${st.pct} %</span></td>
-      <td class="pt-num">${st.done}/${st.total}</td>
-      <td class="pt-num${st.late ? ' late' : ''}">${st.late || '·'}</td>
-      <td class="pt-next">${st.next ? esc(st.next.title) + ' · ' + esc(formatDue(st.next.due)) : '·'}</td>
-      <td class="pt-dates">${esc(projDatesText(p))}</td>
+      ${cp.statut ? `<td><span class="grp-pill" style="background:${stColor};color:${inkOn(stColor)}">${esc(stLabel)}</span></td>` : ''}
+      ${cp.progress ? `<td class="pt-prog"><span class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></span><span class="pt-pct">${st.pct} %</span></td><td class="pt-num">${st.done}/${st.total}</td>` : ''}
+      ${cp.late ? `<td class="pt-num${st.late ? ' late' : ''}">${st.late || '·'}</td>` : ''}
+      ${cp.next ? `<td class="pt-next">${st.next ? esc(st.next.title) + ' · ' + esc(formatDue(st.next.due)) : '·'}</td>` : ''}
+      ${cp.dates ? `<td class="pt-dates">${esc(projDatesText(p))}</td>` : ''}
+      ${customCols.map(sp => tblCustomCell(p, sp)).join('')}
     </tr>`;
     if (!plie) h += taches.map(t => ligneTacheRow(t, 1)).join('');
     return h;
   }).join('');
   return `<div class="ptable-wrap"><table class="ptable">
-    <thead><tr>${th('nom', 'Projet')}${th('statut', 'Statut')}${th('avancement', 'Avancement')}<th>Tâches</th><th>En retard</th><th>Prochaine tâche</th>${th('echeance', 'Échéance')}</tr></thead>
+    <thead><tr>${th('nom', 'Projet')}${cp.statut ? th('statut', 'Statut') : ''}${cp.progress ? th('avancement', 'Avancement') + '<th>Tâches</th>' : ''}${cp.late ? '<th>En retard</th>' : ''}${cp.next ? '<th>Prochaine tâche</th>' : ''}${cp.dates ? th('echeance', 'Échéance') : ''}${customCols.map(sp => `<th>${esc(sp.name)}</th>`).join('')}</tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
 }
 
 function renderProjectsSpace() {
   const cfg = projSpaceCfg();
-  const list = state.projects.slice();
+  const all = state.projects.slice();
+  const filtered = all.filter(p => fltMatch('projects', p));
   const tab = (m, label) => `<span class="space-tab ${cfg.mode === m ? 'on' : ''}" onclick="setProjSpace('${m}')">${label}</span>`;
+  const nFilters = fltCount(fltEnsureTree(cfg));
 
   let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Projets</span>
-      <span class="space-count">${list.length} projet${list.length > 1 ? 's' : ''}</span>
-      <span class="space-tabs">${tab('cards', 'Cartes')}${tab('list', 'Liste')}${tab('table', 'Tableau')}${tab('timeline', 'Chronologie')}</span>
+      <span class="space-count">${filtered.length} projet${filtered.length > 1 ? 's' : ''}</span>
+      <span class="space-tabs">${tab('cards', 'Cartes')}${tab('table', 'Tableau')}${tab('timeline', 'Chronologie')}</span>
     </div>
-    ${list.length ? projKpisHtml(list) : ''}
+    ${filtered.length ? projKpisHtml(filtered) : ''}
     <div class="space-bar">
       <span class="space-add" onclick="openProjModal()">${ICON_PLUS} Ajouter un projet</span>
       <span style="flex:1"></span>
-      ${cfg.mode === 'cards' || cfg.mode === 'list' ? `<span class="space-sort-lbl">Trier par</span>
-        ${[['statut','statut'],['echeance','échéance'],['avancement','avancement'],['nom','nom']]
-          .map(([k, l]) => `<span class="space-tab ${cfg.sort === k ? 'on' : ''}" onclick="setProjSort('${k}')">${l}</span>`).join('')}`
-        : cfg.mode === 'table' ? `<span class="space-sort-lbl">Clique sur un en-tête de colonne pour trier</span>`
-        : `<span class="space-sort-lbl">Maj + molette pour faire défiler</span>
-           ${Math.abs(tlPan) > 0.5 ? `<span class="space-tab on" onclick="resetTlPan()">Recentrer</span>` : ''}`}
-    </div>`;
+      ${cfg.mode === 'timeline' ? `<span class="space-sort-lbl">· Maj + molette</span>${Math.abs(tlPan) > 0.5 ? `<span class="space-tab on" onclick="resetTlPan()">Recentrer</span>` : ''}` : ''}
+      <span class="space-tab ${projSortOpen ? 'on' : ''}" onclick="projToggleSort(event)">Trier : ${PROJ_SORT_LABEL[cfg.sort]} ${cfg.sortDir === 'desc' ? '↓' : '↑'}</span>
+      <span class="space-sep">·</span>
+      <span class="space-tab ${projFilterOpen ? 'on' : ''}" onclick="toggleProjFilter(event)">Filtrer${nFilters ? ` <span class="flt-badge">${nFilters}</span>` : ''}</span>
+      <span class="space-sep">·</span>
+      <span class="space-tab ${projPropsOpen ? 'on' : ''}" onclick="projToggleProps(event)">Propriétés</span>
+      <span class="space-sep">·</span>
+      <span class="space-tab ${svOpenProjects ? 'on' : ''}" onclick="svToggle('projects',event)">Vues</span>
+    </div>
+    ${fltQuickChipsHtml('projects')}
+    ${projSortOpen ? projSortMenuHtml() : ''}
+    ${projPropsOpen ? projPropsMenuHtml() : ''}
+    ${projFilterOpen ? fltMenuHtml('projects') : ''}
+    ${svOpenProjects ? svMenuHtml('projects') : ''}`;
 
-  if (!list.length) {
+  if (!all.length) {
     canvas.innerHTML = html + `<div class="space-empty">Aucun projet pour l'instant.<br>Clique sur « Ajouter un projet » pour en créer un.</div></div>`;
     return;
   }
-  const tries = sortProjects(list, cfg.sort);
+  if (!filtered.length) {
+    canvas.innerHTML = html + `<div class="space-empty">Aucun projet ne correspond à ce filtre.</div></div>`;
+    return;
+  }
+  let tries = sortProjects(filtered, cfg.sort);
+  if (cfg.sortDir === 'desc') tries = tries.reverse();
   html += cfg.mode === 'cards' ? projCardsHtml(tries, cfg.sort === 'statut')
-        : cfg.mode === 'list'  ? projListHtml(tries, cfg.sort === 'statut')
         : cfg.mode === 'table' ? projTableHtml(tries)
-        : projTimelineHtml(list);
+        : projTimelineHtml(tries);
   canvas.innerHTML = html + '</div>';
   if (cfg.mode === 'timeline') { thinTimelineLabels(); wireTimelinePan(); }
 }
@@ -4367,34 +4671,39 @@ const enteteStatut = g => g.label
   : '';
 
 function projCardsHtml(list, grouper) {
+  const cp = projSpaceCfg().properties;
   return parStatut(list, grouper).map(g => enteteStatut(g) + '<div class="pcards">' + g.items.map(p => {
     const st = projStats(p);
-    const phase = projPhase(p);
+    const phase = cp.phase ? projPhase(p) : null;
+    const custom = projCustomCellsHtml(p);
     return `<div class="pcard" style="border-left-color:${dotOf(p.color)}" onclick="openPage('projects','${p.id}')">
       <div class="pcard-name">${iconOf(p, 'projects')} ${esc(p.name)}</div>
-      <div class="pcard-dates">${esc(projDatesText(p))}</div>
-      <div class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></div>
-      <div class="pcard-foot"><span>${st.done} / ${st.total} tâche${st.total > 1 ? 's' : ''}</span><span>${st.pct} %</span></div>
+      ${cp.dates ? `<div class="pcard-dates">${esc(projDatesText(p))}</div>` : ''}
+      ${cp.progress ? `<div class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></div>
+      <div class="pcard-foot"><span>${st.done} / ${st.total} tâche${st.total > 1 ? 's' : ''}</span><span>${st.pct} %</span></div>` : ''}
       ${phase ? `<div class="pcard-phase" title="Phase en cours">${esc(phase.title)} · ${subProgress(phase.id).done}/${subProgress(phase.id).total}</div>` : ''}
-      ${st.late ? `<div class="pcard-warn">${st.late} en retard</div>`
-        : st.next ? `<div class="pcard-foot" style="margin-top:5px"><span>prochaine : ${esc(formatDue(st.next.due))}</span></div>`
-        : st.total && st.done === st.total ? `<div class="pcard-foot" style="margin-top:5px"><span>terminé</span></div>` : ''}
+      ${cp.late && st.late ? `<div class="pcard-warn">${st.late} en retard</div>`
+        : cp.next && st.next ? `<div class="pcard-foot" style="margin-top:5px"><span>prochaine : ${esc(formatDue(st.next.due))}</span></div>`
+        : cp.next && st.total && st.done === st.total ? `<div class="pcard-foot" style="margin-top:5px"><span>terminé</span></div>` : ''}
+      ${custom ? `<div class="pcard-foot" style="margin-top:5px;flex-wrap:wrap;gap:4px">${custom}</div>` : ''}
     </div>`;
   }).join('') + '</div>').join('');
 }
 
 function projListHtml(list, grouper) {
+  const cp = projSpaceCfg().properties;
   return parStatut(list, grouper).map(g => enteteStatut(g) + g.items.map(p => {
     const st = projStats(p);
-    const phase = projPhase(p);
+    const phase = cp.phase ? projPhase(p) : null;
+    const custom = projCustomCellsHtml(p);
     return `<div class="prow" onclick="openPage('projects','${p.id}')">
       <span class="pill-dot" style="background:${dotOf(p.color)};width:9px;height:9px;border-radius:50%;flex:none"></span>
       <span class="p-name">${iconOf(p, 'projects')} ${esc(p.name)}</span>
       ${phase ? `<span class="p-phase" title="Phase en cours">${esc(phase.title)}</span>` : ''}
-      ${st.late ? `<span class="t-due late">${st.late} en retard</span>` : ''}
-      <span class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></span>
-      <span class="p-meta">${st.done}/${st.total} · ${st.pct} %</span>
-      <span class="p-meta">${esc(projDatesText(p))}</span>
+      ${cp.late && st.late ? `<span class="t-due late">${st.late} en retard</span>` : ''}
+      ${custom}
+      ${cp.progress ? `<span class="pbar"><div style="width:${st.pct}%;background:${dotOf(p.color)}"></div></span><span class="p-meta">${st.done}/${st.total} · ${st.pct} %</span>` : ''}
+      ${cp.dates ? `<span class="p-meta">${esc(projDatesText(p))}</span>` : ''}
     </div>`;
   }).join('')).join('');
 }
@@ -4630,24 +4939,64 @@ window.setProjSpace = setProjSpace;
 function setProjSort(s) { projSpaceCfg().sort = s; save(); render(); }
 window.setProjSort = setProjSort;
 
+/* ---- Projets : filtres et propriétés affichées (même mécanique que Mes tâches) ---- */
+let projFilterOpen = false;
+let projPropsOpen = false;
+let projSortOpen = false;
+function toggleProjFilter(e) { e.stopPropagation(); projFilterOpen = !projFilterOpen; projPropsOpen = false; svOpenProjects = false; projSortOpen = false; renderProjectsSpace(); }
+function projToggleProps(e) { e.stopPropagation(); projPropsOpen = !projPropsOpen; projFilterOpen = false; svOpenProjects = false; projSortOpen = false; renderProjectsSpace(); }
+function projToggleProp(k, e) { e.stopPropagation(); const cp = projSpaceCfg().properties; cp[k] = !cp[k]; save(); renderProjectsSpace(); }
+function projPropsMenuHtml() {
+  const cp = projSpaceCfg().properties;
+  const row = (k, label) => `<div class="kbp-row" onclick="projToggleProp('${k}',event)"><span class="kbp-check ${cp[k] ? 'on' : ''}"></span><span>${esc(label)}</span></div>`;
+  let rows = row('statut', 'Statut') + row('dates', 'Dates') + row('progress', 'Avancement') + row('phase', 'Phase en cours') + row('late', 'Tâches en retard') + row('next', 'Prochaine échéance');
+  schemaOf('projects').forEach(p => { rows += row('p:' + p.id, p.name); });
+  return `<div class="kb-props" onclick="event.stopPropagation()">${rows}</div>`;
+}
+function projCustomCellsHtml(p) {
+  const cp = projSpaceCfg().properties;
+  return schemaOf('projects').filter(sp => cp['p:' + sp.id]).map(sp => {
+    if (sp.type === 'select') {
+      const o = (sp.options || []).find(x => x.id === (p.props || {})[sp.id]);
+      return o ? `<span class="proj-pill" style="background:${o.color || '#EDEDEB'};color:${inkOn(o.color || '#EDEDEB')}"><span class="pill-dot" style="background:${dotOf(o.color || '#EDEDEB')}"></span>${esc(o.label)}</span>` : '';
+    }
+    const val = kbCellText(p, sp);
+    return val ? `<span class="kb-cell" title="${esc(sp.name)}">${esc(val)}</span>` : '';
+  }).join('');
+}
+document.addEventListener('click', () => {
+  if ((projPropsOpen || projFilterOpen || svOpenProjects || projSortOpen) && state.view === 'projects') { projPropsOpen = false; projFilterOpen = false; svOpenProjects = false; projSortOpen = false; renderProjectsSpace(); }
+});
+window.toggleProjFilter = toggleProjFilter;
+window.projToggleProps = projToggleProps; window.projToggleProp = projToggleProp;
+
 /* ============================================================
    SIDEBAR : tâches & catégories
    ============================================================ */
 function renderTasks() {
   const today = ymd(new Date());
-  let list = state.tasks.slice();
-  if (taskFilter === 'active') list = list.filter(t => !t.done);
-  else if (taskFilter === 'done') list = list.filter(t => t.done);
-  else if (taskFilter === 'today') list = list.filter(t => t.due === today);
-  if (projectFilter) list = list.filter(t => t.projectId === projectFilter);
+  const weekStart = ymd(startOfWeek(new Date()));
+  const weekEnd = ymd(addDays(startOfWeek(new Date()), 6));
+  let base = state.tasks.slice();
+  if (taskFilter === 'active') base = base.filter(t => !t.done);
+  else if (taskFilter === 'done') base = base.filter(t => t.done);
+  else if (taskFilter === 'today') base = base.filter(t => t.due === today);
+  else if (taskFilter === 'nodate') base = base.filter(t => !t.done && !t.due);
+  if (projectFilter) base = base.filter(t => t.projectId === projectFilter);
+  // la barre latérale se limite à la semaine en cours (+ les tâches sans date), sinon elle grossit sans fin
+  // «Aujourd'hui» et «Sans date» échappent à cette limite : ce sont déjà des vues ciblées
+  let list = (taskFilter === 'today' || taskFilter === 'nodate') ? base : base.filter(t => !t.due || (t.due >= weekStart && t.due <= weekEnd));
+  const hiddenByWeek = base.length - list.length;
 
   list.sort((a,b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
-    return (a.due||'9999').localeCompare(b.due||'9999');
+    return (a.due||'9999').localeCompare(b.due||'9999') || (a.title||'').localeCompare(b.title||'', undefined, {sensitivity:'base'});
   });
 
   const box = $('taskList');
   $$('#taskFilters button').forEach(b => b.classList.toggle('active', b.dataset.filter === taskFilter));
+  const taskSideBar = $('taskSideBar');
+  if (taskSideBar) taskSideBar.innerHTML = hiddenByWeek ? `<span class="side-badge" title="Tâches hors de la semaine en cours">${hiddenByWeek} masquée${hiddenByWeek>1?'s':''} (hors semaine)</span>` : '';
 
   // bannière du filtre projet actif
   const proj = projectFilter ? projById(projectFilter) : null;
@@ -7080,11 +7429,22 @@ function projProgress(id) {
 }
 function renderProjects() {
   const box = $('projList');
+  const projSideBar = $('projSideBar');
   if (!state.projects.length) {
     box.innerHTML = `<div class="proj-empty">Aucun projet. Clique sur ＋ pour en créer un et y regrouper des tâches.</div>`;
+    if (projSideBar) projSideBar.innerHTML = '';
     return;
   }
-  box.innerHTML = state.projects.map(p => {
+  if (state.sidebarHideFinishedProj === undefined) state.sidebarHideFinishedProj = true;
+  const hideFin = state.sidebarHideFinishedProj;
+  const visible = hideFin ? state.projects.filter(p => projStatut(p) !== 'fini') : state.projects.slice();
+  const hiddenN = state.projects.length - visible.length;
+  if (projSideBar) projSideBar.innerHTML = `<span class="side-toggle ${hideFin?'on':''}" onclick="toggleSidebarProjFinished()" title="${hideFin ? 'Afficher aussi les projets terminés' : 'Masquer les projets terminés'}">${hideFin ? 'Terminés masqués' : 'Tout afficher'}</span>${hiddenN ? `<span class="side-badge">${hiddenN} masqué${hiddenN>1?'s':''}</span>` : ''}`;
+  if (!visible.length) {
+    box.innerHTML = `<div class="proj-empty">Tous les projets sont terminés. <span class="side-link" onclick="toggleSidebarProjFinished()">Afficher quand même</span></div>`;
+    return;
+  }
+  box.innerHTML = visible.map(p => {
     const pr = projProgress(p.id);
     const active = projectFilter === p.id;
     return `<div class="proj-row ${active?'active':''}" onclick="openProjectDetail('${p.id}')" title="Ouvrir ce projet et ses tâches">
@@ -7098,6 +7458,8 @@ function renderProjects() {
     </div>`;
   }).join('');
 }
+function toggleSidebarProjFinished() { state.sidebarHideFinishedProj = !state.sidebarHideFinishedProj; save(); renderProjects(); }
+window.toggleSidebarProjFinished = toggleSidebarProjFinished;
 function selectProject(id) {
   projectFilter = (id && projectFilter !== id) ? id : null;
   render();
@@ -7138,7 +7500,7 @@ function renderProjectDetail() {
 }
 function toggleTaskDetail(id) {
   const t = state.tasks.find(x => x.id === id);
-  if (t) { t.done = !t.done; save(); render(); renderProjectDetail(); }
+  if (t) { setTaskDone(t, !t.done); save(); render(); renderProjectDetail(); }
 }
 window.toggleTaskDetail = toggleTaskDetail;
 function pdOpenTask(id) { reopenProjDetail = pdProjId; openModal('task', id); }
@@ -7202,7 +7564,7 @@ function deleteProject(id) {
 function toggleTask(id, ev) {
   ev && ev.stopPropagation();
   const t = state.tasks.find(x => x.id === id);
-  if (t) { t.done = !t.done; save(); render(); }
+  if (t) { setTaskDone(t, !t.done); save(); render(); }
 }
 window.toggleTask = toggleTask;
 
@@ -8917,7 +9279,7 @@ window.addSubtask = addSubtask;
 
 function togglePageTask(id) {
   const t = state.tasks.find(x => x.id === id);
-  if (t) { t.done = !t.done; save(); render(); renderPage(); }
+  if (t) { setTaskDone(t, !t.done); save(); render(); renderPage(); }
 }
 // replie / déplie les tâches terminées sur la page d'un projet (persisté)
 function togglePageDone(pid) {
