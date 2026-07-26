@@ -838,7 +838,9 @@
   .bl-nav-lbl { font-weight: 600; font-size: 14px; text-transform: capitalize; }
   .bl-wrap { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 10px; }
   .bl-chart-box { flex: 1 1 440px; min-width: 300px; }
-  .bl-donut-box { flex: 0 0 220px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .bl-donut-box { flex: 0 0 290px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .bl-donut-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+  .bl-break-tabs { display: inline-flex; gap: 4px; }
   /* hauteur fixe plutôt que "auto" : avec un viewBox très large en vue Mois (~30 barres),
      "auto" calcule la hauteur depuis le ratio largeur/hauteur du viewBox et écrase le
      graphique en une bande plate — signalé le 2026-07-25. */
@@ -850,6 +852,7 @@
   .bl-donut-sub { font-size: 9.5px; fill: var(--text-faint); }
   .bl-legend { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; font-size: 12.5px; color: var(--text-soft); width: 100%; }
   .bl-legend-row { display: flex; align-items: center; gap: 8px; }
+  .bl-legend-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bl-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
   .bl-legend-val { margin-left: auto; color: var(--text-faint); white-space: nowrap; }
   .bl-toggle { display: inline-flex; flex: none; width: 14px; height: 14px; align-items: center; justify-content: center;
@@ -867,6 +870,43 @@
   /* en-tête de groupe en pilule colorée (projet, priorité) : plus parlant qu'un mot seul */
   .grp-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px;
     font-size: 11.5px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+
+  /* Vue Liste « Mes tâches » : bandes de groupe pleine largeur + tableau éditable */
+  .grp-band { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px;
+    margin: 22px 0 6px; font-size: 12px; background: var(--surface-2); color: var(--text-soft); }
+  .grp-band.late { background: #f7e4e2; color: #b4544f; }
+  .grp-band.done-head { cursor: pointer; }
+  .grp-band.done-head:hover { filter: brightness(.97); }
+  .grp-band .grp-head-label { font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .grp-band .grp-n { font-weight: 400; opacity: .7; }
+  .grp-band .sub-chev { color: inherit; width: 15px; }
+  .grp-band-row td { padding: 0; border: 0; background: none; }
+  .grp-band-row:hover { background: none; }
+  .tbl-table { width: 100%; border-collapse: collapse; margin: 0 0 6px; }
+  .tbl-table thead th { text-align: left; font-size: 10.5px; font-weight: 500; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: .03em; padding: 3px 8px 6px; white-space: nowrap; }
+  .tbl-th-check { width: 30px; }
+  .tbl-custom { padding: 6px 8px; font-size: 12.5px; color: var(--text-soft); vertical-align: middle; }
+  .tbl-custom-empty { color: var(--text-faint); }
+  .tbl-row { border-top: 1px solid var(--border); }
+  .tbl-row:hover { background: var(--surface-2); }
+  .tbl-row > td { padding: 8px; vertical-align: middle; font-size: 13.5px; }
+  .tbl-title { cursor: pointer; overflow-wrap: anywhere; }
+  .tbl-title .tbl-title-in { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tbl-title:hover { color: var(--accent); }
+  .tbl-row.is-done .tbl-title { text-decoration: line-through; color: var(--text-faint); }
+  .tbl-row.sub .tbl-title { padding-left: 26px; font-size: 13px; color: var(--text-soft); }
+  .tbl-cell { cursor: pointer; white-space: nowrap; }
+  .tbl-cell-inner { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 20px;
+    font-size: 12px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  .tbl-empty { color: var(--text-faint); font-size: 12px; opacity: 0; transition: opacity var(--dur) var(--ease); }
+  .tbl-row:hover .tbl-empty { opacity: 1; }
+  .tbl-cell:hover .tbl-empty { color: var(--accent); }
+  .tbl-date { border: 1px solid transparent; background: none; font: inherit; font-size: 12.5px;
+    color: var(--text-soft); cursor: pointer; border-radius: 6px; padding: 2px 4px; max-width: 140px; }
+  .tbl-date:hover { border-color: var(--border); background: var(--surface); }
+  .tbl-date.late { color: #b4544f; }
+  .prio-pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 20px; font-size: 12px; }
 
   .trow { display: flex; align-items: center; gap: 11px; padding: 10px 6px; border-bottom: 1px solid var(--border); }
   .trow:hover { background: var(--surface-2); }
@@ -996,12 +1036,16 @@
   .health-check { display: flex; align-items: center; gap: 6px; }
   .health-note { width: 100%; min-height: 50px; resize: vertical; font-family: var(--font-sans); font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
   .health-chart-wrap { margin-top: 22px; }
-  .health-chart { width: 100%; height: 280px; margin-top: 6px; }
+  .health-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; margin-top: 16px; }
+  .health-card-title { font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
+  .hc-mood, .hc-sleep, .hc-cm { width: 100%; height: auto; display: block; }
   .hc-grid { stroke: var(--border); stroke-width: 1; }
   .hc-grid-mid { stroke: var(--border-strong); }
-  .hc-line { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  .hc-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .hc-bar { fill: var(--accent-soft); }
-  .hc-cycle { fill: #c0564f; }
+  .hc-zone { fill: #46c07d; opacity: .14; }
+  .hc-avg { stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 4 3; }
+  .hc-cycle { fill: #e35d6a; }
   .hc-label { font-size: 9.5px; fill: var(--text-faint); }
   .hc-axis { font-size: 9.5px; fill: var(--text-faint); }
 
@@ -1301,7 +1345,7 @@
 
   /* ---- vue kanban ---- */
   .kanban { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
-  .kb-col { background: var(--surface-2); border-radius: 12px; padding: 10px; min-width: 220px; width: 220px; flex-shrink: 0; transition: background .12s; }
+  .kb-col { background: var(--kb-tint, var(--surface-2)); border-radius: 12px; padding: 10px; min-width: 220px; width: 220px; flex-shrink: 0; transition: background .12s; }
   .kb-col.kb-over { background: var(--accent-soft); }
   .kb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
   .kb-count { font-size: 11px; color: var(--text-soft); font-weight: 600; }
@@ -1325,6 +1369,32 @@
   .kbp-check { width: 15px; height: 15px; flex: none; border: 1.5px solid var(--border-strong); border-radius: 4px; }
   .kbp-check.on { background: var(--accent); border-color: var(--accent); position: relative; }
   .kbp-check.on::after { content: '✓'; position: absolute; inset: 0; color: #fff; font-size: 10px; line-height: 15px; text-align: center; }
+  .kbp-radio { width: 15px; height: 15px; flex: none; border: 1.5px solid var(--border-strong); border-radius: 50%; }
+  .kbp-radio.on { border-color: var(--accent); background: radial-gradient(var(--accent) 42%, transparent 46%); }
+  /* en-tête de colonne kanban + bouton masquer */
+  .kb-head-l { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+  .kb-hide, .kb-show { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; color: var(--text-faint); opacity: .35; flex: none; cursor: pointer; transition: opacity .12s, background .12s; }
+  .kb-hide:hover, .kb-show:hover { background: var(--border); color: var(--text); opacity: 1; }
+  .kb-col:hover .kb-hide { opacity: .65; }
+  /* rail des groupes épinglés (masqués) */
+  .kb-rail { flex: none; width: 190px; padding-left: 12px; border-left: 1px dashed var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .kb-rail-head { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); padding: 2px 4px 4px; }
+  .kb-chip { display: flex; align-items: center; gap: 7px; padding: 7px 8px; border-radius: 9px; background: var(--surface-2); font-size: 12.5px; transition: background .12s; }
+  .kb-chip.kb-over { background: var(--accent-soft); }
+  .kb-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .kb-chip-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kb-chip .grp-n { color: var(--text-faint); font-size: 11px; }
+  .kb-chip .kb-show { opacity: .5; }
+  .kb-chip:hover .kb-show { opacity: 1; }
+  /* barre de filtres */
+  .flt-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; margin-left: 3px; }
+  .flt-menu { max-height: 60vh; overflow-y: auto; }
+  .flt-sec { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); padding: 8px 8px 3px; }
+  .flt-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; }
+  .flt-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 9px; border-radius: 14px; background: var(--surface-2); font-size: 12px; color: var(--text-soft); }
+  .flt-chip-k { color: var(--text-faint); }
+  .flt-chip-x { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; cursor: pointer; color: var(--text-faint); font-size: 10px; }
+  .flt-chip-x:hover { background: var(--border); color: var(--text); }
   .kb-cell { font-size: 11.5px; color: var(--text-soft); }
   /* en-tête de colonne personnalisée : nom + bouton réglage */
   table.data-table th.col-custom { }
@@ -1350,6 +1420,31 @@
   .hidden-cols .lbl { font-size: 11.5px; color: var(--text-soft); }
   .hidden-chip { font-size: 11.5px; color: var(--text-soft); border: 1px dashed var(--border); border-radius: 20px; padding: 3px 9px; }
   .hidden-chip:hover { border-color: var(--accent); color: var(--accent); }
+  /* ---- Améliorations Notes : icônes, envoyer vers, sous-dossiers, masquage ---- */
+  .note-card-tools { position: absolute; top: 6px; right: 6px; display: flex; align-items: center; gap: 1px; z-index: 2; }
+  .note-card-tools .note-card-fav { position: static; top: auto; right: auto; }
+  .note-card-tools .nc-btn { background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 3px; line-height: 0; display: inline-flex; opacity: 0; transition: opacity var(--dur) var(--ease); }
+  .note-card:hover .nc-btn { opacity: 1; }
+  .note-card-tools .nc-btn:hover { color: var(--accent); }
+  .note-card-title { display: flex; align-items: center; gap: 7px; padding-right: 62px; }
+  .note-card-title .nct-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nc-icon-btn { background: none; border: none; padding: 0; margin: 0; cursor: pointer; display: inline-flex; align-items: center; line-height: 0; flex: none; transition: transform var(--dur) var(--ease); }
+  .nc-icon-btn:hover { transform: scale(1.15); }
+  .nc-ico-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .nc-ico-svg { display: inline-flex; }
+  .tile-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 1px; }
+  .tile-actions button { background: none; border: none; color: var(--text-faint); cursor: pointer; opacity: 0; display: inline-flex; padding: 2px; line-height: 0; }
+  .folder-tile:hover .tile-actions button { opacity: 1; }
+  .tile-actions button:hover { color: var(--accent); }
+  .notes-hidden { margin: 10px 0 18px; }
+  .notes-hidden .hidden-chip { display: inline-flex; align-items: center; gap: 5px; }
+  .notes-hidden .hidden-chip svg { vertical-align: middle; }
+  .note-ico-btn { font-size: 15px; }
+  .icon-pick-pop { position: fixed; z-index: 4000; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow); padding: 8px; width: 284px; max-height: 328px; overflow-y: auto; }
+  .icon-pick-pop .ipk-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .icon-pick-pop .ipk-grid button { aspect-ratio: 1; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 8px; background: none; cursor: pointer; color: var(--text-soft); font-size: 15px; }
+  .icon-pick-pop .ipk-grid button:hover { background: var(--surface-2); }
+  .icon-pick-pop .ipk-grid button.sel { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   /* éditeur d'options dans la fenêtre propriété */
   .mini-add { font-size: 12px; color: var(--accent); font-weight: 600; float: right; }
   .opt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -1803,6 +1898,7 @@
     <div class="modal-head">
       <button class="icon-btn hidden" id="noteBackBtn" title="Revenir à la note parente">←</button>
       <button class="icon-btn note-fav-btn" id="noteFavBtn" title="Mettre en favori">☆</button>
+      <button class="icon-btn note-ico-btn" id="noteIconBtn" title="Icône de la note"></button>
       <input id="noteTitle" class="note-title-input" placeholder="Titre de la note" autocomplete="off">
       <button class="icon-btn" title="Modèles" onclick="openTplMenu(this,'note')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
       <button class="icon-btn" id="noteReadBtn" title="Aperçu"></button>
@@ -1861,6 +1957,8 @@
       </div>
       <div id="folderColorTab"><div class="color-picker" id="folderColorPicker"></div></div>
       <div id="folderIconTab" class="hidden"><div class="icon-grid folder-icon-grid" id="folderIconGrid"></div></div>
+      <label style="margin-top:14px">Dossier parent (facultatif)</label>
+      <button type="button" class="styled-select" id="folderParentBtn"></button>
       <label style="margin-top:14px">Dépend d'un projet (facultatif)</label>
       <button type="button" class="styled-select" id="folderProjBtn"></button>
     </div>
@@ -3101,7 +3199,7 @@ function renderMonth() {
       const items = [...evs.map(o => ({ kind: 'event', o })), ...tks.map(o => ({ kind: 'task', o }))];
       const shown = items.slice(0, 3);
       const extra = items.length - shown.length;
-      // habitudes : les points sont désormais à côté du numéro du jour (voir en-tête)
+      // habitudes : les points sont désormais �� côté du numéro du jour (voir en-tête)
       let chips = '';
       shown.forEach(it => {
         if (it.kind === 'event') {
@@ -3390,6 +3488,9 @@ function tasksSpaceCfg() {
   if (!state.tasksSpace) state.tasksSpace = { groupBy: 'due', filter: 'active' };
   if (!state.tasksSpace.layout) state.tasksSpace.layout = 'list';
   if (!state.tasksSpace.cardProps) state.tasksSpace.cardProps = { prio: true, project: true, cat: false, due: true, sub: true };
+  if (!state.tasksSpace.listProps) state.tasksSpace.listProps = { prio: true, project: true, cat: true, due: true, sub: true };
+  if (!state.tasksSpace.kbHidden) state.tasksSpace.kbHidden = {};
+  if (!state.tasksSpace.filters) state.tasksSpace.filters = [];
   return state.tasksSpace;
 }
 const PRIO_LABEL = { high: 'Haute', med: 'Moyenne', low: 'Basse' };
@@ -3449,11 +3550,56 @@ function taskDueText(t) {
   return t.dueTime ? `${d} · ${t.dueTime}` : d;
 }
 
+/* ---- Vue Liste « Mes tâches » : édition en place des cellules (projet / agenda / priorité / échéance) ---- */
+// teinte claire d'une couleur hex (#rgb ou #rrggbb) en rgba ; repli neutre sinon
+function tblTint(hex, a) {
+  if (!hex) return 'var(--surface-2)';
+  let h = String(hex).trim().replace('#', '');
+  if (/^[0-9a-f]{3}$/i.test(h)) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  if (!/^[0-9a-f]{6}$/i.test(h)) return 'var(--surface-2)';
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function tblOpenProj(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = state.tasks.find(x => x.id === id); if (!t) return;
+  const groups = [
+    { items: [{ value: '', label: 'Aucun projet', dot: '' }] },
+    { label: 'Projets', items: state.projects.map(p => ({ value: p.id, label: p.name, dot: dotOf(p.color) })) },
+  ];
+  openStyledMenu(ev.currentTarget, groups, t.projectId || '', v => { t.projectId = v || null; save(); render(); });
+}
+function tblOpenCat(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = state.tasks.find(x => x.id === id); if (!t) return;
+  const groups = [
+    { items: [{ value: '', label: 'Aucun agenda', dot: '' }] },
+    { label: 'Agendas', items: state.categories.map(c => ({ value: c.id, label: catPath(c), dot: dotOf(catColor(c)) })) },
+  ];
+  openStyledMenu(ev.currentTarget, groups, t.catId || '', v => { t.catId = v || null; save(); render(); });
+}
+function tblOpenPrio(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = state.tasks.find(x => x.id === id); if (!t) return;
+  const groups = [{ items: ['high', 'med', 'low'].map(p => ({ value: p, label: PRIO_LABEL[p], dot: PRIO_COLOR[p] })) }];
+  openStyledMenu(ev.currentTarget, groups, t.prio || 'med', v => { t.prio = v || 'med'; save(); render(); });
+}
+function tblSetDue(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = state.tasks.find(x => x.id === id); if (!t) return;
+  t.due = ev.target.value || null;
+  save(); render();
+}
+window.tblOpenProj = tblOpenProj; window.tblOpenCat = tblOpenCat; window.tblOpenPrio = tblOpenPrio; window.tblSetDue = tblSetDue;
+
 function renderTasksSpace() {
   const cfg = tasksSpaceCfg();
   const today = ymd(new Date());
   let list = state.tasks.slice();
   if (cfg.filter === 'active') list = list.filter(t => !t.done);
+  else if (cfg.filter === 'done') list = list.filter(t => t.done);
+  // filtres par propriété (ET entre propriétés, OU entre valeurs d'une même propriété)
+  (cfg.filters || []).forEach(f => { if (f.values && f.values.length) list = list.filter(t => matchTaskFilter(t, f)); });
   // tri de base : par échéance, les sans-date à la fin
   list.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.title || '').localeCompare(b.title || ''));
 
@@ -3463,25 +3609,28 @@ function renderTasksSpace() {
   const tab = (key, label, active) =>
     `<span class="space-tab ${active ? 'on' : ''}" onclick="setTasksSpace('${key}')">${label}</span>`;
 
-  let html = `<div class="space">
+  const nFilters = (cfg.filters || []).reduce((n, f) => n + (f.values && f.values.length ? 1 : 0), 0) + (cfg.filter !== 'active' ? 1 : 0);
+
+  let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Mes tâches</span>
       <span class="space-count">${nTodo} à faire</span>
-      <span class="space-tabs">
-        <span class="space-tab on" onclick="kbGroupMenu(event)">Grouper par : ${esc(kbGroupLabel(cfg.groupBy))}</span>
-      </span>
     </div>
     <div class="space-bar">
       <span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span>
       <span style="flex:1"></span>
       ${tab('layout:list', 'Liste', cfg.layout !== 'kanban')}
       ${tab('layout:kanban', 'Kanban', cfg.layout === 'kanban')}
-      ${cfg.layout === 'kanban' ? `<span class="space-sep">·</span><span class="space-tab" onclick="kbToggleProps(event)">Propriétés</span>` : ''}
       <span class="space-sep">·</span>
-      ${tab('filter:active', 'À faire', cfg.filter === 'active')}
-      ${tab('filter:all', 'Toutes', cfg.filter === 'all')}
+      <span class="space-tab" onclick="kbGroupMenu(event)">Grouper : ${esc(kbGroupLabel(cfg.groupBy))}</span>
+      <span class="space-sep">·</span>
+      <span class="space-tab ${taskFilterOpen ? 'on' : ''}" onclick="toggleTaskFilter(event)">Filtrer${nFilters ? ` <span class="flt-badge">${nFilters}</span>` : ''}</span>
+      <span class="space-sep">·</span>
+      <span class="space-tab ${kbPropsOpen ? 'on' : ''}" onclick="kbToggleProps(event)">Propriétés</span>
     </div>
-    ${cfg.layout === 'kanban' && kbPropsOpen ? kbPropsMenuHtml(cfg.cardProps) : ''}`;
+    ${taskFilterChipsHtml()}
+    ${kbPropsOpen ? kbPropsMenuHtml() : ''}
+    ${taskFilterOpen ? taskFilterMenuHtml() : ''}`;
 
   if (!groups.length) {
     html += `<div class="space-empty">Rien ici pour l'instant.<br>Clique sur « Ajouter une tâche » pour commencer.</div></div>`;
@@ -3491,7 +3640,10 @@ function renderTasksSpace() {
 
   // ---- vue kanban : une colonne par groupe, cartes déplaçables entre colonnes ----
   if (cfg.layout === 'kanban') {
-    const cols = groupTasks(list, cfg.groupBy, true);
+    const allCols = groupTasks(list, cfg.groupBy, true);
+    const hiddenKeys = kbHiddenKeys();
+    const cols = allCols.filter(g => !hiddenKeys.includes(g.key));
+    const pinnedCols = allCols.filter(g => hiddenKeys.includes(g.key));
     html += '<div class="kanban">' + cols.map(g => {
       const titre = g.pill
         ? `<span class="grp-pill" style="background:${g.pill};color:${inkOn(g.pill)}"><span class="pill-dot" style="background:${dotOf(g.pill)}"></span>${esc(g.label)}</span>`
@@ -3513,73 +3665,108 @@ function renderTasksSpace() {
           </div>
         </div>`;
       }).join('');
-      return `<div class="kb-col" ondragover="kbDragOver(event,this)" ondragleave="this.classList.remove('kb-over')" ondrop="kbDrop(event,'${g.key}',this)">
-        <div class="kb-head ${g.late ? 'late' : ''}">${titre} <span class="grp-n">· ${g.items.length}</span></div><div class="kb-cards">${cartes}</div></div>`;
-    }).join('') + '</div></div>';
+      return `<div class="kb-col"${g.pill ? ` style="--kb-tint:${tblTint(g.pill, .1)}"` : ''} ondragover="kbDragOver(event,this)" ondragleave="this.classList.remove('kb-over')" ondrop="kbDrop(event,'${g.key}',this)">
+        <div class="kb-head ${g.late ? 'late' : ''}"><span class="kb-head-l">${titre} <span class="grp-n">· ${g.items.length}</span></span><button class="kb-hide" onclick="kbHideGroup('${g.key}',event)" title="Masquer / épingler ce groupe">${ICON_EYE_OFF}</button></div><div class="kb-cards">${cartes}</div></div>`;
+    }).join('') + kbPinnedRailHtml(pinnedCols) + '</div></div>';
     canvas.innerHTML = html;
     return;
   }
 
-  /* On n'affiche pas une information déjà portée par le titre du groupe :
-     dans « Par projet » la pilule du projet est redondante, dans « Par priorité »
-     c'est la pastille de priorité. Ailleurs, tout reste visible. */
-  const hideProjPill = cfg.groupBy === 'project';
-  const hidePrioDot  = cfg.groupBy === 'prio';
-  const hideCatPill  = cfg.groupBy === 'cat';
-
-  // les terminées se replient d'un clic (comme sur la fiche projet), état retenu
+  /* On masque une colonne déjà portée par le regroupement courant (redondance) :
+     groupé par Projet -> pas de colonne Projet, etc. */
+  const lp = cfg.listProps;
+  const showProj = !!lp.project && cfg.groupBy !== 'project';
+  const showCat  = !!lp.cat && cfg.groupBy !== 'cat';
+  const showDue  = !!lp.due;
+  const showPrio = !!lp.prio && cfg.groupBy !== 'prio';
+  const showSub  = !!lp.sub;
+  const customCols = schemaOf('tasks').filter(p => lp['p:' + p.id] && cfg.groupBy !== 'p:' + p.id);
   const doneCollapsed = !!state.tasksDoneCollapsed;
 
+  const theadHtml = `<thead><tr>
+    <th class="tbl-th-check"></th>
+    <th>Tâche</th>
+    ${showProj ? '<th>Projet</th>' : ''}
+    ${showCat ? '<th>Agenda</th>' : ''}
+    ${showDue ? '<th>Échéance</th>' : ''}
+    ${showPrio ? '<th>Priorité</th>' : ''}
+    ${customCols.map(p => `<th>${esc(p.name)}</th>`).join('')}
+  </tr></thead>`;
+
+  const projCell = t => {
+    const p = t.projectId ? projById(t.projectId) : null;
+    const inner = p
+      ? `<span class="tbl-cell-inner" style="background:${tblTint(p.color, .16)};color:${dotOf(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>`
+      : `<span class="tbl-empty">+ Projet</span>`;
+    return `<td class="tbl-cell" onclick="tblOpenProj('${t.id}',event)">${inner}</td>`;
+  };
+  const catCell = t => {
+    const c = catById(t.catId);
+    const inner = c
+      ? `<span class="tbl-cell-inner" style="background:${tblTint(catColor(c), .16)};color:${dotOf(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>`
+      : `<span class="tbl-empty">+ Agenda</span>`;
+    return `<td class="tbl-cell" onclick="tblOpenCat('${t.id}',event)">${inner}</td>`;
+  };
+  const prioCell = t => {
+    const pr = t.prio || 'med';
+    return `<td class="tbl-cell" onclick="tblOpenPrio('${t.id}',event)"><span class="prio-pill" style="background:${tblTint(PRIO_COLOR[pr], .2)};color:${dotOf(PRIO_COLOR[pr])}"><span class="pill-dot" style="background:${PRIO_COLOR[pr]}"></span>${PRIO_LABEL[pr]}</span></td>`;
+  };
+
+  const ligne = (t, sub) => {
+    const late = !t.done && t.due && t.due < today;
+    const enfants = subtasksOf(t.id);
+    const pr = enfants.length ? subProgress(t.id) : null;
+    const plie = subCollapsed(t.id);
+    /* Une sous-tâche en retard vit sous son parent, donc hors du groupe « En retard ».
+       Sans ce rappel sur la ligne du parent, elle passerait inaperçue. */
+    const retards = enfants.filter(x => !x.done && x.due && x.due < today).length;
+    const chev = showSub
+      ? (enfants.length
+        ? `<span class="sub-chev ${plie ? '' : 'open'}" onclick="toggleSubtasks('${t.id}',event)" title="${plie ? 'Afficher' : 'Masquer'} les sous-tâches">${ICON_CHEV}</span>`
+        : (sub ? '' : `<span class="sub-chev-gap"></span>`))
+      : '';
+    return `<tr class="tbl-row ${t.done ? 'is-done' : ''} ${sub ? 'sub' : ''}">
+      <td class="tbl-th-check"><div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></div></td>
+      <td class="tbl-title" onclick="openPage('tasks','${t.id}')"><span class="tbl-title-in">${chev}${iconOf(t, 'tasks')} ${repIco(t)}${esc(t.title)}${(showSub && retards) ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}${(showSub && pr) ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}</span></td>
+      ${showProj ? projCell(t) : ''}
+      ${showCat ? catCell(t) : ''}
+      ${showDue ? `<td><input type="date" class="tbl-date ${late ? 'late' : ''}" value="${t.due || ''}" onclick="event.stopPropagation()" onchange="tblSetDue('${t.id}',event)"></td>` : ''}
+      ${showPrio ? prioCell(t) : ''}
+      ${customCols.map(p => tblCustomCell(t, p)).join('')}
+    </tr>`;
+  };
+
+  const nCols = 2 + (showProj ? 1 : 0) + (showCat ? 1 : 0) + (showDue ? 1 : 0) + (showPrio ? 1 : 0) + customCols.length;
+
+  /* Une SEULE table pour toute la liste : les colonnes s'alignent d'un groupe à
+     l'autre. Avant, une table par groupe dimensionnait ses colonnes indépendamment
+     (le groupe « Sans date » n'avait pas la même largeur que « En retard »), d'où le
+     décalage. Les bandes de groupe deviennent des lignes pleine largeur (colspan). */
+  let rows = '';
   groups.forEach(g => {
-    // en-tête sous forme de pilule colorée quand le groupe a une couleur (projet, priorité)
-    const titre = g.pill
-      ? `<span class="grp-pill" style="background:${g.pill};color:${inkOn(g.pill)}"><span class="pill-dot" style="background:${dotOf(g.pill)}"></span>${esc(g.label)}</span>`
-      : esc(g.label);
     if (g.done) {
-      html += `<div class="grp-head done-head" onclick="toggleTasksDone()" title="${doneCollapsed ? 'Afficher' : 'Replier'} les tâches terminées">
-        <span class="sub-chev ${doneCollapsed ? '' : 'open'}">${ICON_CHEV}</span>${esc(g.label)} <span class="grp-n">· ${g.items.length}</span></div>`;
-      if (doneCollapsed) return;   // on saute les lignes tant que c'est replié
+      rows += `<tr class="grp-band-row"><td colspan="${nCols}"><div class="grp-band done-head" onclick="toggleTasksDone()" title="${doneCollapsed ? 'Afficher' : 'Replier'} les tâches terminées"><span class="sub-chev ${doneCollapsed ? '' : 'open'}">${ICON_CHEV}</span><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
+      if (doneCollapsed) return;
     } else {
-      html += `<div class="grp-head ${g.late ? 'late' : ''}">${titre} <span class="grp-n">· ${g.items.length}</span></div>`;
+      /* couleur de bande dérivée de g.pill (couleurs de statut personnalisables) : teinte
+         claire en fond, version soutenue pour le texte. « En retard » garde sa teinte rouge. */
+      const tinted = g.pill ? `style="background:${tblTint(g.pill, .16)};color:${dotOf(g.pill)}"` : '';
+      rows += `<tr class="grp-band-row"><td colspan="${nCols}"><div class="grp-band ${g.late ? 'late' : ''}" ${tinted}><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
     }
 
-    const ligne = (t, sub) => {
-      const p = t.projectId ? projById(t.projectId) : null;
-      const c = catById(t.catId);
-      const late = !t.done && t.due && t.due < today;
-      const enfants = subtasksOf(t.id);
-      const pr = enfants.length ? subProgress(t.id) : null;
-      const plie = subCollapsed(t.id);
-      /* Une sous-tâche en retard vit sous son parent, donc hors du groupe « En retard ».
-         Sans ce rappel sur la ligne du parent, elle passerait inaperçue. */
-      const retards = enfants.filter(x => !x.done && x.due && x.due < today).length;
-      return `<div class="trow ${t.done ? 'is-done' : ''} ${sub ? 'sub' : ''}">
-        ${enfants.length
-          ? `<span class="sub-chev ${plie ? '' : 'open'}" onclick="toggleSubtasks('${t.id}',event)" title="${plie ? 'Afficher' : 'Masquer'} les sous-tâches">${ICON_CHEV}</span>`
-          : `<span class="sub-chev-gap"></span>`}
-        <div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></div>
-        ${hidePrioDot ? '' : `<span class="prio-dot" style="background:${PRIO_COLOR[t.prio] || '#999'}" title="Priorité ${(PRIO_LABEL[t.prio] || 'moyenne').toLowerCase()}"></span>`}
-        <div class="t-name" onclick="openPage('tasks','${t.id}')">${iconOf(t, 'tasks')} ${repIco(t)}${esc(t.title)}</div>
-        ${retards ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}
-        ${pr ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}
-        ${(p && !hideProjPill) ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
-        ${(c && !hideCatPill) ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>` : ''}
-        <span class="t-due ${late ? 'late' : ''}">${esc(taskDueText(t))}</span>
-      </div>`;
-    };
-
-    html += g.items.map(t => {
-      let bloc = ligne(t, false);
-      if (!subCollapsed(t.id)) {
+    g.items.forEach(t => {
+      rows += ligne(t, false);
+      if (showSub && !subCollapsed(t.id)) {
         // les sous-tâches suivent leur parent, filtrées comme le reste de la vue
         let enf = subtasksOf(t.id);
         if (cfg.filter === 'active') enf = enf.filter(x => !x.done);
-        bloc += enf.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).map(x => ligne(x, true)).join('');
+        else if (cfg.filter === 'done') enf = enf.filter(x => x.done);
+        rows += enf.sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999')).map(x => ligne(x, true)).join('');
       }
-      return bloc;
-    }).join('');
+    });
   });
 
+  html += `<table class="tbl-table">${theadHtml}<tbody>${rows}</tbody></table>`;
   canvas.innerHTML = html + '</div>';
 }
 
@@ -3668,15 +3855,19 @@ function kbGroupMenu(e) {
 }
 window.kbGroupMenu = kbGroupMenu;
 let kbPropsOpen = false;
-function kbToggleProps(e) { e.stopPropagation(); kbPropsOpen = !kbPropsOpen; renderTasksSpace(); }
-function kbToggleProp(k, e) { e.stopPropagation(); const cp = tasksSpaceCfg().cardProps; cp[k] = !cp[k]; save(); renderTasksSpace(); }
-// un clic ailleurs referme le menu des propriétés
-document.addEventListener('click', () => { if (kbPropsOpen) { kbPropsOpen = false; if (state.view === 'tasks') renderTasksSpace(); } });
-function kbPropsMenuHtml(cp) {
+let taskFilterOpen = false;
+function spaceProps() { const cfg = tasksSpaceCfg(); return cfg.layout === 'kanban' ? cfg.cardProps : cfg.listProps; }
+function kbToggleProps(e) { e.stopPropagation(); kbPropsOpen = !kbPropsOpen; taskFilterOpen = false; renderTasksSpace(); }
+function kbToggleProp(k, e) { e.stopPropagation(); const cp = spaceProps(); cp[k] = !cp[k]; save(); renderTasksSpace(); }
+// un clic ailleurs referme les menus (propriétés / filtres)
+document.addEventListener('click', () => { if ((kbPropsOpen || taskFilterOpen) && state.view === 'tasks') { kbPropsOpen = false; taskFilterOpen = false; renderTasksSpace(); } });
+function kbPropsMenuHtml() {
+  const cp = spaceProps();
+  const kanban = tasksSpaceCfg().layout === 'kanban';
   const row = (k, label) => `<div class="kbp-row" onclick="kbToggleProp('${k}',event)"><span class="kbp-check ${cp[k] ? 'on' : ''}"></span><span>${esc(label)}</span></div>`;
   let rows = row('prio', 'Priorité') + row('project', 'Projet') + row('cat', 'Agenda') + row('due', 'Échéance') + row('sub', 'Sous-tâches');
   schemaOf('tasks').forEach(p => { rows += row('p:' + p.id, p.name); });
-  return `<div class="kb-props" onclick="event.stopPropagation()"><div class="ntoc-cap">Propriétés des cartes</div>${rows}</div>`;
+  return `<div class="kb-props" onclick="event.stopPropagation()"><div class="ntoc-cap">${kanban ? 'Propriétés des cartes' : 'Colonnes du tableau'}</div>${rows}</div>`;
 }
 // texte d'une propriété personnalisée pour une carte (jamais bloquant)
 function kbCellText(t, p) {
@@ -3705,6 +3896,164 @@ function kbCustomCellsHtml(t, cfg) {
   }).join('');
 }
 window.kbToggleProps = kbToggleProps; window.kbToggleProp = kbToggleProp;
+
+/* ---- Kanban : masquer / épingler des groupes (mémorisé par regroupement) ---- */
+function kbHiddenKeys() { const cfg = tasksSpaceCfg(); return cfg.kbHidden[cfg.groupBy] || []; }
+function kbHideGroup(key, e) {
+  if (e) e.stopPropagation();
+  const cfg = tasksSpaceCfg();
+  const arr = cfg.kbHidden[cfg.groupBy] || (cfg.kbHidden[cfg.groupBy] = []);
+  if (!arr.includes(key)) arr.push(key);
+  save(); renderTasksSpace();
+}
+function kbShowGroup(key, e) {
+  if (e) e.stopPropagation();
+  const cfg = tasksSpaceCfg();
+  cfg.kbHidden[cfg.groupBy] = (cfg.kbHidden[cfg.groupBy] || []).filter(k => k !== key);
+  save(); renderTasksSpace();
+}
+function kbPinnedRailHtml(pinned) {
+  if (!pinned || !pinned.length) return '';
+  const chips = pinned.map(g => {
+    const dot = g.pill ? dotOf(g.pill) : 'var(--text-faint)';
+    return `<div class="kb-chip" ondragover="kbDragOver(event,this)" ondragleave="this.classList.remove('kb-over')" ondrop="kbDrop(event,'${g.key}',this)">
+      <span class="kb-chip-dot" style="background:${dot}"></span>
+      <span class="kb-chip-label">${esc(g.label)}</span>
+      <span class="grp-n">${g.items.length}</span>
+      <button class="kb-show" onclick="kbShowGroup('${g.key}',event)" title="Réafficher en colonne">${ICON_EYE}</button>
+    </div>`;
+  }).join('');
+  return `<div class="kb-rail"><div class="kb-rail-head">Groupes épinglés</div>${chips}</div>`;
+}
+window.kbHideGroup = kbHideGroup; window.kbShowGroup = kbShowGroup;
+
+/* ---- Colonne personnalisée dans la table (vue Liste), en lecture seule ---- */
+function tblCustomCell(t, p) {
+  if (p.type === 'select') {
+    const o = (p.options || []).find(x => x.id === (t.props || {})[p.id]);
+    return o
+      ? `<td class="tbl-custom"><span class="tbl-cell-inner" style="background:${tblTint(o.color || '#EDEDEB', .16)};color:${dotOf(o.color || '#EDEDEB')}"><span class="pill-dot" style="background:${dotOf(o.color || '#EDEDEB')}"></span>${esc(o.label)}</span></td>`
+      : `<td class="tbl-custom tbl-custom-empty">—</td>`;
+  }
+  const s = kbCellText(t, p);
+  return s ? `<td class="tbl-custom">${esc(s)}</td>` : `<td class="tbl-custom tbl-custom-empty">—</td>`;
+}
+
+/* ---- Filtres de l'espace Mes tâches (Liste + Kanban) ---- */
+function taskFilterProps() {
+  const props = [
+    { key: 'status', label: 'Statut', radio: true, options: [{ v: 'active', label: 'À faire' }, { v: 'done', label: 'Terminées' }, { v: 'all', label: 'Toutes' }] },
+    { key: 'cat', label: 'Agenda', options: state.categories.map(c => ({ v: c.id, label: c.name })) },
+    { key: 'project', label: 'Projet', options: state.projects.map(p => ({ v: p.id, label: p.name })) },
+    { key: 'prio', label: 'Priorité', options: [{ v: 'high', label: 'Haute' }, { v: 'med', label: 'Moyenne' }, { v: 'low', label: 'Basse' }] },
+  ];
+  props.push({ key: 'due', label: 'Échéance', options: [
+    { v: 'overdue', label: 'En retard' },
+    { v: 'today', label: "Aujourd'hui" },
+    { v: 'week', label: 'Cette semaine' },
+    { v: 'next7', label: '7 prochains jours' },
+    { v: 'month', label: 'Ce mois-ci' },
+    { v: 'nodate', label: 'Sans échéance' },
+  ] });
+  schemaOf('tasks').filter(p => p.type === 'select').forEach(p => {
+    props.push({ key: 'p:' + p.id, label: p.name, options: (p.options || []).map(o => ({ v: o.id, label: o.label })) });
+  });
+  return props;
+}
+function taskFilterEntry(prop) { return (tasksSpaceCfg().filters || []).find(f => f.prop === prop); }
+function toggleTaskFilter(e) { e.stopPropagation(); taskFilterOpen = !taskFilterOpen; kbPropsOpen = false; renderTasksSpace(); }
+function setTaskStatus(v, e) { if (e) e.stopPropagation(); tasksSpaceCfg().filter = v; save(); renderTasksSpace(); }
+function toggleTaskFilterVal(prop, val, e) {
+  if (e) e.stopPropagation();
+  const cfg = tasksSpaceCfg();
+  if (!cfg.filters) cfg.filters = [];
+  let f = cfg.filters.find(x => x.prop === prop);
+  if (!f) { f = { prop, values: [] }; cfg.filters.push(f); }
+  f.values = f.values.includes(val) ? f.values.filter(v => v !== val) : f.values.concat(val);
+  if (!f.values.length) cfg.filters = cfg.filters.filter(x => x.prop !== prop);
+  save(); renderTasksSpace();
+}
+function clearTaskFilter(prop, e) {
+  if (e) e.stopPropagation();
+  const cfg = tasksSpaceCfg();
+  if (prop === 'status') cfg.filter = 'active';
+  else cfg.filters = (cfg.filters || []).filter(x => x.prop !== prop);
+  save(); renderTasksSpace();
+}
+function dueMatchesPreset(due, key) {
+  if (key === 'nodate') return !due;
+  if (!due) return false;
+  const d = new Date(due + 'T00:00:00');
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const day = d.getTime(), t0 = now.getTime();
+  if (key === 'today') return day === t0;
+  if (key === 'overdue') return day < t0;
+  if (key === 'next7') { const end = new Date(now); end.setDate(end.getDate() + 7); return day >= t0 && day <= end.getTime(); }
+  if (key === 'week') {
+    const dow = (now.getDay() + 6) % 7;
+    const start = new Date(now); start.setDate(start.getDate() - dow);
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    return day >= start.getTime() && day <= end.getTime();
+  }
+  if (key === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  return true;
+}
+function matchTaskFilter(t, f) {
+  if (f.prop === 'cat') return f.values.includes(t.catId || '');
+  if (f.prop === 'project') return f.values.includes(t.projectId || '');
+  if (f.prop === 'prio') return f.values.includes(t.prio || 'med');
+  if (f.prop === 'due') return f.values.some(v => dueMatchesPreset(t.due, v));
+  if (f.prop.startsWith('p:')) {
+    const v = (t.props || {})[f.prop.slice(2)];
+    if (Array.isArray(v)) return v.some(x => f.values.includes(x));
+    return f.values.includes(v || '');
+  }
+  return true;
+}
+function filterValLabel(prop, val) {
+  const pd = taskFilterProps().find(p => p.key === prop);
+  const o = pd && pd.options.find(x => x.v === val);
+  return o ? o.label : val;
+}
+function taskFilterChipsHtml() {
+  const cfg = tasksSpaceCfg();
+  const chips = [];
+  if (cfg.filter && cfg.filter !== 'active') {
+    const lbl = cfg.filter === 'done' ? 'Terminées' : 'Toutes';
+    chips.push(`<span class="flt-chip"><span class="flt-chip-k">Statut :</span> ${lbl}<span class="flt-chip-x" onclick="clearTaskFilter('status',event)">✕</span></span>`);
+  }
+  (cfg.filters || []).forEach(f => {
+    if (!f.values || !f.values.length) return;
+    const pd = taskFilterProps().find(p => p.key === f.prop);
+    const name = pd ? pd.label : f.prop;
+    const vals = f.values.map(v => filterValLabel(f.prop, v)).join(', ');
+    chips.push(`<span class="flt-chip"><span class="flt-chip-k">${esc(name)} :</span> ${esc(vals)}<span class="flt-chip-x" onclick="clearTaskFilter('${f.prop}',event)">✕</span></span>`);
+  });
+  return chips.length ? `<div class="flt-chips">${chips.join('')}</div>` : '';
+}
+function taskFilterMenuHtml() {
+  const cfg = tasksSpaceCfg();
+  let html = '';
+  taskFilterProps().forEach(pd => {
+    if (!pd.options.length) return;
+    html += `<div class="flt-sec">${esc(pd.label)}</div>`;
+    if (pd.radio) {
+      pd.options.forEach(o => {
+        const on = (cfg.filter || 'active') === o.v;
+        html += `<div class="kbp-row" onclick="setTaskStatus('${o.v}',event)"><span class="kbp-radio ${on ? 'on' : ''}"></span><span>${esc(o.label)}</span></div>`;
+      });
+    } else {
+      const f = taskFilterEntry(pd.key);
+      pd.options.forEach(o => {
+        const on = !!f && f.values.includes(o.v);
+        html += `<div class="kbp-row" onclick="toggleTaskFilterVal('${pd.key}','${o.v}',event)"><span class="kbp-check ${on ? 'on' : ''}"></span><span>${esc(o.label)}</span></div>`;
+      });
+    }
+  });
+  return `<div class="kb-props flt-menu" onclick="event.stopPropagation()"><div class="ntoc-cap">Filtrer</div>${html}</div>`;
+}
+window.toggleTaskFilter = toggleTaskFilter; window.setTaskStatus = setTaskStatus;
+window.toggleTaskFilterVal = toggleTaskFilterVal; window.clearTaskFilter = clearTaskFilter;
 
 /* ============================================================
    ESPACE « PROJETS »
@@ -4310,6 +4659,7 @@ function toggleNavSection(key) {
 
 const ICON_EYE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.5 3.4M6.6 6.6A18.6 18.6 0 0 0 2 12s3.5 7 10 7a10.8 10.8 0 0 0 5.4-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
+const ICON_SEND = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>';
 /* Une ligne d'agenda. `sub` = c'est une liste rangée dans un agenda parent :
    elle est décalée, n'a pas de chevron et hérite du masquage de son parent. */
 function catRowHtml(c, sub) {
@@ -4531,7 +4881,7 @@ function folderMenuGroups() {
   items.push({ value: '__new__', label: 'Nouveau dossier…', action: true, icon: `<span class="sm-dot" style="background:transparent">${ICON_PLUS}</span>` });
   return [{ items }];
 }
-const linkLabelOf = v => !v ? 'Rien' : v.startsWith('p:') ? (projById(v.slice(2)) || {}).name || '—'
+const linkLabelOf = v => !v ? 'Rien' : v.startsWith('p:') ? (projById(v.slice(2)) || {}).name || '��'
   : v.startsWith('t:') ? ((state.tasks.find(t => t.id === v.slice(2)) || {}).title || '—')
   : ((state.events.find(e => e.id === v.slice(2)) || {}).title || '—');
 
@@ -4859,70 +5209,101 @@ function healthMedRatio(dateStr) {
   return done / occs.length;
 }
 
-function healthChartHtml(n) {
-  const days = [...Array(n)].map((_, i) => ymd(addDays(new Date(), -(n - 1 - i))));
-  // rangées bien séparées verticalement (texte qui se chevauchait, signalé le 2026-07-24) :
-  // humeur (grille), sommeil (barres), cycle, traitement, dates — chacune sa bande.
-  const W = 620, x0 = 10, x1 = 610, step = (x1 - x0) / (n - 1);
-  const MOOD_TOP = 16, MOOD_BOTTOM = 160;   // grille humeur : 24px par cran (-3..3)
-  const yMood = v => MOOD_BOTTOM - (v + 3) * ((MOOD_BOTTOM - MOOD_TOP) / 6);
-  const SLEEP_BASE = 214, SLEEP_MAXH = 40;
-  const Y_CYCLE = 232, Y_MED = 250, Y_DATES = 275;
-  const H = 286;
-  const xAt = i => x0 + i * step;
+// courbe lissée (spline Catmull-Rom -> Bézier) pour une série de points {x,y} ; renvoie l'attribut d d'un <path>
+function smoothPath(pts) {
+  if (pts.length < 2) return '';
+  if (pts.length === 2) return `M${pts[0].x},${pts[0].y} L${pts[1].x},${pts[1].y}`;
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
 
+// N derniers jours (clés ymd)
+function healthDays(n) { return [...Array(n)].map((_, i) => ymd(addDays(new Date(), -(n - 1 - i)))); }
+
+// petits indicateurs : sommeil moyen, nuits courtes, humeur moyenne — sur la période
+function healthKpiData(days) {
+  const logs = days.map(d => healthLogFor(d)).filter(Boolean);
+  const sleeps = logs.filter(l => l.sleepHours != null).map(l => l.sleepHours);
+  const avgSleep = sleeps.length ? sleeps.reduce((a, b) => a + b, 0) / sleeps.length : null;
+  const shortNights = sleeps.filter(h => h < 6).length;
+  const moods = logs.filter(l => l.mood != null).map(l => l.mood);
+  const avgMood = moods.length ? Math.round(moods.reduce((a, b) => a + b, 0) / moods.length) : null;
+  return { avgSleep, shortNights, avgMood, nbSleep: sleeps.length, nbMood: moods.length };
+}
+
+// ---- HUMEUR : courbe lissée, points colorés, coupure sur les jours non renseignés ----
+function healthMoodChartHtml(days) {
+  const n = days.length, W = 860, H = 190, x0 = 74, x1 = 846, top = 20, bottom = 150;
+  const step = n > 1 ? (x1 - x0) / (n - 1) : 0;
+  const xAt = i => x0 + i * step;
+  const yMood = v => bottom - (v + 3) * ((bottom - top) / 6);
   let grid = '';
   for (let g = -3; g <= 3; g++) grid += `<line x1="${x0}" y1="${yMood(g)}" x2="${x1}" y2="${yMood(g)}" class="hc-grid ${g === 0 ? 'hc-grid-mid' : ''}"/>`;
-
-  const pts = days.map((d, i) => {
-    const log = healthLogFor(d);
-    return (log && log.mood != null) ? { x: xAt(i), y: yMood(log.mood), color: moodInfo(log.mood).color, d } : null;
-  });
-  // relie les points consécutifs connus : un jour sans donnée coupe le trait plutôt que de l'interpoler
-  let path = '', seg = [];
+  const pts = days.map((d, i) => { const l = healthLogFor(d); return (l && l.mood != null) ? { x: xAt(i), y: yMood(l.mood), color: moodInfo(l.mood).color, mood: l.mood, d } : null; });
+  let paths = '', seg = [];
   pts.forEach((p, i) => {
-    if (p) seg.push(`${p.x},${p.y}`);
-    if (!p || i === pts.length - 1) { if (seg.length > 1) path += `<polyline points="${seg.join(' ')}" class="hc-line"/>`; seg = []; }
+    if (p) seg.push(p);
+    if (!p || i === pts.length - 1) { if (seg.length > 1) paths += `<path d="${smoothPath(seg)}" class="hc-line"/>`; seg = []; }
   });
-  const dots = pts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${dotOf(p.color)}"><title>${esc(fmtDateShort(p.d))}</title></circle>`).join('');
+  const dots = pts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="3.2" fill="${dotOf(p.color)}" stroke="var(--surface)" stroke-width="1.2"><title>${esc(fmtDateShort(p.d))} · ${esc(moodInfo(p.mood).label)}</title></circle>`).join('');
+  const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); return `<text x="${xAt(i)}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
+  const yLabels = `<text x="${x0 - 8}" y="${yMood(3) + 3}" class="hc-axis" text-anchor="end">Hypomanie</text>
+    <text x="${x0 - 8}" y="${yMood(0) + 3}" class="hc-axis" text-anchor="end">Stable</text>
+    <text x="${x0 - 8}" y="${yMood(-3) + 3}" class="hc-axis" text-anchor="end">Dépression</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-mood">${grid}${yLabels}${paths}${dots}${labels}</svg>`;
+}
 
+// ---- SOMMEIL : barres colorées selon la durée, zone idéale 7-9h, moyenne, repères d'heures ----
+function healthSleepChartHtml(days) {
+  const n = days.length, W = 860, H = 190, x0 = 44, x1 = 850, top = 16, base = 150, MAXH = 12;
+  const step = (x1 - x0) / n;
+  const barW = Math.min(20, step * 0.6);
+  const yAt = h => base - Math.min(h, MAXH) / MAXH * (base - top);
+  const sleepColor = h => h < 6 ? '#f4726a' : (h < 7 ? '#f5b23c' : (h <= 9 ? '#46c07d' : '#f5b23c'));
+  const zone = `<rect x="${x0}" y="${yAt(9)}" width="${x1 - x0}" height="${yAt(7) - yAt(9)}" class="hc-zone"/>`;
+  let grid = '';
+  [0, 4, 8, 12].forEach(h => { const y = yAt(h); grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" class="hc-grid"/><text x="${x0 - 6}" y="${y + 3}" class="hc-axis" text-anchor="end">${h}h</text>`; });
+  const sleeps = [];
   const bars = days.map((d, i) => {
-    const log = healthLogFor(d);
-    if (!log || log.sleepHours == null) return '';
-    const h = Math.max(2, Math.min(1, log.sleepHours / 10) * SLEEP_MAXH);
-    return `<rect x="${xAt(i) - 3}" y="${SLEEP_BASE - h}" width="6" height="${h}" rx="1.5" class="hc-bar"><title>${esc(fmtDateShort(d))} · ${log.sleepHours} h</title></rect>`;
+    const l = healthLogFor(d);
+    if (!l || l.sleepHours == null) return '';
+    sleeps.push(l.sleepHours);
+    const x = x0 + i * step + (step - barW) / 2, y = yAt(l.sleepHours);
+    return `<rect x="${x}" y="${y}" width="${barW}" height="${base - y}" rx="3" fill="${sleepColor(l.sleepHours)}"><title>${esc(fmtDateShort(d))} · ${l.sleepHours} h</title></rect>`;
   }).join('');
+  const avg = sleeps.length ? sleeps.reduce((a, b) => a + b, 0) / sleeps.length : null;
+  const avgLine = avg != null ? `<line x1="${x0}" y1="${yAt(avg)}" x2="${x1}" y2="${yAt(avg)}" class="hc-avg"/><text x="${x1}" y="${yAt(avg) - 4}" class="hc-axis" text-anchor="end">moy. ${avg.toFixed(1)}h</text>` : '';
+  const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); const x = x0 + i * step + step / 2; return `<text x="${x}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-sleep">${zone}${grid}${bars}${avgLine}${labels}</svg>`;
+}
 
-  const cycles = days.map((d, i) => {
-    const log = healthLogFor(d);
-    if (!log || !log.cycle) return '';
-    return `<circle cx="${xAt(i)}" cy="${Y_CYCLE}" r="3" class="hc-cycle"><title>${esc(fmtDateShort(d))} · règles</title></circle>`;
-  }).join('');
-
-  // traitement : plein = tout pris, anneau = pris en partie, vide = rien pris ce jour prévu
-  const MED_COLORS = { full: '#7ba36f', partial: '#cfa055', empty: '#d98a8a' };
+// ---- TRAITEMENT + CYCLE : deux rangées de pastilles alignées sur les jours ----
+function healthCycleMedChartHtml(days) {
+  const n = days.length, W = 860, H = 104, x0 = 74, x1 = 846, Y_MED = 20, Y_CYCLE = 82;
+  const step = n > 1 ? (x1 - x0) / (n - 1) : 0;
+  const xAt = i => x0 + i * step;
   const meds = days.map((d, i) => {
-    const r = healthMedRatio(d);
-    if (r == null) return '';
-    const key = r === 1 ? 'full' : r === 0 ? 'empty' : 'partial';
-    const col = MED_COLORS[key];
-    return `<circle cx="${xAt(i)}" cy="${Y_MED}" r="2.8" class="hc-med" style="${key === 'full' ? `fill:${col}` : `fill:none;stroke:${col};stroke-width:1.4`}"><title>${esc(fmtDateShort(d))} · traitement ${Math.round(r * 100)} %</title></circle>`;
+    const occs = healthTrackedHabitsOn(d);
+    if (!occs.length) return '';
+    return occs.map((occ, j) => {
+      const done = habitIsDone(occ.habit.id, d, occ.time);
+      const col = dotOf(occ.habit.color || '#cfa055');
+      const cy = Y_MED + j * 12;
+      return `<circle cx="${xAt(i)}" cy="${cy}" r="3.4" style="${done ? `fill:${col}` : `fill:var(--surface);stroke:${col};stroke-width:1.6`}"><title>${esc(fmtDateShort(d))} · ${esc(occ.habit.name)} · ${occ.time} · ${done ? 'pris' : 'non pris'}</title></circle>`;
+    }).join('');
   }).join('');
-
-  const labels = days.map((d, i) => {
-    if (i % 5 !== 0 && i !== n - 1) return '';
-    const dd = parseYmd(d);
-    return `<text x="${xAt(i)}" y="${Y_DATES}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`;
-  }).join('');
-
-  return `<svg viewBox="0 0 ${W} ${H}" class="health-chart" preserveAspectRatio="none">
-    ${grid}${path}${dots}${bars}${cycles}${meds}${labels}
-    <text x="2" y="${MOOD_TOP + 6}" class="hc-axis">Hypomanie</text>
-    <text x="2" y="${MOOD_BOTTOM - 2}" class="hc-axis">Dépression</text>
-    <text x="2" y="${SLEEP_BASE - SLEEP_MAXH + 8}" class="hc-axis">Sommeil</text>
-    <text x="2" y="${Y_CYCLE + 3}" class="hc-axis">Cycle</text>
-    <text x="2" y="${Y_MED + 3}" class="hc-axis">Traitement</text>
-  </svg>`;
+  const cycles = days.map((d, i) => { const l = healthLogFor(d); if (!l || !l.cycle) return ''; const cx = xAt(i); return `<path d="M${cx},${Y_CYCLE - 5} C${cx + 3.6},${Y_CYCLE - 1} ${cx + 3.6},${Y_CYCLE + 4} ${cx},${Y_CYCLE + 4} C${cx - 3.6},${Y_CYCLE + 4} ${cx - 3.6},${Y_CYCLE - 1} ${cx},${Y_CYCLE - 5} Z" class="hc-cycle"><title>${esc(fmtDateShort(d))} · règles</title></path>`; }).join('');
+  const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); return `<text x="${xAt(i)}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-cm">
+    <text x="${x0 - 8}" y="${Y_MED + 3}" class="hc-axis" text-anchor="end">Traitement</text>
+    <text x="${x0 - 8}" y="${Y_CYCLE + 3}" class="hc-axis" text-anchor="end">Cycle</text>
+    ${meds}${cycles}${labels}</svg>`;
 }
 
 function renderHealthSpace() {
@@ -4961,10 +5342,29 @@ function renderHealthSpace() {
       <textarea class="health-note" placeholder="Note libre (facultatif)…" onchange="setHealthNote(this.value)">${esc(log.note || '')}</textarea>
     </div>
 
-    <div class="health-chart-wrap">
-      <div class="space-sort-lbl">30 derniers jours</div>
-      ${healthChartHtml(30)}
-    </div>
+    ${(() => {
+      const days = healthDays(30);
+      const k = healthKpiData(days);
+      const moodLbl = k.avgMood != null ? moodInfo(k.avgMood).label : '—';
+      const kpis = `<div class="bl-kpis">
+        <div class="bl-kpi"><div class="bl-kpi-val">${k.avgSleep != null ? k.avgSleep.toFixed(1) + ' h' : '—'}</div><div class="bl-kpi-lbl">sommeil moyen</div></div>
+        <div class="bl-kpi"><div class="bl-kpi-val">${k.nbSleep ? k.shortNights : '—'}</div><div class="bl-kpi-lbl">nuit${k.shortNights > 1 ? 's' : ''} sous 6h</div></div>
+        <div class="bl-kpi"><div class="bl-kpi-val">${esc(moodLbl)}</div><div class="bl-kpi-lbl">humeur moyenne</div></div>
+      </div>`;
+      return `${kpis}
+      <div class="health-card">
+        <div class="health-card-title">Humeur · 30 derniers jours</div>
+        ${healthMoodChartHtml(days)}
+      </div>
+      <div class="health-card">
+        <div class="health-card-title">Sommeil · 30 derniers jours</div>
+        ${healthSleepChartHtml(days)}
+      </div>
+      <div class="health-card">
+        <div class="health-card-title">Traitement et cycle · 30 derniers jours</div>
+        ${healthCycleMedChartHtml(days)}
+      </div>`;
+    })()}
   </div>`;
   canvas.innerHTML = html;
 }
@@ -5013,9 +5413,15 @@ function renderNotes() {
 // une carte de note
 function noteCardHtml(n) {
   const link = noteLinkLabel(n);
-  return `<div class="note-card" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${dotOf(n.color || '#eae8e4')}" onclick="openNote('${n.id}')">
-      <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
-      <div class="note-card-title">${esc(n.title || 'Sans titre')}</div>
+  const col = dotOf(n.color || '#eae8e4');
+  const ico = (n.icon && ICON_LIB[n.icon]) ? '<span class="nc-ico-svg">' + iconSvg(n.icon, 16, col) + '</span>' : '<span class="nc-ico-dot" style="background:' + col + '"></span>';
+  return `<div class="note-card" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${col}" onclick="openNote('${n.id}')">
+      <div class="note-card-tools">
+        <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
+        <button class="nc-btn" onclick="openNoteSendMenu('${n.id}',event,this)" title="Envoyer vers…">${ICON_SEND}</button>
+        <button class="nc-btn" onclick="toggleNoteHidden('${n.id}',event)" title="Masquer cette tuile">${ICON_EYE}</button>
+      </div>
+      <div class="note-card-title"><button class="nc-icon-btn" onclick="openNoteIconMenu('${n.id}',event,this)" title="Changer l'icône">${ico}</button><span class="nct-txt">${esc(n.title || 'Sans titre')}</span></div>
       <div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>
       <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="note-card-date">${esc(noteDateLabel(n))}</span></div>
     </div>`;
@@ -5043,7 +5449,8 @@ function noteDropOnFolder(e, folderId, el) {
   el.classList.remove('drop-hover');
   const n = state.notes.find(x => x.id === dragNoteId);
   dragNoteId = null;
-  if (!n || (n.folderId || '') === folderId) return;
+  if (!n) return;
+  if (n.parentId) detachFromParent(n);
   n.folderId = folderId;
   n.updated = Date.now();
   save(); render();
@@ -5053,6 +5460,171 @@ window.noteDragEnd = noteDragEnd;
 window.noteDragOver = noteDragOver;
 window.noteDropOnFolder = noteDropOnFolder;
 
+/* ===== Ameliorations Notes : sous-dossiers, envoyer vers, icones, masquage ===== */
+var noteDraftIcon = '';
+var folderDraftParent = '';
+
+function foldersInParent(pid) { return (state.noteFolders || []).filter(f => (f.parentId || '') === (pid || '')); }
+function orderedFolders() {
+  const out = [];
+  const walk = (pid, depth) => {
+    foldersInParent(pid).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(f => { out.push({ f, depth }); walk(f.id, depth + 1); });
+  };
+  walk('', 0); return out;
+}
+function folderPath(id) {
+  const path = []; let f = folderById(id); const seen = new Set();
+  while (f && !seen.has(f.id)) { seen.add(f.id); path.unshift(f); f = f.parentId ? folderById(f.parentId) : null; }
+  return path;
+}
+function folderDescendants(id) {
+  const out = new Set(); let frontier = [id];
+  while (frontier.length) { const next = []; (state.noteFolders || []).forEach(f => { if (f.parentId && frontier.indexOf(f.parentId) !== -1 && !out.has(f.id)) { out.add(f.id); next.push(f.id); } }); frontier = next; }
+  return out;
+}
+function notesInFolder(fid) { return (state.notes || []).filter(n => (n.folderId || '') === (fid || '') && !n.parentId); }
+function noteDescendants(id) {
+  const out = new Set(); let frontier = [id];
+  while (frontier.length) { const next = []; (state.notes || []).forEach(n => { if (n.parentId && frontier.indexOf(n.parentId) !== -1 && !out.has(n.id)) { out.add(n.id); next.push(n.id); } }); frontier = next; }
+  return out;
+}
+function detachFromParent(n) {
+  if (!n.parentId) return;
+  const p = (state.notes || []).find(x => x.id === n.parentId);
+  if (p && p.body && p.body.indexOf('data-page="' + n.id + '"') !== -1) {
+    const box = document.createElement('div'); box.innerHTML = p.body;
+    box.querySelectorAll('.note-page-link[data-page="' + n.id + '"]').forEach(el => el.remove());
+    p.body = box.innerHTML; p.updated = Date.now();
+  }
+  n.parentId = '';
+}
+function attachToParent(n, parentId) {
+  const p = (state.notes || []).find(x => x.id === parentId);
+  if (!p) return;
+  n.parentId = parentId; n.folderId = '';
+  if (!p.body || p.body.indexOf('data-page="' + n.id + '"') === -1) {
+    const ico = iconSvg(n.icon || 'document', 15);
+    const link = '<div class="note-page-link" data-page="' + n.id + '" contenteditable="false"><span class="npl-ico">' + ico + '</span><span class="npl-title">' + esc(n.title || 'Page sans titre') + '</span></div>';
+    p.body = (p.body || '') + link; p.updated = Date.now();
+  }
+}
+function noteSendTo(id, dest) {
+  const n = (state.notes || []).find(x => x.id === id); if (!n) return;
+  if (dest.type === 'note') {
+    if (dest.id === id) return;
+    const banned = noteDescendants(id); if (banned.has(dest.id)) return;
+    detachFromParent(n); attachToParent(n, dest.id);
+  } else {
+    detachFromParent(n);
+    n.folderId = dest.type === 'folder' ? dest.id : '';
+  }
+  n.updated = Date.now();
+  save(); render();
+}
+function openNoteSendMenu(id, e, anchor) {
+  if (e) e.stopPropagation();
+  const n = (state.notes || []).find(x => x.id === id); if (!n) return;
+  const banned = noteDescendants(id); banned.add(id);
+  const groups = [];
+  const fitems = [{ value: 'root', label: 'Sans dossier (note principale)', dot: '' }];
+  orderedFolders().forEach(o => { fitems.push({ value: 'f:' + o.f.id, label: (o.depth ? '\u2003'.repeat(o.depth) : '') + (o.f.name || 'Dossier'), dot: dotOf(o.f.color || '#eae8e4') }); });
+  groups.push({ label: 'Déplacer vers un dossier', items: fitems });
+  const nitems = (state.notes || []).filter(x => !banned.has(x.id)).sort((a, b) => (a.title || '').localeCompare(b.title || '')).slice(0, 50)
+    .map(x => ({ value: 'n:' + x.id, label: x.title || 'Sans titre', dot: dotOf(x.color || '#eae8e4') }));
+  if (nitems.length) groups.push({ label: 'Ranger comme sous-note de…', items: nitems });
+  const current = n.parentId ? ('n:' + n.parentId) : (n.folderId ? ('f:' + n.folderId) : 'root');
+  openStyledMenu(anchor || e.target, groups, current, v => {
+    if (v === 'root') noteSendTo(id, { type: 'root' });
+    else if (v.indexOf('f:') === 0) noteSendTo(id, { type: 'folder', id: v.slice(2) });
+    else if (v.indexOf('n:') === 0) noteSendTo(id, { type: 'note', id: v.slice(2) });
+  });
+}
+var _iconPickCb = null, _iconPickAnchor = null;
+function openNoteIconPicker(anchor, current, cb) {
+  let pop = document.getElementById('iconPickPop');
+  if (!pop) {
+    pop = document.createElement('div'); pop.id = 'iconPickPop'; pop.className = 'icon-pick-pop hidden'; document.body.appendChild(pop);
+    pop.addEventListener('click', ev => { const b = ev.target.closest('button[data-ic]'); if (!b) return; const cb2 = _iconPickCb; pop.classList.add('hidden'); _iconPickCb = null; _iconPickAnchor = null; if (cb2) cb2(b.dataset.ic); });
+  }
+  pop.innerHTML = '<div class="ipk-grid"><button type="button" class="' + (!current ? 'sel' : '') + '" data-ic="" title="Aucune icône">\u2205</button>' +
+    ICON_NAMES.map(nm => '<button type="button" class="' + (nm === current ? 'sel' : '') + '" data-ic="' + nm + '" title="' + nm + '">' + iconSvg(nm, 18) + '</button>').join('') + '</div>';
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 300)) + 'px';
+  pop.style.top = (r.bottom + 6) + 'px';
+  pop.classList.remove('hidden');
+  _iconPickCb = cb; _iconPickAnchor = anchor;
+  requestAnimationFrame(() => { const pr = pop.getBoundingClientRect(); if (pr.bottom > innerHeight - 8) pop.style.top = Math.max(8, r.top - pr.height - 6) + 'px'; });
+}
+document.addEventListener('mousedown', e => {
+  const pop = document.getElementById('iconPickPop');
+  if (pop && !pop.classList.contains('hidden') && !pop.contains(e.target) && !(_iconPickAnchor && _iconPickAnchor.contains(e.target))) { pop.classList.add('hidden'); _iconPickCb = null; _iconPickAnchor = null; }
+});
+function openNoteIconMenu(id, e, anchor) {
+  if (e) e.stopPropagation();
+  const n = (state.notes || []).find(x => x.id === id); if (!n) return;
+  openNoteIconPicker(anchor || e.target, n.icon || '', name => { n.icon = name || ''; n.updated = Date.now(); nbSyncParentLink(n); save(); render(); });
+}
+function nbSyncParentLink(n) {
+  if (!n.parentId) return;
+  const p = (state.notes || []).find(x => x.id === n.parentId); if (!p || !p.body) return;
+  if (p.body.indexOf('data-page="' + n.id + '"') === -1) return;
+  const box = document.createElement('div'); box.innerHTML = p.body;
+  box.querySelectorAll('.note-page-link[data-page="' + n.id + '"] .npl-ico').forEach(el => { el.innerHTML = iconSvg(n.icon || 'document', 15); });
+  box.querySelectorAll('.note-page-link[data-page="' + n.id + '"] .npl-title').forEach(el => { el.textContent = n.title || 'Page sans titre'; });
+  p.body = box.innerHTML;
+}
+function updateNoteIconBtn() {
+  const b = document.getElementById('noteIconBtn'); if (!b) return;
+  const has = noteDraftIcon && ICON_LIB[noteDraftIcon];
+  b.innerHTML = has ? iconSvg(noteDraftIcon, 17) : iconSvg('document', 17);
+  b.style.opacity = has ? '1' : '.4';
+}
+function toggleNoteHidden(id, ev) { if (ev) ev.stopPropagation(); const n = (state.notes || []).find(x => x.id === id); if (n) { n.hidden = !n.hidden; n.updated = Date.now(); save(); render(); } }
+function toggleFolderHidden(id, ev) { if (ev) ev.stopPropagation(); const f = folderById(id); if (f) { f.hidden = !f.hidden; save(); render(); } }
+function folderTileHtml(f) {
+  const notes = notesInFolder(f.id).filter(x => !x.hidden).length;
+  const subs = foldersInParent(f.id).length;
+  const meta = subs ? (notes + ' note' + (notes > 1 ? 's' : '') + ' · ' + subs + ' dossier' + (subs > 1 ? 's' : '')) : (notes + ' note' + (notes > 1 ? 's' : ''));
+  return '<div class="folder-tile" onclick="openNotesFolder(\'' + f.id + '\')" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove(\'drop-hover\')" ondrop="noteDropOnFolder(event,\'' + f.id + '\',this)">' +
+    '<div class="folder-tile-ico">' + folderSvg(f.color, f.icon, 46) + '</div>' +
+    '<div class="folder-tile-name">' + esc(f.name || 'Dossier') + '</div>' +
+    '<div class="folder-tile-count">' + meta + '</div>' +
+    '<div class="tile-actions">' +
+    '<button onclick="event.stopPropagation();openFolderModal(\'' + f.id + '\')" title="Modifier">' + ICON_GEAR + '</button>' +
+    '<button onclick="toggleFolderHidden(\'' + f.id + '\',event)" title="Masquer cette tuile">' + ICON_EYE + '</button>' +
+    '</div></div>';
+}
+function hiddenTilesHtml(hidNotes, hidFolders) {
+  const total = (hidNotes ? hidNotes.length : 0) + (hidFolders ? hidFolders.length : 0);
+  if (!total) return '';
+  const chips = [];
+  (hidFolders || []).forEach(f => chips.push('<button class="hidden-chip" onclick="toggleFolderHidden(\'' + f.id + '\')" title="Réafficher">' + ICON_EYE_OFF + folderSvg(f.color, f.icon, 16) + esc(f.name || 'Dossier') + '</button>'));
+  (hidNotes || []).forEach(n => chips.push('<button class="hidden-chip" onclick="toggleNoteHidden(\'' + n.id + '\')" title="Réafficher">' + ICON_EYE_OFF + esc(n.title || 'Sans titre') + '</button>'));
+  return '<div class="hidden-cols notes-hidden"><span class="lbl">Tuiles masquées :</span>' + chips.join('') + '</div>';
+}
+function openFolderParentMenu(anchor) {
+  const banned = (typeof editingFolder !== 'undefined' && editingFolder) ? folderDescendants(editingFolder) : new Set();
+  if (typeof editingFolder !== 'undefined' && editingFolder) banned.add(editingFolder);
+  const items = [{ value: '', label: 'Aucun (dossier racine)', dot: '' }];
+  orderedFolders().forEach(o => { if (!banned.has(o.f.id)) items.push({ value: o.f.id, label: (o.depth ? '\u2003'.repeat(o.depth) : '') + (o.f.name || 'Dossier'), dot: dotOf(o.f.color || '#eae8e4') }); });
+  openStyledMenu(anchor, [{ items }], folderDraftParent || '', v => { folderDraftParent = v || ''; updateFolderParentBtn(); });
+}
+function updateFolderParentBtn() {
+  const b = document.getElementById('folderParentBtn'); if (!b) return;
+  const f = folderDraftParent ? folderById(folderDraftParent) : null;
+  b.textContent = f ? (f.name || 'Dossier') : 'Aucun (dossier racine)';
+}
+window.openNoteSendMenu = openNoteSendMenu;
+window.openNoteIconMenu = openNoteIconMenu;
+window.toggleNoteHidden = toggleNoteHidden;
+window.toggleFolderHidden = toggleFolderHidden;
+(function () {
+  const ib = document.getElementById('noteIconBtn');
+  if (ib) ib.onclick = () => openNoteIconPicker(ib, noteDraftIcon, name => { noteDraftIcon = name || ''; updateNoteIconBtn(); if (typeof noteAutosave === 'function') noteAutosave(); });
+  const fpb = document.getElementById('folderParentBtn');
+  if (fpb) fpb.onclick = () => openFolderParentMenu(fpb);
+})();
+
 let notesOpenFolder = null;   // dossier ouvert dans l'espace ('__fav__' = favoris, null = accueil)
 function openNotesFolder(id) { notesOpenFolder = id; render(); }
 window.openNotesFolder = openNotesFolder;
@@ -5061,64 +5633,72 @@ window.openNotesFolder = openNotesFolder;
    colorées ; on entre dans un dossier d'un clic pour voir ses notes. */
 function renderNotesSpace() {
   const list = (state.notes || []).slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
-  const folders = state.noteFolders || [];
+  const visible = n => !n.parentId && !n.hidden;
 
   // --- à l'intérieur d'un dossier (ou des favoris) ---
   if (notesOpenFolder) {
     const isFav = notesOpenFolder === '__fav__';
     const f = isFav ? null : folderById(notesOpenFolder);
     if (!isFav && !f) { notesOpenFolder = null; return renderNotesSpace(); }
-    const items = isFav ? list.filter(n => n.fav) : list.filter(n => n.folderId === f.id);
+    const items = isFav ? list.filter(n => n.fav && visible(n)) : list.filter(n => (n.folderId || '') === f.id && visible(n));
+    const subs = isFav ? [] : foldersInParent(f.id).filter(x => !x.hidden).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const hidSubs = isFav ? [] : foldersInParent(f.id).filter(x => x.hidden);
+    const hidNotes = isFav ? [] : list.filter(n => (n.folderId || '') === f.id && !n.parentId && n.hidden);
     const proj = f && f.projectId ? projById(f.projectId) : null;
+    let crumb = `<span class="crumb-link" onclick="openNotesFolder(null)" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="noteDropOnFolder(event,'',this)">Notes</span>`;
+    if (isFav) crumb += ` <span class="crumb-sep">›</span> <span class="note-star">★</span> Favoris`;
+    else folderPath(f.id).forEach((pf, i, arr) => {
+      crumb += ` <span class="crumb-sep">›</span> ` + (i === arr.length - 1
+        ? `${folderSvg(pf.color, pf.icon, 20)} ${esc(pf.name)}`
+        : `<span class="crumb-link" onclick="openNotesFolder('${pf.id}')">${esc(pf.name)}</span>`);
+    });
     let h = `<div class="space">
-      <div class="notes-crumb"><span class="crumb-link" onclick="openNotesFolder(null)" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="noteDropOnFolder(event,'',this)">Notes</span> <span class="crumb-sep">›</span> ${isFav ? '<span class="note-star">★</span> Favoris' : `${folderSvg(f.color, f.icon, 22)} ${esc(f.name)}`}</div>
+      <div class="notes-crumb">${crumb}</div>
       <div class="space-head"><span class="space-title">${isFav ? 'Favoris' : esc(f.name)}</span><span class="space-count">${items.length} note${items.length > 1 ? 's' : ''}</span>
         ${proj ? `<span class="space-count">· projet : ${esc(proj.name)}</span>` : ''}</div>
       <div class="space-bar">
         <span class="space-add" onclick="openNote(null${isFav ? '' : `,'${f.id}'`})">${ICON_PLUS} Nouvelle note</span>
-        ${!isFav ? `<span class="space-add" onclick="openFolderModal('${f.id}')" style="margin-left:16px">${ICON_GEAR} Modifier le dossier</span>` : ''}
+        ${!isFav ? `<span class="space-add" onclick="openFolderModal(null,'${f.id}')" style="margin-left:16px">${ICON_PLUS} Nouveau sous-dossier</span>
+        <span class="space-add" onclick="openFolderModal('${f.id}')" style="margin-left:16px">${ICON_GEAR} Modifier le dossier</span>` : ''}
       </div>`;
+    if (subs.length) h += `<div class="folder-tiles">${subs.map(folderTileHtml).join('')}</div>`;
     h += items.length ? '<div class="note-cards">' + items.map(noteCardHtml).join('') + '</div>'
-      : `<div class="space-empty">Ce dossier est vide.<br>Clique sur « Nouvelle note » pour y écrire.</div>`;
+      : (subs.length ? '' : `<div class="space-empty">Ce dossier est vide.<br>Clique sur « Nouvelle note » pour y écrire.</div>`);
+    h += hiddenTilesHtml(hidNotes, hidSubs);
     canvas.innerHTML = h + '</div>';
     return;
   }
 
   // --- accueil : tuiles de dossiers + notes libres ---
+  const topFolders = foldersInParent('').filter(x => !x.hidden).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const hidTopFolders = foldersInParent('').filter(x => x.hidden);
+  const favs = list.filter(n => n.fav && visible(n));
+  const libres = list.filter(n => (!n.folderId || !folderById(n.folderId)) && visible(n));
+  const hidLibres = list.filter(n => (!n.folderId || !folderById(n.folderId)) && !n.parentId && n.hidden);
+  const totalVisible = list.filter(visible).length;
+
   let html = `<div class="space">
-    <div class="space-head"><span class="space-title">Notes</span><span class="space-count">${list.length} note${list.length > 1 ? 's' : ''}</span></div>
+    <div class="space-head"><span class="space-title">Notes</span><span class="space-count">${totalVisible} note${totalVisible > 1 ? 's' : ''}</span></div>
     <div class="space-bar">
       <span class="space-add" onclick="openNote()">${ICON_PLUS} Nouvelle note</span>
       <span class="space-add" onclick="openFolderModal()" style="margin-left:16px">${ICON_PLUS} Nouveau dossier</span>
     </div>`;
 
-  if (!list.length && !folders.length) {
+  if (!list.length && !(state.noteFolders || []).length) {
     canvas.innerHTML = html + `<div class="space-empty">Aucune note.<br>Clique sur « Nouvelle note » pour commencer, ou crée un dossier pour t'organiser.</div></div>`;
     return;
   }
 
-  const favs = list.filter(n => n.fav);
-  const tuile = (onclick, svg, name, count, extra, drop) => `<div class="folder-tile" onclick="${onclick}"${drop || ''}>
-      <div class="folder-tile-ico">${svg}</div>
-      <div class="folder-tile-name">${name}</div>
-      <div class="folder-tile-count">${count} note${count > 1 ? 's' : ''}</div>${extra || ''}</div>`;
-
   const tiles = [];
-  if (favs.length) tiles.push(tuile("openNotesFolder('__fav__')", `<div class="fav-tile-ico">★</div>`, 'Favoris', favs.length));
-  folders.forEach(f => {
-    const n = list.filter(x => x.folderId === f.id).length;
-    tiles.push(tuile(`openNotesFolder('${f.id}')`, folderSvg(f.color, f.icon, 46), esc(f.name), n,
-      `<button class="folder-tile-edit" onclick="event.stopPropagation();openFolderModal('${f.id}')" title="Modifier">${ICON_GEAR}</button>`,
-      ` ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="noteDropOnFolder(event,'${f.id}',this)"`));
-  });
+  if (favs.length) tiles.push(`<div class="folder-tile" onclick="openNotesFolder('__fav__')"><div class="folder-tile-ico"><div class="fav-tile-ico">★</div></div><div class="folder-tile-name">Favoris</div><div class="folder-tile-count">${favs.length} note${favs.length > 1 ? 's' : ''}</div></div>`);
+  topFolders.forEach(f => tiles.push(folderTileHtml(f)));
   if (tiles.length) html += `<div class="folder-tiles">${tiles.join('')}</div>`;
 
-  // notes sans dossier, en cartes
-  const libres = list.filter(n => !n.folderId || !folderById(n.folderId));
   if (libres.length) {
-    html += `<div class="grp-head">${folders.length ? 'Notes sans dossier' : 'Toutes les notes'} <span class="grp-n">· ${libres.length}</span></div>`
+    html += `<div class="grp-head">${topFolders.length ? 'Notes sans dossier' : 'Toutes les notes'} <span class="grp-n">· ${libres.length}</span></div>`
       + '<div class="note-cards">' + libres.map(noteCardHtml).join('') + '</div>';
   }
+  html += hiddenTilesHtml(hidLibres, hidTopFolders);
 
   canvas.innerHTML = html + '</div>';
 }
@@ -5130,6 +5710,9 @@ function renderNotesSpace() {
    ============================================================ */
 let bilanMode = 'week';       // 'week' | 'month'
 let bilanCursor = new Date(); // date de référence de la période affichée
+let bilanBreak = 'agenda';    // 'agenda' | 'prio' : dimension du donut de répartition
+function setBilanBreak(m) { bilanBreak = m; renderBilanSpace(); }
+window.setBilanBreak = setBilanBreak;
 
 function setBilanMode(m) { bilanMode = m; renderBilanSpace(); }
 window.setBilanMode = setBilanMode;
@@ -5233,6 +5816,16 @@ function fmtMinutes(m, short) {
   return h ? (mm ? `${h} h ${mm} min` : `${h} h`) : `${mm} min`;
 }
 
+// répartition du temps par priorité d'événement sur la période
+function bilanPrioData(days) {
+  const map = { high: 0, med: 0, low: 0 };
+  days.forEach(k => timedEventsOn(parseYmd(k)).forEach(e => { const m = evMinutes(e); if (m) map[e.prio || 'med'] += m; }));
+  return [
+    { key: 'high', label: 'Haute', color: PRIO_COLOR.high, total: map.high },
+    { key: 'med', label: 'Moyenne', color: PRIO_COLOR.med, total: map.med },
+    { key: 'low', label: 'Basse', color: PRIO_COLOR.low, total: map.low },
+  ].filter(g => g.total > 0);
+}
 // graphique en barres empilées : une barre par jour, un segment coloré par groupe (agenda/projet)
 function bilanBarChartHtml(days, groups) {
   const n = days.length;
@@ -5269,7 +5862,16 @@ function bilanBarChartHtml(days, groups) {
     return `<text x="${x}" y="${base + 16}" class="bl-axis" text-anchor="middle">${txt}</text>`;
   }).join('');
 
-  return `<svg viewBox="0 0 ${W} ${H}" class="bl-bars" preserveAspectRatio="none">${grid}${bars}${labels}</svg>`;
+  const hover = days.map((k, i) => {
+    const tot = dayTotal(k);
+    if (!tot) return '';
+    const x = x0 + i * step;
+    const parts = groups.filter(g => g.perDay[k]).map(g => `${g.label} : ${fmtMinutes(g.perDay[k])}`);
+    const tip = `${fmtDateShort(k)} — ${fmtMinutes(tot)}\n${parts.join('\n')}`;
+    return `<rect x="${x}" y="${top}" width="${step}" height="${base - top}" fill="transparent"><title>${esc(tip)}</title></rect>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="bl-bars" preserveAspectRatio="none">${grid}${bars}${hover}${labels}</svg>`;
 }
 
 // donut : répartition totale par groupe sur la période
@@ -5292,8 +5894,13 @@ function renderBilanSpace() {
   const joursActifs = days.filter(k => groups.some(g => g.perDay[k])).length;
   const moy = joursActifs ? totalMin / joursActifs : 0;
 
-  const legend = groups.length ? groups.map(g => {
-    const topId = g.key.startsWith('c:') ? g.key.slice(2) : null;
+  const prioGroups = bilanPrioData(days);
+  const donutGroups = bilanBreak === 'prio' ? prioGroups : groups;
+  const donutTotal = donutGroups.reduce((s, g) => s + g.total, 0);
+  const allowExpand = bilanBreak === 'agenda';
+
+  const legend = donutGroups.length ? donutGroups.map(g => {
+    const topId = allowExpand && g.key.startsWith('c:') ? g.key.slice(2) : null;
     const peutDeplier = topId && hasSubCats(topId);
     const deplie = peutDeplier && bilanExpanded.has(g.key);
     const toggle = peutDeplier
@@ -5302,18 +5909,18 @@ function renderBilanSpace() {
     const sousLignes = deplie ? bilanSubBreakdown(days, topId).map(s => `<div class="bl-legend-row bl-legend-sub">
         <span class="bl-toggle-gap"></span>
         <span class="bl-legend-dot" style="background:${dotOf(s.color)}"></span>
-        <span>${esc(s.label)}</span>
+        <span class="bl-legend-name" title="${esc(s.label)}">${esc(s.label)}</span>
         <span class="bl-legend-val">${fmtMinutes(s.total)} · ${Math.round((s.total / g.total) * 100)}%</span>
       </div>`).join('') : '';
     return `<div class="bl-legend-row">
       ${toggle}
       <span class="bl-legend-dot" style="background:${dotOf(g.color)}"></span>
-      <span>${esc(g.label)}</span>
-      <span class="bl-legend-val">${fmtMinutes(g.total)} · ${Math.round((g.total / totalMin) * 100)}%</span>
+      <span class="bl-legend-name" title="${esc(g.label)}">${esc(g.label)}</span>
+      <span class="bl-legend-val">${fmtMinutes(g.total)} · ${Math.round((g.total / donutTotal) * 100)}%</span>
     </div>${sousLignes}`;
   }).join('') : `<div class="proj-empty">Aucun créneau chronométré sur cette période. Ajoute une heure de début et de fin à tes événements pour les voir ici.</div>`;
 
-  const html = `<div class="space">
+  const html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Bilan</span>
       <span class="space-tabs">${['week', 'month'].map(m => `<span class="space-tab ${bilanMode === m ? 'on' : ''}" onclick="setBilanMode('${m}')">${m === 'week' ? 'Semaine' : 'Mois'}</span>`).join('')}</span>
@@ -5329,7 +5936,7 @@ function renderBilanSpace() {
     <div class="bl-kpis">
       <div class="bl-kpi"><div class="bl-kpi-val">${fmtMinutes(totalMin, true)}</div><div class="bl-kpi-lbl">au total</div></div>
       <div class="bl-kpi"><div class="bl-kpi-val">${fmtMinutes(moy, true)}</div><div class="bl-kpi-lbl">par jour actif</div></div>
-      <div class="bl-kpi"><div class="bl-kpi-val">${groups[0] ? esc(groups[0].label) : '—'}</div><div class="bl-kpi-lbl">le plus chargé</div></div>
+      <div class="bl-kpi"><div class="bl-kpi-val">${groups[0] ? esc(groups[0].label) : '—'}</div><div class="bl-kpi-lbl">le plus chargé${groups[0] ? ' · ' + fmtMinutes(groups[0].total, true) : ''}</div></div>
     </div>
 
     <div class="bl-wrap">
@@ -5338,8 +5945,14 @@ function renderBilanSpace() {
         ${bilanBarChartHtml(days, groups)}
       </div>
       <div class="bl-donut-box">
-        <div class="space-sort-lbl">Répartition ${bilanMode === 'week' ? 'de la semaine' : 'du mois'}</div>
-        ${bilanDonutHtml(groups, totalMin)}
+        <div class="bl-donut-head">
+          <span class="space-sort-lbl">Répartition</span>
+          <span class="bl-break-tabs">
+            <span class="space-tab ${bilanBreak === 'agenda' ? 'on' : ''}" onclick="setBilanBreak('agenda')">Agenda</span>
+            <span class="space-tab ${bilanBreak === 'prio' ? 'on' : ''}" onclick="setBilanBreak('prio')">Priorité</span>
+          </span>
+        </div>
+        ${bilanDonutHtml(donutGroups, donutTotal)}
         <div class="bl-legend">${legend}</div>
       </div>
     </div>
@@ -5405,6 +6018,7 @@ function noteAutosave(now) {
 // écrit (ou crée) l'enregistrement de la note à partir du formulaire
 function noteRecordFromForm(title, body) {
   const data = { title, body, color: noteDraftColor,
+    icon: noteDraftIcon || '',
     folderId: noteDraftFolder || '',
     projectId: noteDraftLink.startsWith('p:') ? noteDraftLink.slice(2) : '',
     eventId: noteDraftLink.startsWith('e:') ? noteDraftLink.slice(2) : '',
@@ -5438,8 +6052,10 @@ function openNote(id, presetFolder) {
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
   noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : n.taskId ? 't:' + n.taskId : '') : '';
   noteDraftFav = n ? !!n.fav : false;
+  noteDraftIcon = n ? (n.icon || '') : '';
   renderNoteColorPicker();
   updateNoteFieldButtons();
+  updateNoteIconBtn();
   nbSyncPageLinks();
   nbSyncMarkerColors();
   $('noteBackBtn').classList.toggle('hidden', !(n && n.parentId));
@@ -5559,7 +6175,7 @@ function noteToggleBox() {
 const NOTE_INLINE_FMT = 'b,strong,i,em,u,s,strike,font,mark,.note-box,span[style],span[class]';
 function noteClearFormat() {
   $('noteBody').focus();
-  // On défait la mise en forme À LA MAIN (déterministe) : removeFormat seul est
+  // On défait la mise en forme À LA MAIN (d��terministe) : removeFormat seul est
   // capricieux et ne sait pas retirer un <span class> comme l'encadré. On enlève
   // toutes les balises de style qui touchent la sélection.
   const sel = window.getSelection();
@@ -5713,7 +6329,7 @@ function applyLink() {
 }
 
 /* ============================================================
-   MENU « / » : insertion de blocs
+   MENU �� / » : insertion de blocs
    ============================================================ */
 const SLASH_BLOCKS = [
   { k: 'p',       n: 'Texte',            h: 'Paragraphe simple' },
@@ -6239,7 +6855,7 @@ function saveNote() {
 
 /* ---------- Fenêtre « dossier » ---------- */
 let folderDraftColor = PALETTE[4], folderDraftProj = '', folderDraftIcon = '', editingFolder = null;
-function openFolderModal(id) {
+function openFolderModal(id, presetParent) {
   editingFolder = id || null;
   const f = id ? folderById(id) : null;
   $('folderModalTitle').textContent = id ? 'Modifier le dossier' : 'Nouveau dossier';
@@ -6249,11 +6865,13 @@ function openFolderModal(id) {
   folderDraftColor = f ? (f.color || PALETTE[4]) : PALETTE[4];
   folderDraftProj = f ? (f.projectId || '') : '';
   folderDraftIcon = f ? (f.icon || '') : '';
+  folderDraftParent = f ? (f.parentId || '') : (presetParent || '');
   setFolderTab('color');
   renderFolderColor();
   renderFolderIconGrid();
   renderFolderPreview();
   updateFolderProjBtn();
+  updateFolderParentBtn();
   // on peut ouvrir le dossier par-dessus la note (retour à la note ensuite)
   if ($('noteOverlay').classList.contains('show')) reopenNoteAfterFolder = true;
   $('folderOverlay').classList.add('show');
@@ -6281,7 +6899,9 @@ function updateFolderProjBtn() {
 function saveFolder() {
   const name = $('folderName').value.trim();
   if (!name) { $('folderName').focus(); return; }
-  const data = { name, color: folderDraftColor, projectId: folderDraftProj || '', icon: folderDraftIcon || '' };
+  let parentId = folderDraftParent || '';
+  if (editingFolder && parentId && (parentId === editingFolder || folderDescendants(editingFolder).has(parentId))) parentId = '';
+  const data = { name, color: folderDraftColor, projectId: folderDraftProj || '', icon: folderDraftIcon || '', parentId };
   let fid = editingFolder;
   if (editingFolder) Object.assign(folderById(editingFolder), data);
   else { fid = uid(); state.noteFolders.push({ id: fid, ...data }); }
@@ -6299,8 +6919,13 @@ function saveFolder() {
 function deleteFolder() {
   if (!editingFolder) return;
   const f = folderById(editingFolder);
-  if (!confirm(`Supprimer le dossier « ${f ? f.name : ''} » ?\nLes notes qu'il contient ne sont PAS supprimées, elles repassent « sans dossier ».`)) return;
-  state.notes.forEach(n => { if (n.folderId === editingFolder) n.folderId = ''; });
+  const up = f ? (f.parentId || '') : '';
+  const msg = up
+    ? `Supprimer le dossier « ${f ? f.name : ''} » ?\nSon contenu (notes et sous-dossiers) remonte dans le dossier parent.`
+    : `Supprimer le dossier « ${f ? f.name : ''} » ?\nLes notes qu'il contient ne sont PAS supprimées, elles repassent « sans dossier ».`;
+  if (!confirm(msg)) return;
+  state.notes.forEach(n => { if (n.folderId === editingFolder) n.folderId = up; });
+  state.noteFolders.forEach(x => { if (x.parentId === editingFolder) x.parentId = up; });
   state.noteFolders = state.noteFolders.filter(x => x.id !== editingFolder);
   editingFolder = null;
   save(); $('folderOverlay').classList.remove('show'); render();
@@ -6507,7 +7132,7 @@ function wireDayDrop() {
       e.preventDefault(); cell.classList.remove('drop-hover');
       if (!dragItem) return;
       const date = cell.dataset.date;
-      // déposé dans le bandeau « toute la journée » → l'élément perd son créneau horaire
+      // déposé dans le bandeau « toute la journ��e » → l'élément perd son créneau horaire
       const toAllDay = cell.classList.contains('ad-cell');
       // heure calculée uniquement quand on lâche sur une colonne horaire (semaine/jour)
       let mins = null;
@@ -6710,7 +7335,7 @@ function recentColors(selected) {
    dates : elles restent à choisir à chaque fois). Un projet
    existant embarque aussi sa liste de tâches dans le modèle.
    ============================================================ */
-let projTplTasks = null;   // tâches à créer avec le prochain projet (venant d'un modèle)
+let projTplTasks = null;   // t��ches à créer avec le prochain projet (venant d'un modèle)
 function tplsOf(kind) {
   if (!state.templates) state.templates = {};
   if (!state.templates[kind]) state.templates[kind] = [];
@@ -6824,7 +7449,7 @@ function saveTplFromProject(pid) {
   tplsOf('project').push({ id: uid(), name: pj.name || 'Modèle ' + (tplsOf('project').length + 1), data });
   save();
 }
-// menu « Modèles » de la vue détail d'un projet : sauvegarder ce projet, ou en créer un depuis un modèle
+// menu « Mod��les » de la vue détail d'un projet : sauvegarder ce projet, ou en créer un depuis un modèle
 function openTplMenuProjDetail(btn, pidArg) {
   const pid = pidArg || pdProjId;
   const list = tplsOf('project');
@@ -7923,7 +8548,7 @@ const notesForProject = pid => (state.notes || []).filter(n =>
    pas un événement). Même section, même bouton — seule la source change. */
 const notesForEvent = eid => (state.notes || []).filter(n => n.eventId === eid)
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
-// notes rattachées directement à une tâche (comme pour un événement)
+// notes rattach��es directement à une tâche (comme pour un événement)
 const notesForTask = tid => (state.notes || []).filter(n => n.taskId === tid)
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
 // `cible` : 'p' pour un projet, 'e' pour un événement, 't' pour une tâche
