@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Mon Agenda">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;1,400&family=Poppins:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
   /* ---------- Design system « Gummie » : tokens ---------- */
   :root {
@@ -1060,6 +1060,35 @@
   .hc-avg { stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 4 3; }
   .hc-cycle { fill: #e35d6a; }
   .hc-label { font-size: 9.5px; fill: var(--text-faint); }
+  /* Navigation de période des graphiques santé */
+  .health-charts-wrap { touch-action: pan-y; }
+  .health-chart-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 18px 0 4px; }
+  .hcn-modes { display: flex; gap: 4px; }
+  .hcn-mode { padding: 4px 11px; border-radius: 999px; font-size: 12.5px; color: var(--text-soft); background: var(--surface-2); }
+  .hcn-mode.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+  .hcn-range { display: flex; align-items: center; gap: 6px; }
+  .hcn-arrow { width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); font-size: 18px; line-height: 1; color: var(--text-soft); display: flex; align-items: center; justify-content: center; }
+  .hcn-arrow:hover { background: var(--border); color: var(--text); }
+  .hcn-arrow.disabled { opacity: .4; pointer-events: none; }
+  .hcn-label { font-size: 13px; color: var(--text); min-width: 128px; text-align: center; font-variant-numeric: tabular-nums; }
+  .hcn-today { padding: 4px 10px; border-radius: 8px; font-size: 12px; background: var(--surface-2); color: var(--text-soft); }
+  .hcn-today:hover { background: var(--border); color: var(--text); }
+  /* Automatisations (panneau base de données) */
+  .autom-intro { font-size: 12.5px; color: var(--text-soft); margin: 0 0 14px; line-height: 1.5; }
+  .autom-empty { padding: 22px; text-align: center; color: var(--text-soft); font-size: 13px; line-height: 1.6; }
+  .autom-rule { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: var(--surface); }
+  .autom-rule.off { opacity: .55; }
+  .autom-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; }
+  .autom-kw { font-size: 12px; font-weight: 600; color: var(--text-soft); text-align: right; }
+  .autom-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .autom-sel { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 13px; max-width: 220px; }
+  .autom-eq { color: var(--text-faint); font-weight: 600; }
+  .autom-hint { font-size: 12.5px; color: var(--text-faint); }
+  .autom-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .autom-switch { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-soft); cursor: pointer; }
+  .autom-del { color: var(--text-faint); padding: 4px; border-radius: 6px; }
+  .autom-del:hover { color: #e0433d; background: var(--surface-2); }
+  #automAddBtn { margin-top: 4px; }
   .hc-axis { font-size: 9.5px; fill: var(--text-faint); }
 
   /* ---- Images (fiches + notes) ---- */
@@ -2091,6 +2120,7 @@
     <button type="button" class="nb-btn" id="nbBox" title="Encadrer">▢</button>
     <button type="button" class="nb-btn" id="nbPill" title="Pilule colorée">⬭</button>
     <button type="button" class="nb-btn" id="nbCode" title="Style code">&lt;/&gt;</button>
+    <button type="button" class="nb-btn" id="nbFont" title="Police d'écriture"><span style="font-family:'Source Serif 4',ui-serif,serif;font-weight:600">Aa</span></button>
     <button type="button" class="nb-btn" id="nbClear" title="Tout enlever (revenir au texte simple)">⌫</button>
   </div>
   <div class="nb-link hidden">
@@ -2205,9 +2235,22 @@
         <button data-tab="projects">Projets</button>
         <button data-tab="cats">Agendas</button>
       </div>
+      <button class="icon-btn" id="automBtn" title="Automatisations">⚡</button>
       <button class="icon-btn" data-close title="Fermer">✕</button>
     </div>
     <div class="data-body" id="dataBody"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: AUTOMATISATIONS ============ -->
+<div class="overlay" id="automOverlay">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head"><h2>Automatisations</h2><button class="icon-btn" data-close title="Fermer">✕</button></div>
+    <div class="modal-body">
+      <p class="autom-intro">Quand la condition est vraie sur une tâche ou un projet, l'action s'applique toute seule (à la coche, au changement de propriété ou au glisser-déposer).</p>
+      <div id="automList"></div>
+      <button class="btn-ghost" id="automAddBtn">＋ Nouvelle automatisation</button>
+    </div>
   </div>
 </div>
 
@@ -3646,7 +3689,7 @@ function groupTasks(list, mode, all) {
   return groups;
 }
 
-// texte d'échéance d'une ligne : l'heure si elle en a une, sinon la date relative
+// texte d'��chéance d'une ligne : l'heure si elle en a une, sinon la date relative
 function taskDueText(t) {
   if (!t.due) return '';
   const d = formatDue(t.due);
@@ -3670,7 +3713,7 @@ function tblOpenProj(id, ev) {
     { items: [{ value: '', label: 'Aucun projet', dot: '' }] },
     { label: 'Projets', items: state.projects.map(p => ({ value: p.id, label: p.name, dot: dotOf(p.color) })) },
   ];
-  openStyledMenu(ev.currentTarget, groups, t.projectId || '', v => { t.projectId = v || null; save(); render(); });
+  openStyledMenu(ev.currentTarget, groups, t.projectId || '', v => { t.projectId = v || null; applyAutomations('tasks', t); save(); render(); });
 }
 function tblOpenCat(id, ev) {
   if (ev) ev.stopPropagation();
@@ -3679,13 +3722,13 @@ function tblOpenCat(id, ev) {
     { items: [{ value: '', label: 'Aucun agenda', dot: '' }] },
     { label: 'Agendas', items: state.categories.map(c => ({ value: c.id, label: catPath(c), dot: dotOf(catColor(c)) })) },
   ];
-  openStyledMenu(ev.currentTarget, groups, t.catId || '', v => { t.catId = v || null; save(); render(); });
+  openStyledMenu(ev.currentTarget, groups, t.catId || '', v => { t.catId = v || null; applyAutomations('tasks', t); save(); render(); });
 }
 function tblOpenPrio(id, ev) {
   if (ev) ev.stopPropagation();
   const t = state.tasks.find(x => x.id === id); if (!t) return;
   const groups = [{ items: ['high', 'med', 'low'].map(p => ({ value: p, label: PRIO_LABEL[p], dot: PRIO_COLOR[p] })) }];
-  openStyledMenu(ev.currentTarget, groups, t.prio || 'med', v => { t.prio = v || 'med'; save(); render(); });
+  openStyledMenu(ev.currentTarget, groups, t.prio || 'med', v => { t.prio = v || 'med'; applyAutomations('tasks', t); save(); render(); });
 }
 function tblSetDue(id, ev) {
   if (ev) ev.stopPropagation();
@@ -3943,7 +3986,7 @@ function kbDrop(e, key, el) {
   applyGroupDrop(t, key);
 }
 /* Marque une tâche faite/à faire et garde la date de complétion (utile pour le bandeau KPI). */
-function setTaskDone(t, val) { t.done = val; t.doneAt = val ? new Date().toISOString() : null; }
+function setTaskDone(t, val) { t.done = val; t.doneAt = val ? new Date().toISOString() : null; applyAutomations('tasks', t); }
 /* Assigne à la tâche la valeur du groupe visé : logique partagée entre le kanban et la vue liste. */
 function applyGroupDrop(t, key) {
   const mode = tasksSpaceCfg().groupBy;
@@ -3964,6 +4007,7 @@ function applyGroupDrop(t, key) {
       // « En retard » ne se fabrique pas : la tâche revient simplement à sa place
     }
   }
+  applyAutomations('tasks', t);
   save(); render();
 }
 window.kbDragStart = kbDragStart; window.kbDragOver = kbDragOver; window.kbDrop = kbDrop;
@@ -4087,7 +4131,7 @@ function kbPinnedRailHtml(pinned) {
 }
 window.kbHideGroup = kbHideGroup; window.kbShowGroup = kbShowGroup;
 
-/* ---- Kanban : largeur de colonne réglable (mémorisée par regroupement) ---- */
+/* ---- Kanban : largeur de colonne réglable (mémoris��e par regroupement) ---- */
 function kbColWidth(cfg, key) {
   const store = cfg.kbColWidths || (cfg.kbColWidths = {});
   const forGroup = store[cfg.groupBy] || (store[cfg.groupBy] = {});
@@ -4389,7 +4433,10 @@ function svSave(kind, e) {
   if (!name) return;
   const cfg = fltCfg(kind);
   if (!cfg.savedViews) cfg.savedViews = [];
-  cfg.savedViews.push({ id: fltUid(), name, data: svFieldsToSave(kind) });
+  // Copie FIGÉE du filtre au moment de l'enregistrement : sinon data.filterTree
+  // resterait une référence vive vers le filtre actif, et le retirer plus tard
+  // viderait aussi la vue enregistrée (bug corrigé, tâches ET projets).
+  cfg.savedViews.push({ id: fltUid(), name, data: JSON.parse(JSON.stringify(svFieldsToSave(kind))) });
   save(); if (kind === 'tasks') renderTasksSpace(); else renderProjectsSpace();
 }
 function svApply(kind, id, e) {
@@ -5746,6 +5793,62 @@ function healthCycleMedChartHtml(days) {
     ${meds}${cycles}${labels}</svg>`;
 }
 
+/* ---- Fenêtre glissante des graphiques du suivi santé ----
+   Par défaut : les 30 derniers jours finissant aujourd'hui. On peut faire
+   défiler la période (flèches, molette, clavier) et choisir 30 j / 90 j / mois. */
+let healthChartMode = '30';               // '30' | '90' | 'month'
+let healthChartEnd = ymd(new Date());     // dernier jour affiché (mode 30/90) ou un jour du mois voulu (mode 'month')
+function healthWinDays() {
+  if (healthChartMode === 'month') {
+    const d = parseYmd(healthChartEnd), y = d.getFullYear(), m = d.getMonth();
+    const last = new Date(y, m + 1, 0).getDate();
+    return [...Array(last)].map((_, i) => ymd(new Date(y, m, i + 1)));
+  }
+  const n = healthChartMode === '90' ? 90 : 30;
+  const end = parseYmd(healthChartEnd);
+  return [...Array(n)].map((_, i) => ymd(addDays(end, -(n - 1 - i))));
+}
+function healthChartAtPresent() {
+  const now = new Date();
+  if (healthChartMode === 'month') { const d = parseYmd(healthChartEnd); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }
+  return healthChartEnd >= ymd(now);
+}
+function clampHealthChartEnd() {
+  const now = new Date();
+  if (healthChartMode === 'month') {
+    const d = parseYmd(healthChartEnd);
+    if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth()))
+      healthChartEnd = ymd(new Date(now.getFullYear(), now.getMonth(), 1));
+  } else if (healthChartEnd > ymd(now)) {
+    healthChartEnd = ymd(now);
+  }
+}
+function healthChartShift(dir) {
+  if (healthChartMode === 'month') {
+    const d = parseYmd(healthChartEnd);
+    healthChartEnd = ymd(new Date(d.getFullYear(), d.getMonth() + dir, 1));
+  } else {
+    const n = healthChartMode === '90' ? 90 : 30;
+    healthChartEnd = ymd(addDays(parseYmd(healthChartEnd), dir * n));
+  }
+  clampHealthChartEnd(); renderHealthSpace();
+}
+function setHealthChartMode(m) {
+  healthChartMode = m;
+  if (m === 'month') { const d = parseYmd(healthChartEnd); healthChartEnd = ymd(new Date(d.getFullYear(), d.getMonth(), 1)); }
+  clampHealthChartEnd(); renderHealthSpace();
+}
+function healthChartToday() {
+  const now = new Date();
+  healthChartEnd = healthChartMode === 'month' ? ymd(new Date(now.getFullYear(), now.getMonth(), 1)) : ymd(now);
+  renderHealthSpace();
+}
+function healthWinLabel(days) {
+  const a = parseYmd(days[0]), b = parseYmd(days[days.length - 1]);
+  if (healthChartMode === 'month') { const mn = MONTHS[a.getMonth()]; return mn.charAt(0).toUpperCase() + mn.slice(1) + ' ' + a.getFullYear(); }
+  const f = d => `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+  return `${f(a)} au ${f(b)}`;
+}
 function renderHealthSpace() {
   const log = healthLogFor(healthEditDate) || {};
   const isToday = healthEditDate === ymd(new Date());
@@ -5783,7 +5886,7 @@ function renderHealthSpace() {
     </div>
 
     ${(() => {
-      const days = healthDays(30);
+      const days = healthWinDays();
       const k = healthKpiData(days);
       const moodLbl = k.avgMood != null ? moodInfo(k.avgMood).label : '—';
       const kpis = `<div class="bl-kpis">
@@ -5791,18 +5894,33 @@ function renderHealthSpace() {
         <div class="bl-kpi"><div class="bl-kpi-val">${k.nbSleep ? k.shortNights : '—'}</div><div class="bl-kpi-lbl">nuit${k.shortNights > 1 ? 's' : ''} sous 6h</div></div>
         <div class="bl-kpi"><div class="bl-kpi-val">${esc(moodLbl)}</div><div class="bl-kpi-lbl">humeur moyenne</div></div>
       </div>`;
+      const atNow = healthChartAtPresent();
+      const nav = `<div class="health-chart-nav">
+        <div class="hcn-modes">
+          ${[['30','30 j'],['90','90 j'],['month','Mois']].map(([m,l]) => `<button type="button" class="hcn-mode ${healthChartMode===m?'on':''}" onclick="setHealthChartMode('${m}')">${l}</button>`).join('')}
+        </div>
+        <div class="hcn-range">
+          <button type="button" class="hcn-arrow" onclick="healthChartShift(-1)" title="Période précédente" aria-label="Période précédente">‹</button>
+          <span class="hcn-label">${esc(healthWinLabel(days))}</span>
+          <button type="button" class="hcn-arrow ${atNow?'disabled':''}" ${atNow?'disabled':''} onclick="healthChartShift(1)" title="Période suivante" aria-label="Période suivante">›</button>
+          ${!atNow ? `<button type="button" class="hcn-today" onclick="healthChartToday()">Aujourd'hui</button>` : ''}
+        </div>
+      </div>`;
       return `${kpis}
+      <div class="health-charts-wrap" id="healthChartsWrap">
+      ${nav}
       <div class="health-card">
-        <div class="health-card-title">Humeur · 30 derniers jours</div>
+        <div class="health-card-title">Humeur</div>
         ${healthMoodChartHtml(days)}
       </div>
       <div class="health-card">
-        <div class="health-card-title">Sommeil · 30 derniers jours</div>
+        <div class="health-card-title">Sommeil</div>
         ${healthSleepChartHtml(days)}
       </div>
       <div class="health-card">
-        <div class="health-card-title">Traitement et cycle · 30 derniers jours</div>
+        <div class="health-card-title">Traitement et cycle</div>
         ${healthCycleMedChartHtml(days)}
+      </div>
       </div>`;
     })()}
   </div>`;
@@ -6853,6 +6971,7 @@ function applyBlock(kind) {
       const n = document.createElement(tag);
       while (blk.firstChild) n.appendChild(blk.firstChild);
       if (ta) n.style.textAlign = ta;
+      nbStripSize(n);
       blk.replaceWith(n);
       const r = document.createRange(); r.selectNodeContents(n); r.collapse(false);
       const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
@@ -7033,6 +7152,29 @@ function ntMakeCode(v) {
   sel.removeAllRanges();
   noteAutosave();
 }
+/* Police de caractères posée sur la sélection (span.note-font), retirable.
+   Se superpose au reste (couleur, gras, surlignage…) sans les écraser. */
+function ntMakeFont(v) {
+  $('noteBody').focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+  let n = sel.anchorNode; if (n && n.nodeType === 3) n = n.parentNode;
+  const font = n && n.closest ? n.closest('.note-font') : null;
+  if (font && $('noteBody').contains(font)) {
+    if (v === 'none') { const p = font.parentNode; while (font.firstChild) p.insertBefore(font.firstChild, font); font.remove(); }
+    else font.style.fontFamily = v;
+    sel.removeAllRanges(); noteAutosave(); return;
+  }
+  if (v === 'none' || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const span = document.createElement('span');
+  span.className = 'note-font';
+  span.style.fontFamily = v;
+  try { range.surroundContents(span); }
+  catch (e) { span.appendChild(range.extractContents()); range.insertNode(span); }
+  sel.removeAllRanges();
+  noteAutosave();
+}
 // type actuel d'un bloc, pour cocher la bonne entrée du menu
 function nbKindOf(el) {
   if (el.classList.contains('note-callout')) return 'callout';
@@ -7048,6 +7190,26 @@ function nbKindOf(el) {
 }
 /* Transformer un bloc en un autre type. Les listes qu'on « aplatit » deviennent
    une suite de blocs (une puce = un bloc) ; le reste passe par applyBlock. */
+// Retire les tailles de police en dur (heritees d'un copier-coller ou d'une
+// duplication de ligne) : titres et texte reprennent alors la taille du CSS.
+function nbStripSize(root) {
+  if (!root || root.nodeType !== 1) return;
+  [root, ...root.querySelectorAll('*')].forEach(el => {
+    if (el.style && el.style.fontSize) {
+      el.style.fontSize = '';
+      if (!el.getAttribute('style')) el.removeAttribute('style');
+    }
+  });
+}
+// Supprime le bloc cible par la poignee. La suppression n'a lieu qu'ici, via ce
+// choix explicite du menu (jamais au simple survol/clic de la poignee).
+function nbDeleteBlock(el) {
+  if (!el || !$('noteBody').contains(el)) return;
+  el.remove();
+  if (!$('noteBody').children.length) { const p = document.createElement('p'); p.innerHTML = '<br>'; $('noteBody').appendChild(p); }
+  nbHideHandle();
+  noteAutosave(); nbBuildToc();
+}
 function nbTransformBlock(el, kind) {
   const isList = el.tagName === 'UL' || el.tagName === 'OL';
   const wasBox = el.classList.contains('note-callout');
@@ -7058,6 +7220,7 @@ function nbTransformBlock(el, kind) {
       const b = document.createElement(tag);
       while (li.firstChild) b.appendChild(li.firstChild);
       b.querySelectorAll('input[type=checkbox]').forEach(c => c.remove());
+      nbStripSize(b);
       frag.appendChild(b);
     });
     el.replaceWith(frag);
@@ -7127,7 +7290,9 @@ function nbOpenBlockMenu() {
       { value: 'default', label: 'Gris (défaut)', dot: '#787774' },
     ] },
     { label: 'Encadré coloré', items: BOX_TINTS.map(([n, c]) => ({ value: c, label: n, dot: c })) },
+    { label: 'Bloc', items: [{ value: 'blk-del', label: 'Supprimer le bloc', action: true }] },
   ], cur, v => {
+    if (v === 'blk-del') { nbDeleteBlock(el); return; }
     if (v === 'none' || v === 'default' || v.startsWith('#')) nbSetBoxTint(el, v);
     else nbTransformBlock(el, v);
   });
@@ -7245,7 +7410,7 @@ const EMOJI_LIB = [
   ['epingle', '📌'], ['trombone', '📎'], ['loupe', '🔍'], ['cle', '🔑'], ['cadenas', '🔒'],
   ['ampoule', '💡'], ['cible', '🎯'], ['fusee', '🚀'], ['trophee', '🏆'], ['medaille', '🥇'],
   ['cadeau', '🎁'], ['ballon', '🎈'], ['musique', '🎵'], ['photo', '📷'], ['cinema', '🎬'],
-  ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '🧘'], ['argent', '💰'],
+  ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '����'], ['argent', '💰'],
   ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '🛒'], ['sante', '🩺'],
   ['pilule', '💊'], ['cerveau', '🧠'], ['soin', '❤️‍🩹'], ['zen', '🧘‍♀️'], ['valide', '✅'],
   ['croix', '❌'], ['attention', '⚠️'], ['question', '❓'], ['exclamation', '❗'], ['interdit', '🚫'],
@@ -9537,6 +9702,7 @@ function updProp(c, id, pid, value) {
   if (!rec) return;
   if (!rec.props) rec.props = {};
   rec.props[pid] = value;
+  if (c === 'tasks' || c === 'projects') applyAutomations(c, rec);
   save(); render();
 }
 window.updProp = updProp;
@@ -10298,6 +10464,109 @@ function renderDataTabs() {
     `<button data-tab="${id}" class="${id===dataTab?'active':''}">${esc(label)}</button>`).join('')
     + `<button data-action="addtable" class="tab-add" title="Créer une nouvelle table">＋</button>`;
 }
+/* ============================================================
+   AUTOMATISATIONS (v1)
+   Une règle = une condition simple sur une tâche ou un projet →
+   une action simple. Passage unique, sans réaction en chaîne : l'action
+   modifie l'objet directement et ne redéclenche pas d'autres règles
+   (garde-fou automApplying). On réutilise le moteur des filtres
+   (fltFields / fltConds / fltMatchCond) pour rester cohérent.
+   ============================================================ */
+let automApplying = false;
+function automs() { if (!state.automations) state.automations = []; return state.automations; }
+function autoRule(id) { return automs().find(r => r.id === id); }
+// Champs que l'on peut MODIFIER via une action (le statut projet est calculé, donc exclu).
+function automActionFields(on) {
+  return fltFields(on).filter(f => {
+    if (on === 'tasks') return f.type === 'bool' || f.key.startsWith('p:') || ['prio', 'catId', 'projectId'].includes(f.key);
+    return f.key.startsWith('p:');
+  });
+}
+function automCondType(on, key) { const f = fltFields(on).find(x => x.key === key); return f ? f.type : 'select'; }
+// Écrit une valeur dans l'objet selon le champ ciblé (sans repasser par setTaskDone pour éviter la récursion).
+function automSetField(on, item, key, value) {
+  if (on === 'tasks' && key === 'done') { const v = value === 'true' || value === true; item.done = v; item.doneAt = v ? new Date().toISOString() : null; return; }
+  if (key.startsWith('p:')) { if (!item.props) item.props = {}; item.props[key.slice(2)] = value || null; return; }
+  if (on === 'tasks' && ['prio', 'catId', 'projectId'].includes(key)) { item[key] = value || (key === 'prio' ? 'med' : null); return; }
+}
+// Applique toutes les règles actives d'une collection à un enregistrement (un seul passage).
+function applyAutomations(on, item) {
+  if (!item || automApplying) return;
+  automApplying = true;
+  try {
+    automs().forEach(rule => {
+      if (!rule.enabled || rule.on !== on || !rule.ifProp || !rule.thenProp) return;
+      if (fltMatchCond(on, { prop: rule.ifProp, cond: rule.ifCond, value: rule.ifValue }, item))
+        automSetField(on, item, rule.thenProp, rule.thenValue);
+    });
+  } finally { automApplying = false; }
+}
+
+/* ---- Panneau de configuration des automatisations ---- */
+function automSaveRender() { save(); renderAutoms(); }
+function automDefaults(rule, on) {
+  const cf = fltFields(on)[0];
+  rule.on = on; rule.ifProp = cf.key; rule.ifCond = fltConds(cf.type)[0].v; rule.ifValue = '';
+  // évite une action auto-référentielle (ex. Faite → Faite) en choisissant un autre champ par défaut
+  const af = automActionFields(on).find(f => f.key !== rule.ifProp) || automActionFields(on)[0];
+  rule.thenProp = af ? af.key : ''; rule.thenValue = af && af.type === 'bool' ? 'true' : '';
+}
+function automAdd() { const r = { id: 'a_' + uid(), enabled: true }; automDefaults(r, 'tasks'); automs().push(r); automSaveRender(); }
+function automDelete(id) { state.automations = automs().filter(r => r.id !== id); automSaveRender(); }
+function automToggle(id) { const r = autoRule(id); if (r) { r.enabled = !r.enabled; automSaveRender(); } }
+function automSetOn(id, on) { const r = autoRule(id); if (r) { automDefaults(r, on); automSaveRender(); } }
+function automSetIfProp(id, key) { const r = autoRule(id); if (!r) return; r.ifProp = key; r.ifCond = fltConds(automCondType(r.on, key))[0].v; r.ifValue = ''; automSaveRender(); }
+function automSetIfCond(id, cond) { const r = autoRule(id); if (!r) return; r.ifCond = cond; if (['empty', 'nempty', 'overdue', 'thisweek'].includes(cond)) r.ifValue = ''; automSaveRender(); }
+function automSetThenProp(id, key) { const r = autoRule(id); if (!r) return; r.thenProp = key; const f = automActionFields(r.on).find(x => x.key === key); r.thenValue = f && f.type === 'bool' ? 'true' : ''; automSaveRender(); }
+function automSetVal(id, patch) { const r = autoRule(id); if (r) { Object.assign(r, patch); automSaveRender(); } }
+function automCondValueHtml(on, r) {
+  const f = fltFields(on).find(x => x.key === r.ifProp) || fltFields(on)[0];
+  if (f.type === 'bool') return '';
+  if (['empty', 'nempty', 'overdue', 'thisweek'].includes(r.ifCond)) return '';
+  if (f.type === 'select') return `<select class="autom-sel" onchange="automSetVal('${r.id}',{ifValue:this.value})"><option value="">—</option>${(f.options || []).map(o => `<option value="${esc(o.v)}" ${o.v === r.ifValue ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+  if (f.type === 'date') return `<input class="autom-sel" type="date" value="${esc(r.ifValue || '')}" onchange="automSetVal('${r.id}',{ifValue:this.value})">`;
+  return `<input class="autom-sel" type="text" value="${esc(r.ifValue || '')}" placeholder="valeur" onchange="automSetVal('${r.id}',{ifValue:this.value})">`;
+}
+function automActionValueHtml(on, r) {
+  const f = automActionFields(on).find(x => x.key === r.thenProp);
+  if (!f) return '';
+  if (f.type === 'bool') return `<select class="autom-sel" onchange="automSetVal('${r.id}',{thenValue:this.value})"><option value="true" ${r.thenValue === 'true' ? 'selected' : ''}>coché</option><option value="false" ${r.thenValue === 'false' ? 'selected' : ''}>décoché</option></select>`;
+  return `<select class="autom-sel" onchange="automSetVal('${r.id}',{thenValue:this.value})"><option value="">—</option>${(f.options || []).map(o => `<option value="${esc(o.v)}" ${o.v === r.thenValue ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+}
+function renderAutoms() {
+  const list = automs();
+  if (!list.length) { $('automList').innerHTML = `<div class="autom-empty">Aucune automatisation pour l'instant.<br>Exemple : sur les tâches, si « Faite » est coché, alors « Statut » = « OK ».</div>`; return; }
+  $('automList').innerHTML = list.map(r => {
+    const on = r.on;
+    const actionFields = automActionFields(on);
+    const thenLine = actionFields.length
+      ? `<select class="autom-sel" onchange="automSetThenProp('${r.id}',this.value)">${actionFields.map(f => `<option value="${f.key}" ${f.key === r.thenProp ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select><span class="autom-eq">=</span>${automActionValueHtml(on, r)}`
+      : `<span class="autom-hint">Ajoute une propriété de type « sélection » sur ${on === 'tasks' ? 'les tâches' : 'les projets'} pour définir une action.</span>`;
+    return `<div class="autom-rule ${r.enabled ? '' : 'off'}">
+      <div class="autom-grid">
+        <span class="autom-kw">Sur</span>
+        <div class="autom-controls"><select class="autom-sel" onchange="automSetOn('${r.id}',this.value)"><option value="tasks" ${on === 'tasks' ? 'selected' : ''}>les tâches</option><option value="projects" ${on === 'projects' ? 'selected' : ''}>les projets</option></select></div>
+        <span class="autom-kw">Si</span>
+        <div class="autom-controls">
+          <select class="autom-sel" onchange="automSetIfProp('${r.id}',this.value)">${fltFields(on).map(f => `<option value="${f.key}" ${f.key === r.ifProp ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select>
+          <select class="autom-sel" onchange="automSetIfCond('${r.id}',this.value)">${fltConds(automCondType(on, r.ifProp)).map(c => `<option value="${c.v}" ${c.v === r.ifCond ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>
+          ${automCondValueHtml(on, r)}
+        </div>
+        <span class="autom-kw">Alors</span>
+        <div class="autom-controls">${thenLine}</div>
+      </div>
+      <div class="autom-foot">
+        <label class="autom-switch"><input type="checkbox" ${r.enabled ? 'checked' : ''} onchange="automToggle('${r.id}')"> activée</label>
+        <button class="autom-del" onclick="automDelete('${r.id}')" title="Supprimer cette règle">${ICON_TRASH}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openAutoms() { renderAutoms(); $('automOverlay').classList.add('show'); }
+window.automAdd = automAdd; window.automDelete = automDelete; window.automToggle = automToggle;
+window.automSetOn = automSetOn; window.automSetIfProp = automSetIfProp; window.automSetIfCond = automSetIfCond;
+window.automSetThenProp = automSetThenProp; window.automSetVal = automSetVal;
+
 function renderDataPanel() {
   if (!collArr(dataTab) || (!isBuiltinTable(dataTab) && !(state.customTables||[]).some(t => t.id === dataTab))) dataTab = 'tasks';
   renderDataTabs();
@@ -10402,6 +10671,7 @@ function toggleRow(c, id) {
   const r = collArr(c).find(x => x.id === id); if (!r) return;
   if (f.builtin) r[f.builtin] = !r[f.builtin];
   else { if (!r.props) r.props = {}; r.props[f.prop] = !r.props[f.prop]; }
+  if (c === 'tasks' || c === 'projects') applyAutomations(c, r);
   save(); render(); renderDataPanel();
 }
 window.toggleRow = toggleRow;
@@ -10741,6 +11011,8 @@ window.deleteTable = deleteTable;
    ============================================================ */
 $('addBtn').onclick = () => openModal('event');
 $('dataBtn').onclick = openDataPanel;
+$('automBtn').onclick = openAutoms;
+$('automAddBtn').onclick = automAdd;
 $('dataTabs').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.action === 'addtable') { openTableModal(); return; }
@@ -11204,9 +11476,10 @@ async function insertImageFilesAtCaret(files) {
 }
 $('noteBody').addEventListener('paste', e => {
   const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f => /^image\//.test(f.type));
-  if (!files.length) return;
-  e.preventDefault();
-  insertImageFilesAtCaret(files);
+  if (files.length) { e.preventDefault(); insertImageFilesAtCaret(files); return; }
+  // texte colle : on laisse le navigateur coller puis on retire les tailles en
+  // dur (un copier-coller de titre gardait sinon sa grande taille sur le texte)
+  setTimeout(() => { nbStripSize($('noteBody')); noteAutosave(); }, 0);
 });
 
 /* ---- Selection d'une image au clic ---- */
@@ -11395,6 +11668,26 @@ $('nbCode').addEventListener('click', () => {
     ntMakeCode(v);
   });
 });
+$('nbFont').addEventListener('mousedown', e => e.preventDefault());
+$('nbFont').addEventListener('click', () => {
+  const s = window.getSelection(); if (!s.rangeCount) return;
+  const saved = s.getRangeAt(0).cloneRange();
+  const FONT_STACKS = {
+    poppins: "'Poppins', var(--font-sans)",
+    nunito: "'Nunito', var(--font-sans)",
+    serif: "'Source Serif 4', var(--font-serif)",
+  };
+  const prev = f => `<span class="sm-ico" style="font-family:${f};font-size:13px;width:22px">Aa</span>`;
+  openStyledMenu($('nbFont'), [{ label: 'Police', items: [
+    { value: 'none', label: 'Police par défaut', icon: prev('var(--font-sans)') },
+    { value: 'poppins', label: 'Poppins', icon: prev("'Poppins'") },
+    { value: 'nunito', label: 'Nunito', icon: prev("'Nunito'") },
+    { value: 'serif', label: 'Source Serif 4', icon: prev("'Source Serif 4'") },
+  ] }], '', v => {
+    const s2 = window.getSelection(); s2.removeAllRanges(); s2.addRange(saved);
+    ntMakeFont(v === 'none' ? 'none' : FONT_STACKS[v]);
+  });
+});
 /* ---- Menu dépliant : le titre s'édite au clic, la flèche (à gauche) replie/déplie ---- */
 $('noteBody').addEventListener('click', e => {
   const sm = e.target.closest ? e.target.closest('summary') : null;
@@ -11444,6 +11737,30 @@ document.addEventListener('selectionchange', () => {
   if (!$('noteOverlay').classList.contains('show')) return;
   if ($('noteBubble').querySelector('.nb-link:not(.hidden)')) return;   // en train de saisir un lien
   showBubble();
+});
+
+/* ---- Suivi santé : faire défiler la période des graphiques (molette + clavier) ---- */
+let healthWheelLock = 0;
+document.addEventListener('wheel', e => {
+  if (state.view !== 'health') return;
+  const wrap = e.target.closest && e.target.closest('#healthChartsWrap');
+  if (!wrap) return;
+  e.preventDefault();
+  const d = e.deltaY || e.deltaX;
+  if (Math.abs(d) < 4) return;
+  const now = Date.now();
+  if (now - healthWheelLock < 280) return;
+  healthWheelLock = now;
+  healthChartShift(d > 0 ? 1 : -1);
+}, { passive: false });
+document.addEventListener('keydown', e => {
+  if (state.view !== 'health') return;
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const ae = document.activeElement;
+  if (ae && (/(INPUT|TEXTAREA|SELECT)/.test(ae.tagName) || ae.isContentEditable)) return;
+  if ($('noteOverlay').classList.contains('show')) return;
+  e.preventDefault();
+  healthChartShift(e.key === 'ArrowRight' ? 1 : -1);
 });
 
 /* ---------- Menu « / » et menu « : » ---------- */
