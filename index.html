@@ -1589,6 +1589,8 @@
   .drawer-backdrop { display: none; }
   /* barre de navigation du bas : téléphone uniquement (activée dans la media query) */
   .tabbar { display: none; }
+  .fab { display: none; }   /* bouton d'ajout flottant : téléphone uniquement */
+  .day-strip { display: none; }   /* bandeau de dates : téléphone uniquement */
 
   /* =========================================================
      MOBILE / TÉLÉPHONE (≤ 640px)
@@ -1621,7 +1623,9 @@
 
     /* --- zone principale & vues --- */
     .space { padding: 14px 12px 40px; max-width: none; }
-    .month-grid { min-height: 0; }
+    /* la zone de défilement ne porte plus de marge propre : chaque vue gère la sienne,
+       ce qui permet au bandeau de dates de la vue Jour de coller aux bords et en haut. */
+    .month-grid { min-height: 0; padding: 12px; }
     .mweek { min-height: 76px; }
     .dow { padding: 6px 6px; font-size: 11px; }
     .chip, .mbar { font-size: 11px; }
@@ -1645,6 +1649,12 @@
     #noteOverlay.doc .modal-head { padding: 10px 12px; }
     /* page (fiche) en panneau : pleine largeur sur mobile */
     #pageOverlay.side .page-panel, #pageOverlay .modal { max-width: calc(100vw - 20px) !important; }
+    /* propriétés d'une fiche (dont Notes) : la colonne de gauche fixe (190px, ou 140px
+       en panneau) ne laissait presque plus rien à la valeur → un textarea écrasé à ~0px
+       de large, où chaque lettre retombait à la ligne. Étiquette au-dessus, valeur en dessous. */
+    .prop-row { flex-wrap: wrap; row-gap: 4px; }
+    #pageOverlay .prop-key, #pageOverlay.side .prop-key { width: auto; flex: 0 1 auto; }
+    .prop-val { flex-basis: 100%; order: 5; }
 
     /* --- listes de tâches : le titre d'abord, les étiquettes en dessous ---
        Sur écran étroit, pastille de projet + date accaparaient toute la largeur
@@ -1654,6 +1664,31 @@
     .trow .proj-pill, .trow .cat-pill { max-width: 45vw; overflow: hidden; text-overflow: ellipsis; }
     .trow .t-due { margin-left: auto; }
     .task-item .task-name { overflow-wrap: anywhere; }
+
+    /* --- Espace Tâches : le tableau devient une pile de cartes aérées ---
+       Sur téléphone un tableau à colonnes est illisible : on empile chaque tâche
+       en carte (titre en haut, propriétés en pastilles qui s'enroulent en dessous). */
+    .tbl-table, .tbl-table > tbody { display: block; width: 100%; }
+    .tbl-table > thead { display: none; }
+    .tbl-table tr.tbl-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 9px;
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 13px 14px; margin: 0 0 9px;
+      background: var(--surface); box-shadow: var(--shadow-sm);
+    }
+    .tbl-table tr.tbl-row:hover { background: var(--surface); }   /* pas de survol au doigt */
+    .tbl-row > td { padding: 0; border: none; font-size: 14px; }
+    .tbl-row .tbl-th-drag { display: none; }                     /* pas de glisser au doigt */
+    .tbl-row .tbl-th-check { flex: 0 0 auto; }
+    /* le titre partage la 1re ligne avec la case à cocher ; les pastilles s'enroulent en dessous */
+    .tbl-row .tbl-title { flex: 1 1 calc(100% - 46px); min-width: 0; font-size: 15px; }
+    .tbl-row td:has(.tbl-empty) { display: none; }               /* pas de « + Projet » vide */
+    .tbl-row td:has(.tbl-date[value=""]) { display: none; }      /* pas de date vide */
+    .tbl-row .tbl-cell, .tbl-row .tbl-custom { display: inline-flex; align-items: center; }
+    /* bandeau de groupe -> en-tête de section pleine largeur */
+    .tbl-table tr.grp-band-row { display: block; margin: 16px 0 8px; }
+    .tbl-table tr.grp-band-row:first-child { margin-top: 0; }
+    .tbl-table tr.grp-band-row td { display: block; padding: 0; }
 
     /* --- barre de navigation du bas --- */
     .tabbar {
@@ -1668,6 +1703,41 @@
     }
     .tabbar .tab.on { color: var(--accent); }
     .tabbar .tab svg { display: block; }
+
+    /* bouton d'ajout flottant : toujours accessible au pouce, au-dessus de la barre du bas */
+    .fab {
+      display: flex; align-items: center; justify-content: center;
+      position: fixed; right: 16px;
+      bottom: calc(56px + env(safe-area-inset-bottom) + 14px);
+      width: 54px; height: 54px; border-radius: 50%;
+      background: var(--accent); color: #fff; border: none;
+      box-shadow: 0 6px 18px rgba(0,0,0,.24); z-index: 46; cursor: pointer;
+      transition: transform var(--dur) var(--ease), filter var(--dur) var(--ease);
+    }
+    .fab:active { transform: scale(.93); filter: brightness(.94); }
+
+    /* bandeau de dates horizontal (vue Jour) : reste collé en haut pendant le défilement */
+    .canvas { padding: 0; }   /* la grille gère ses propres marges pour que le bandeau touche les bords */
+    .day-strip {
+      display: flex; gap: 6px; justify-content: space-between;
+      position: sticky; top: 0; z-index: 5;
+      padding: 8px 10px 7px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .ds-day {
+      flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 4px 0 5px; border: none; background: none; cursor: pointer;
+      border-radius: var(--radius-md); color: var(--text-soft);
+    }
+    .ds-dow { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); }
+    .ds-num { font-size: 14.5px; font-weight: 600; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; }
+    .ds-day.today .ds-num { color: var(--accent); }
+    .ds-day.on .ds-num { background: var(--accent); color: #fff; }
+    .ds-day.on .ds-dow { color: var(--accent); }
+    /* la grille horaire garde une petite marge interne, le bandeau prend toute la largeur */
+    .time-grid { padding: 0 6px; }
+    /* en vue Jour le bandeau remplace l'en-tête de colonne (sinon la date apparaît deux fois) */
+    .day-strip + .time-grid .tg-head { display: none; }
     /* on réserve la place de la barre pour que rien ne passe dessous */
     .main { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
     /* le tiroir passe au-dessus de la barre du bas */
@@ -1841,6 +1911,11 @@
     </div>
     <div class="canvas" id="canvas"></div>
   </main>
+
+  <!-- Bouton d'ajout flottant (téléphone uniquement) -->
+  <button class="fab" id="fab" title="Ajouter" aria-label="Ajouter">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
 
   <!-- Barre de navigation du bas (téléphone uniquement) -->
   <nav class="tabbar" id="tabbar">
@@ -2426,6 +2501,10 @@
 
 // Design system « Gummie » : les 6 couleurs de tag = aplats pastel (fond des événements/étiquettes).
 // L'accent Clay n'en fait PAS partie : il est réservé à l'action principale et aux états actifs.
+// glisser-déposer HTML5 (draggable) n'est pas pensé pour le tactile : sur certains
+// mobiles, sa seule présence peut avaler le tap et empêcher l'ouverture de la fiche.
+const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const DRAG_ATTR = IS_TOUCH ? 'draggable="false"' : 'draggable="true"';
 const PALETTE = ['#cfe2f2','#d3e8cf','#f6dfb5','#f2d3d0','#e3daf2','#eae8e4'];
 // version « pastille » plus soutenue de chaque teinte (pour les points de couleur)
 const TAG_DOT = {
@@ -3328,7 +3407,7 @@ function renderMonth() {
 
     // les barres continues
     barres.forEach(b => {
-      html += `<div class="mbar ${b.cut.l ? 'cut-l' : ''} ${b.cut.r ? 'cut-r' : ''}" draggable="true"
+      html += `<div class="mbar ${b.cut.l ? 'cut-l' : ''} ${b.cut.r ? 'cut-r' : ''}" ${DRAG_ATTR}
         data-drag-kind="${b.kind}" data-drag-id="${b.id}"
         style="grid-column:${b.s + 1}/${b.e + 2};grid-row:${b.lane + 2};${b.style}"
         onclick="${b.open}" title="${esc(b.html.replace(/<[^>]*>/g, ''))}">${b.html}</div>`;
@@ -3348,9 +3427,9 @@ function renderMonth() {
       shown.forEach(it => {
         if (it.kind === 'event') {
           const look = eventLook(it.o);
-          chips += `<div class="chip event ${look.isProject ? 'as-project' : ''}" draggable="true" data-drag-kind="event" data-drag-id="${it.o.id}" style="${look.style}" onclick="openEdit('event','${it.o.id}',event)"><span class="ev-dot" style="background:${look.dot}"></span>${it.o.start ? `<span class="ev-h">${it.o.start}</span> ` : ''}${repIco(it.o)}${iconOf(it.o, 'events', 11)}${esc(it.o.title)}</div>`;
+          chips += `<div class="chip event ${look.isProject ? 'as-project' : ''}" ${DRAG_ATTR} data-drag-kind="event" data-drag-id="${it.o.id}" style="${look.style}" onclick="openEdit('event','${it.o.id}',event)"><span class="ev-dot" style="background:${look.dot}"></span>${it.o.start ? `<span class="ev-h">${it.o.start}</span> ` : ''}${repIco(it.o)}${iconOf(it.o, 'events', 11)}${esc(it.o.title)}</div>`;
         } else {
-          chips += `<div class="chip task ${it.o.done ? 'done' : ''}" draggable="true" data-drag-kind="task" data-drag-id="${it.o.id}" style="border-left:3px solid ${taskStripe(it.o)}" onclick="openEdit('task','${it.o.id}',event)"><span class="tick" onclick="toggleTask('${it.o.id}',event)" title="Cocher / décocher">${it.o.done ? '✓' : '○'}</span>${repIco(it.o)}${iconOf(it.o, 'tasks', 11)}${esc(it.o.title)}</div>`;
+          chips += `<div class="chip task ${it.o.done ? 'done' : ''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${it.o.id}" style="border-left:3px solid ${taskStripe(it.o)}" onclick="openEdit('task','${it.o.id}',event)"><span class="tick" onclick="toggleTask('${it.o.id}',event)" title="Cocher / décocher">${it.o.done ? '✓' : '○'}</span>${repIco(it.o)}${iconOf(it.o, 'tasks', 11)}${esc(it.o.title)}</div>`;
         }
       });
       if (extra > 0) chips += `<div class="more-link" onclick="goToDay('${k}')">+${extra} de plus</div>`;
@@ -3438,7 +3517,7 @@ function renderAllDayRow(days, colTemplate) {
     // seuls les éléments qui couvrent une période s'étirent latéralement
     const handles = (it.kind === 'event' || it.kind === 'project')
       ? `<span class="ad-resize left" data-edge="left"></span><span class="ad-resize right" data-edge="right"></span>` : '';
-    return `<div class="${cls}" draggable="true" data-drag-kind="${it.kind}" data-drag-id="${it.id}"
+    return `<div class="${cls}" ${DRAG_ATTR} data-drag-kind="${it.kind}" data-drag-id="${it.id}"
       style="grid-column:${it.s+2}/${it.en+3};grid-row:${it.lane+1};${it.style}"
       onclick="${openFor[it.kind]}'${it.id}')">${handles}<span class="ad-lbl">${it.html}</span></div>`;
   }).join('');
@@ -3497,6 +3576,22 @@ function wireAllDayResize(days) {
 /* ============================================================
    VUE SEMAINE / JOUR (grille horaire)
    ============================================================ */
+/* Bandeau de dates horizontal (téléphone, vue Jour) : une semaine glissante centrée
+   sur le jour courant. Toucher une pastille change de jour. */
+function dayStripHtml() {
+  const base = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+  let cells = '';
+  for (let i = -3; i <= 3; i++) {
+    const d = addDays(base, i);
+    const cls = ['ds-day', i === 0 ? 'on' : '', isToday(d) ? 'today' : ''].filter(Boolean).join(' ');
+    cells += `<button class="${cls}" onclick="goToDay('${ymd(d)}')">
+      <span class="ds-dow">${DOW_SHORT[d.getDay()]}</span>
+      <span class="ds-num">${d.getDate()}</span>
+    </button>`;
+  }
+  return `<div class="day-strip">${cells}</div>`;
+}
+
 function renderTimeGrid(nDays) {
   // seule la vue Semaine se cale sur le début de semaine ; les autres partent du jour courant
   const start = state.view === 'week' ? startOfWeek(cursor) : new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
@@ -3531,7 +3626,7 @@ function renderTimeGrid(nDays) {
       const top = (sh*60 + sm) * 48/60;
       const height = Math.max(22, ((eh*60+em) - (sh*60+sm)) * 48/60);
       const look = eventLook(e);
-      body += `<div class="ev-block ${look.isProject?'as-project':''}" draggable="true" data-drag-kind="event" data-drag-id="${e.id}" style="top:${top}px;height:${height}px;${look.style}" onclick="openEdit('event','${e.id}',event)">
+      body += `<div class="ev-block ${look.isProject?'as-project':''}" ${DRAG_ATTR} data-drag-kind="event" data-drag-id="${e.id}" style="top:${top}px;height:${height}px;${look.style}" onclick="openEdit('event','${e.id}',event)">
         <div class="ev-resize top" data-edge="top"></div>
         <div class="t">${repIco(e)}${iconOf(e,'events',12)}${esc(e.title)}</div><div class="h">${e.start||''} – ${e.end||''}</div>
         ${eventPeopleHtml(e)}
@@ -3546,7 +3641,7 @@ function renderTimeGrid(nDays) {
       const endMin = Math.max(startMin + 15, timeToMin(t.dueEnd || fmtMin(Math.min(1440, startMin + 30))));
       const top = startMin * 48/60;
       const height = Math.max(22, (endMin - startMin) * 48/60);
-      body += `<div class="task-block ${t.done?'done':''}" draggable="true" data-drag-kind="task" data-drag-id="${t.id}" style="top:${top}px;height:${height}px;border-left:3px solid ${border}" onclick="openEdit('task','${t.id}',event)" title="${esc(t.title)} · ${t.dueTime}–${fmtMin(endMin)}">
+      body += `<div class="task-block ${t.done?'done':''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${t.id}" style="top:${top}px;height:${height}px;border-left:3px solid ${border}" onclick="openEdit('task','${t.id}',event)" title="${esc(t.title)} · ${t.dueTime}–${fmtMin(endMin)}">
         <div class="ev-resize top" data-edge="top"></div>
         ${label}
         <div class="ev-resize bottom" data-edge="bottom"></div>
@@ -3569,7 +3664,9 @@ function renderTimeGrid(nDays) {
   body += '</div>';
 
   const allDay = renderAllDayRow(days, colTemplate);
-  canvas.innerHTML = `<div class="time-grid">${head}${allDay}${body}</div>`;
+  // téléphone, vue Jour : bandeau de dates horizontal pour changer de jour au pouce
+  const strip = (nDays === 1) ? dayStripHtml() : '';
+  canvas.innerHTML = `${strip}<div class="time-grid">${head}${allDay}${body}</div>`;
   wireDayDrop();
   wireTimeDrag();
   wireEventResize();
@@ -11010,6 +11107,8 @@ window.deleteTable = deleteTable;
    ÉVÉNEMENTS / WIRING
    ============================================================ */
 $('addBtn').onclick = () => openModal('event');
+// bouton flottant (mobile) : ajoute une tâche dans l'espace Tâches/Projets, un événement ailleurs
+$('fab').onclick = () => { closeDrawer(); openModal((state.view === 'tasks' || state.view === 'projects') ? 'task' : 'event'); };
 $('dataBtn').onclick = openDataPanel;
 $('automBtn').onclick = openAutoms;
 $('automAddBtn').onclick = automAdd;
