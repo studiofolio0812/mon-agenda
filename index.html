@@ -1721,10 +1721,12 @@
       padding-bottom: env(safe-area-inset-bottom);   /* barre gestuelle des téléphones */
     }
     .tabbar .tab {
-      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-      padding: 7px 2px 6px; background: none; border: none; cursor: pointer;
-      color: var(--text-faint); font-size: 10.5px; line-height: 1.2;
+      flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      padding: 7px 1px 6px; background: none; border: none; cursor: pointer;
+      color: var(--text-faint); font-size: 9.5px; line-height: 1.2;
     }
+    /* libellés sur une ligne, jamais coupés en deux (garde une hauteur de barre stable) */
+    .tabbar .tab span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tabbar .tab.on { color: var(--accent); }
     .tabbar .tab svg { display: block; }
 
@@ -1762,6 +1764,27 @@
     .time-grid { padding: 0 6px; }
     /* en vue Jour le bandeau remplace l'en-tête de colonne (sinon la date apparaît deux fois) */
     .day-strip + .time-grid .tg-head { display: none; }
+
+    /* --- Accueil « Aujourd'hui » --- */
+    .home { padding: 16px 14px 30px; }
+    .ho-head { margin-bottom: 14px; }
+    .ho-hello { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+    .ho-date { font-size: 13.5px; color: var(--text-faint); margin-top: 2px; }
+    .ho-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ho-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+      padding: 14px 16px; box-shadow: var(--shadow-sm); }
+    .ho-val { font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
+    .ho-lbl { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+    .ho-tile.warn .ho-val { color: #b4544f; }
+    .ho-next { margin-top: 14px; background: var(--accent-soft); border-radius: var(--radius-md); padding: 12px 14px; cursor: pointer; }
+    .ho-next-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); margin-bottom: 5px; }
+    .ho-next-row { display: flex; align-items: center; gap: 9px; }
+    .ho-next-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .ho-next-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ho-next-time { font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+    .ho-sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; margin: 22px 0 6px; }
+    .ho-list .ag-item { padding: 10px 8px; border-bottom: 1px solid var(--border); border-radius: 0; }
+    .ho-list .ag-item:last-child { border-bottom: none; }
 
     /* --- Vue Mois mobile : calendrier compact + liste du jour --- */
     .mm-wrap { display: flex; flex-direction: column; }
@@ -1979,29 +2002,8 @@
     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
   </button>
 
-  <!-- Barre de navigation du bas (téléphone uniquement) -->
-  <nav class="tabbar" id="tabbar">
-    <button class="tab" data-tab="cal">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/></svg>
-      <span>Calendrier</span>
-    </button>
-    <button class="tab" data-tab="tasks">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l2 2 3.5-3.5"/><path d="M4 17.5l2 2 3.5-3.5"/><path d="M13 7h7M13 18h7"/></svg>
-      <span>Tâches</span>
-    </button>
-    <button class="tab" data-tab="projects">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      <span>Projets</span>
-    </button>
-    <button class="tab" data-tab="notes">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
-      <span>Notes</span>
-    </button>
-    <button class="tab" data-tab="more">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-      <span>Plus</span>
-    </button>
-  </nav>
+  <!-- Barre de navigation du bas (téléphone uniquement) — deux pages, remplie par renderTabbar() -->
+  <nav class="tabbar" id="tabbar"></nav>
 </div>
 
 <!-- champ caché pour choisir une couleur personnalisée (code hex) -->
@@ -3082,6 +3084,8 @@ const canvas = $('canvas');
 function render() {
   // la vue Semaine n'existe pas sur téléphone (grille 7 colonnes illisible) : on retombe sur Jour
   if (state.view === 'week' && isMobile()) state.view = 'day';
+  // l'accueil « Aujourd'hui » est propre au téléphone : sur ordinateur on retombe sur le mois
+  if (state.view === 'home' && !isMobile()) state.view = 'month';
   document.documentElement.setAttribute('data-theme', state.theme);
   document.documentElement.style.setProperty('--accent', state.accent);
   document.documentElement.style.setProperty('--accent-soft', state.accent + '33');
@@ -3123,7 +3127,8 @@ function render() {
   document.querySelector('.nav-btns').classList.toggle('hidden', inSpace);
   $('periodTitle').classList.toggle('hidden', inSpace);
 
-  if (state.view === 'tasks') renderTasksSpace();
+  if (state.view === 'home') renderHomeMobile();
+  else if (state.view === 'tasks') renderTasksSpace();
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
   else if (state.view === 'crm') renderCrmSpace();
@@ -3145,7 +3150,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan'];
+const SPACE_VIEWS = ['home', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -3342,17 +3347,76 @@ function dayEntries(d) {
 }
 
 /* ============================================================
+   ACCUEIL « AUJOURD'HUI » — TÉLÉPHONE
+   Tuiles de synthèse + prochain événement + liste du jour.
+   (Propre au téléphone ; sur ordinateur on retombe sur le mois.)
+   ============================================================ */
+function renderHomeMobile() {
+  const today = new Date();
+  const tk = ymd(today);
+  const nowMin = today.getHours() * 60 + today.getMinutes();
+
+  const tasksToday = state.tasks.filter(t => t.due === tk && !t.done && catVisible(t.catId));
+  const overdue = state.tasks.filter(t => !t.done && t.due && t.due < tk && catVisible(t.catId));
+  let habDue = 0, habDone = 0;
+  (state.habits || []).forEach(h => { if (habitScheduledOn(h, today)) { habDue++; if (habitDayDone(h, today)) habDone++; } });
+  const evToday = state.events.filter(e => e.date === tk && !isAllDayEv(e) && e.start && catVisible(e.catId))
+    .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  const nextEv = evToday.find(e => timeToMin(e.start) >= nowMin);
+
+  const heure = today.getHours();
+  const greet = heure < 12 ? 'Bonjour' : heure < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const dateTxt = `${DOW_LONG[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
+  const tile = (val, lbl, warn) => `<div class="ho-tile ${warn ? 'warn' : ''}"><div class="ho-val">${val}</div><div class="ho-lbl">${lbl}</div></div>`;
+
+  let html = `<div class="home">
+    <div class="ho-head">
+      <div class="ho-hello">${greet}</div>
+      <div class="ho-date">${dateTxt.charAt(0).toUpperCase() + dateTxt.slice(1)}</div>
+    </div>
+    <div class="ho-tiles">
+      ${tile(tasksToday.length, tasksToday.length > 1 ? 'tâches du jour' : 'tâche du jour')}
+      ${tile(habDue ? `${habDone}/${habDue}` : '—', 'habitudes')}
+      ${tile(evToday.length, evToday.length > 1 ? 'événements' : 'événement')}
+      ${tile(overdue.length, 'en retard', overdue.length > 0)}
+    </div>`;
+
+  if (nextEv) {
+    const look = eventLook(nextEv);
+    html += `<div class="ho-next" onclick="openEdit('event','${nextEv.id}',event)">
+      <div class="ho-next-lbl">Prochain événement</div>
+      <div class="ho-next-row">
+        <span class="ho-next-dot" style="background:${look.dot}"></span>
+        <span class="ho-next-title">${esc(nextEv.title)}</span>
+        <span class="ho-next-time">${nextEv.start}</span>
+      </div>
+    </div>`;
+  }
+
+  const entrees = dayEntries(today);
+  html += `<div class="ho-sec-title">Aujourd'hui</div>`;
+  html += entrees.length
+    ? `<div class="ag-items ho-list">${entrees.map(e => e.html).join('')}</div>`
+    : `<div class="mm-empty">Rien de prévu aujourd'hui. Touche <b>+</b> pour ajouter.</div>`;
+
+  html += `</div>`;
+  canvas.innerHTML = html;
+  wireItemDrag();
+}
+
+/* ============================================================
    VUE MOIS — TÉLÉPHONE
    Calendrier compact en haut + liste du jour sélectionné en dessous.
    (Sur ordinateur, c'est renderMonth() qui reste utilisé.)
    ============================================================ */
-// pastilles de couleur d'un jour (max 4, dédupliquées) pour la grille compacte
+// pastilles de couleur d'un jour (max 4, dédupliquées) pour la grille compacte.
+// On EXCLUT les habitudes : elles reviennent chaque jour et masqueraient les vrais
+// repères (événements, tâches, projets). Elles restent dans le détail du jour en dessous.
 function dayDots(d) {
   const cols = [];
   eventsOn(d).forEach(e => cols.push(eventLook(e).dot));
   tasksOn(d).forEach(t => cols.push(taskStripe(t)));
   projectsOn(d).forEach(p => cols.push(dotOf(p.color)));
-  habitsOn(d).forEach(occ => cols.push(dotOf(occ.habit.color || '#eae8e4')));
   if (!cols.length) return '';
   return [...new Set(cols)].slice(0, 4)
     .map(c => `<span class="mm-dot" style="background:${c}"></span>`).join('');
@@ -4323,19 +4387,50 @@ function openSpace(name) {
   if (name === 'notes') notesOpenFolder = null;   // on revient toujours à l'accueil des notes
   save(); render();
 }
-/* Onglets du bas (téléphone) : on va directement à l'espace, sans bascule. */
+/* Onglets du bas (téléphone) : deux pages. La 1re = le quotidien ; « Plus » bascule
+   sur la 2de (destinations moins fréquentes), « Retour » revient. Pas de tiroir
+   latéral pour naviguer — le tiroir (☰) ne sert plus qu'aux réglages/agendas. */
 let lastCalView = 'month';   // dernière vue calendrier utilisée, pour y revenir
+let tabbarPage = 0;
+const TB_ICO = {
+  home:   '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/>',
+  cal:    '<rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/>',
+  tasks:  '<path d="M4 6.5l2 2 3.5-3.5"/><path d="M4 17.5l2 2 3.5-3.5"/><path d="M13 7h7M13 18h7"/>',
+  habits: '<path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/>',
+  health: '<circle cx="12" cy="12" r="9"/><path d="M7 12h2l1.5-4 3 8 1.5-4H17"/>',
+  more:   '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  back:   '<path d="M15 18l-6-6 6-6"/>',
+  projects: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  notes:  '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  bilan:  '<path d="M4 20V10M12 20V4M20 20v-6"/>',
+  crm:    '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="1.8"/><path d="M5.5 16c0-1.7 1.3-2.6 3-2.6s3 .9 3 2.6"/><path d="M14 9.5h4M14 13h4"/>',
+};
+const TABBAR_PAGES = [
+  [ ['home',"Aujourd'hui"], ['cal','Calendrier'], ['tasks','Tâches'], ['habits','Habitudes'], ['health','Santé'], ['more','Plus'] ],
+  [ ['back','Retour'], ['projects','Projets'], ['notes','Notes'], ['bilan','Bilan'], ['crm','CRM'] ],
+];
+// sur quelle page se trouve une destination (pour afficher la bonne page au chargement)
+function tabbarPageOf(view) {
+  const cur = isSpaceView(view) ? view : 'cal';
+  return TABBAR_PAGES[1].some(([t]) => t === cur) ? 1 : 0;
+}
 function goTab(tab) {
   closeDrawer();
-  if (tab === 'more') { $('app').classList.add('drawer-open'); return; }
+  if (tab === 'more') { tabbarPage = 1; renderTabbar(); return; }
+  if (tab === 'back') { tabbarPage = 0; renderTabbar(); return; }
   if (tab === 'cal') { state.view = lastCalView || 'month'; }
   else { state.view = tab; if (tab === 'notes') notesOpenFolder = null; }
+  tabbarPage = tabbarPageOf(state.view);
   save(); render();
 }
 window.goTab = goTab;
 function renderTabbar() {
   const cur = isSpaceView(state.view) ? state.view : 'cal';
-  $$('#tabbar .tab').forEach(b => b.classList.toggle('on', b.dataset.tab === cur));
+  $('tabbar').innerHTML = TABBAR_PAGES[tabbarPage].map(([tab, label]) =>
+    `<button class="tab ${tab === cur ? 'on' : ''}" data-tab="${tab}">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${TB_ICO[tab]}</svg>
+      <span>${label}</span>
+    </button>`).join('');
 }
 window.openSpace = openSpace;
 
@@ -8691,9 +8786,9 @@ function openModal(kind, id, opts) {
     $('fAllDay').checked = false;
     setType(draft.type); setPrio('med');
     $('fTitle').value = '';
-    // vue Mois ordinateur : cursor pointe le 1er du mois, on préfère aujourd'hui ;
+    // accueil « Aujourd'hui » et vue Mois ordinateur : on date à aujourd'hui ;
     // vue Mois mobile : cursor EST le jour sélectionné, on le garde
-    $('fDate').value = ymd((state.view === 'month' && !isMobile()) ? new Date() : cursor);
+    $('fDate').value = ymd((state.view === 'home' || (state.view === 'month' && !isMobile())) ? new Date() : cursor);
     $('fEndDate').value = $('fDate').value;
     $('fStart').value = '09:00'; $('fEnd').value = '10:00';
     $('fTaskStart').value = '';
@@ -11442,7 +11537,7 @@ $('addBtn').onclick = () => openModal('event');
 $('fab').onclick = () => {
   closeDrawer();
   if (state.view === 'habits') { openHabitModal(); return; }   // espace Habitudes : nouvelle habitude
-  openModal((state.view === 'tasks' || state.view === 'projects') ? 'task' : 'event');
+  openModal((state.view === 'tasks' || state.view === 'projects' || state.view === 'home') ? 'task' : 'event');
 };
 $('dataBtn').onclick = openDataPanel;
 $('automBtn').onclick = openAutoms;
@@ -11472,7 +11567,8 @@ $('sidebarToggle').onclick = () => {
   state.sidebarCollapsed = !state.sidebarCollapsed; save(); render();      // desktop : repli classique
 };
 $('drawerBackdrop').onclick = closeDrawer;
-$$('#tabbar .tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
+// délégation : les boutons de la barre sont régénérés à chaque changement de page
+$('tabbar').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) goTab(b.dataset.tab); });
 
 /* Cocher une case directement depuis une tuile de note (liste de courses au supermarché…).
    En phase de capture pour intercepter le clic AVANT l'ouverture de la note. */
@@ -12350,6 +12446,7 @@ document.addEventListener('keydown', e => {
 
 
 /* ---------- Go ---------- */
+tabbarPage = tabbarPageOf(state.view);   // afficher d'emblée la page contenant la vue courante
 render();
 initCloud();            // synchro : reprend la session, va chercher les changements de l'autre appareil
 registerServiceWorker(); // app installable + fonctionnement hors ligne
