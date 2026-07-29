@@ -3343,7 +3343,7 @@ function renderMonth() {
       const items = [...evs.map(o => ({ kind: 'event', o })), ...tks.map(o => ({ kind: 'task', o }))];
       const shown = items.slice(0, 3);
       const extra = items.length - shown.length;
-      // habitudes : les points sont désormais �� côté du numéro du jour (voir en-tête)
+      // habitudes : les points sont désormais à côté du numéro du jour (voir en-tête)
       let chips = '';
       shown.forEach(it => {
         if (it.kind === 'event') {
@@ -3689,7 +3689,7 @@ function groupTasks(list, mode, all) {
   return groups;
 }
 
-// texte d'��chéance d'une ligne : l'heure si elle en a une, sinon la date relative
+// texte d'échéance d'une ligne : l'heure si elle en a une, sinon la date relative
 function taskDueText(t) {
   if (!t.due) return '';
   const d = formatDue(t.due);
@@ -4131,7 +4131,7 @@ function kbPinnedRailHtml(pinned) {
 }
 window.kbHideGroup = kbHideGroup; window.kbShowGroup = kbShowGroup;
 
-/* ---- Kanban : largeur de colonne réglable (mémoris��e par regroupement) ---- */
+/* ---- Kanban : largeur de colonne réglable (mémorisée par regroupement) ---- */
 function kbColWidth(cfg, key) {
   const store = cfg.kbColWidths || (cfg.kbColWidths = {});
   const forGroup = store[cfg.groupBy] || (store[cfg.groupBy] = {});
@@ -5368,7 +5368,7 @@ function folderMenuGroups() {
   items.push({ value: '__new__', label: 'Nouveau dossier…', action: true, icon: `<span class="sm-dot" style="background:transparent">${ICON_PLUS}</span>` });
   return [{ items }];
 }
-const linkLabelOf = v => !v ? 'Rien' : v.startsWith('p:') ? (projById(v.slice(2)) || {}).name || '��'
+const linkLabelOf = v => !v ? 'Rien' : v.startsWith('p:') ? (projById(v.slice(2)) || {}).name || '—'
   : v.startsWith('t:') ? ((state.tasks.find(t => t.id === v.slice(2)) || {}).title || '—')
   : ((state.events.find(e => e.id === v.slice(2)) || {}).title || '—');
 
@@ -6733,7 +6733,7 @@ function noteToggleBox() {
 const NOTE_INLINE_FMT = 'b,strong,i,em,u,s,strike,font,mark,.note-box,span[style],span[class]';
 function noteClearFormat() {
   $('noteBody').focus();
-  // On défait la mise en forme À LA MAIN (d��terministe) : removeFormat seul est
+  // On défait la mise en forme À LA MAIN (déterministe) : removeFormat seul est
   // capricieux et ne sait pas retirer un <span class> comme l'encadré. On enlève
   // toutes les balises de style qui touchent la sélection.
   const sel = window.getSelection();
@@ -6887,7 +6887,7 @@ function applyLink() {
 }
 
 /* ============================================================
-   MENU �� / » : insertion de blocs
+   MENU « / » : insertion de blocs
    ============================================================ */
 const SLASH_BLOCKS = [
   { k: 'p',       n: 'Texte',            h: 'Paragraphe simple' },
@@ -7410,7 +7410,7 @@ const EMOJI_LIB = [
   ['epingle', '📌'], ['trombone', '📎'], ['loupe', '🔍'], ['cle', '🔑'], ['cadenas', '🔒'],
   ['ampoule', '💡'], ['cible', '🎯'], ['fusee', '🚀'], ['trophee', '🏆'], ['medaille', '🥇'],
   ['cadeau', '🎁'], ['ballon', '🎈'], ['musique', '🎵'], ['photo', '📷'], ['cinema', '🎬'],
-  ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '����'], ['argent', '💰'],
+  ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '🧘'], ['argent', '💰'],
   ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '🛒'], ['sante', '🩺'],
   ['pilule', '💊'], ['cerveau', '🧠'], ['soin', '❤️‍🩹'], ['zen', '🧘‍♀️'], ['valide', '✅'],
   ['croix', '❌'], ['attention', '⚠️'], ['question', '❓'], ['exclamation', '❗'], ['interdit', '🚫'],
@@ -7795,7 +7795,7 @@ function wireDayDrop() {
       e.preventDefault(); cell.classList.remove('drop-hover');
       if (!dragItem) return;
       const date = cell.dataset.date;
-      // déposé dans le bandeau « toute la journ��e » → l'élément perd son créneau horaire
+      // déposé dans le bandeau « toute la journée » → l'élément perd son créneau horaire
       const toAllDay = cell.classList.contains('ad-cell');
       // heure calculée uniquement quand on lâche sur une colonne horaire (semaine/jour)
       let mins = null;
@@ -7998,7 +7998,7 @@ function recentColors(selected) {
    dates : elles restent à choisir à chaque fois). Un projet
    existant embarque aussi sa liste de tâches dans le modèle.
    ============================================================ */
-let projTplTasks = null;   // t��ches à créer avec le prochain projet (venant d'un modèle)
+let projTplTasks = null;   // tâches à créer avec le prochain projet (venant d'un modèle)
 function tplsOf(kind) {
   if (!state.templates) state.templates = {};
   if (!state.templates[kind]) state.templates[kind] = [];
@@ -8112,7 +8112,7 @@ function saveTplFromProject(pid) {
   tplsOf('project').push({ id: uid(), name: pj.name || 'Modèle ' + (tplsOf('project').length + 1), data });
   save();
 }
-// menu « Mod��les » de la vue détail d'un projet : sauvegarder ce projet, ou en créer un depuis un modèle
+// menu « Modèles » de la vue détail d'un projet : sauvegarder ce projet, ou en créer un depuis un modèle
 function openTplMenuProjDetail(btn, pidArg) {
   const pid = pidArg || pdProjId;
   const list = tplsOf('project');
@@ -9213,7 +9213,7 @@ const notesForProject = pid => (state.notes || []).filter(n =>
    pas un événement). Même section, même bouton — seule la source change. */
 const notesForEvent = eid => (state.notes || []).filter(n => n.eventId === eid)
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
-// notes rattach��es directement à une tâche (comme pour un événement)
+// notes rattachées directement à une tâche (comme pour un événement)
 const notesForTask = tid => (state.notes || []).filter(n => n.taskId === tid)
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
 // `cible` : 'p' pour un projet, 'e' pour un événement, 't' pour une tâche
