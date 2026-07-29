@@ -974,6 +974,30 @@
   .kpi-val { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
   .kpi-lbl { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
   .kpi.warn .kpi-val { color: #b4544f; }
+
+  /* ---- Espace Habitudes : cartes avec série (streak) + semaine ---- */
+  .hs-list { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .hs-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 14px 16px; box-shadow: var(--shadow-sm); }
+  .hs-top { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .hs-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .hs-swatch { width: 12px; height: 12px; border-radius: 50%; }
+  .hs-name-wrap { flex: 1; min-width: 0; }
+  .hs-name { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hs-sub { font-size: 12px; color: var(--text-faint); margin-top: 1px; }
+  .hs-streak { display: flex; align-items: center; gap: 2px; font-size: 18px; font-weight: 700; flex: none; }
+  .hs-fire { font-size: 14px; }
+  .hs-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px; }
+  .hs-day { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .hs-dow { font-size: 10.5px; color: var(--text-faint); text-transform: uppercase; }
+  .hs-cell { width: 30px; height: 30px; border-radius: 50%; border: 1.6px solid var(--border-strong);
+    display: grid; place-items: center; color: #fff; font-size: 13px; transition: transform var(--dur) var(--ease); }
+  .hs-cell.off { border-style: dashed; border-color: var(--border); opacity: .5; }
+  .hs-cell.partial { background: var(--surface-2); }
+  .hs-cell.future:not(.done) { opacity: .5; }
+  .hs-cell.today { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .hs-cell:not(.off):not(.future) { cursor: pointer; }
+  .hs-cell:not(.off):not(.future):active { transform: scale(.88); }
   .ptable-wrap { margin-top: 18px; overflow-x: auto; }
   .ptable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .ptable th { text-align: left; font-size: 11.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); padding: 8px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
@@ -3104,6 +3128,7 @@ function render() {
   else if (state.view === 'notes') renderNotesSpace();
   else if (state.view === 'crm') renderCrmSpace();
   else if (state.view === 'health') renderHealthSpace();
+  else if (state.view === 'habits') renderHabitsSpace();
   else if (state.view === 'bilan') renderBilanSpace();
   else if (state.view === 'month') { isMobile() ? renderMonthMobile() : renderMonth(); }
   else if (state.view === 'agenda') renderAgenda();
@@ -3120,7 +3145,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['tasks', 'projects', 'notes', 'crm', 'health', 'bilan'];
+const SPACE_VIEWS = ['tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -3433,6 +3458,148 @@ function habitChip(occ, k) {
     ${iconOf(h, 'habits', 11)}<span class="habit-time">${occ.time}</span>
     <span class="habit-name">${esc(h.name)}</span>
   </div>`;
+}
+
+/* ============================================================
+   ESPACE HABITUDES — séries (streaks) + vue de la semaine
+   ============================================================ */
+// une habitude est « prévue » un jour si ce jour de la semaine fait partie de ses jours
+const habitScheduledOn = (h, d) => habitDays(h).includes(d.getDay());
+// un jour est « fait » quand TOUTES les prises prévues ce jour-là sont cochées
+function habitDayDone(h, d) {
+  const k = ymd(d);
+  return habitTimes(h).every(t => habitIsDone(h.id, k, t));
+}
+// certaines prises faites, mais pas toutes
+function habitDayPartial(h, d) {
+  const k = ymd(d);
+  const times = habitTimes(h);
+  const n = times.filter(t => habitIsDone(h.id, k, t)).length;
+  return n > 0 && n < times.length;
+}
+// série en cours : jours prévus consécutifs entièrement faits, en remontant depuis aujourd'hui.
+// La journée du jour, pas encore faite, ne casse pas la série (elle n'est pas finie).
+function habitStreak(h) {
+  let streak = 0;
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  const todayKey = ymd(base);
+  for (let i = 0; i < 366; i++) {
+    const d = addDays(base, -i);
+    if (!habitScheduledOn(h, d)) continue;         // jour non prévu : neutre
+    if (habitDayDone(h, d)) { streak++; continue; }
+    if (ymd(d) === todayKey) continue;             // aujourd'hui pas encore fait : on n'interrompt pas
+    break;
+  }
+  return streak;
+}
+// meilleure série sur les 365 derniers jours
+function habitBestStreak(h) {
+  let best = 0, run = 0;
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  const todayKey = ymd(base);
+  for (let i = 365; i >= 0; i--) {
+    const d = addDays(base, -i);
+    if (!habitScheduledOn(h, d)) continue;
+    if (habitDayDone(h, d)) { run++; best = Math.max(best, run); }
+    else if (ymd(d) === todayKey) { /* aujourd'hui non fait : neutre pour le record */ }
+    else { run = 0; }
+  }
+  return best;
+}
+// bascule TOUTES les prises d'une habitude pour un jour (coche/décoche la journée entière)
+function toggleHabitDay(id, k, ev) {
+  if (ev) ev.stopPropagation();
+  const h = state.habits.find(x => x.id === id); if (!h) return;
+  if (!state.habitDone) state.habitDone = {};
+  const times = habitTimes(h);
+  const allDone = times.every(t => state.habitDone[habitKey(id, k, t)]);
+  times.forEach(t => {
+    const key = habitKey(id, k, t);
+    if (allDone) delete state.habitDone[key]; else state.habitDone[key] = true;
+  });
+  save(); render();
+}
+window.toggleHabitDay = toggleHabitDay;
+
+function renderHabitsSpace() {
+  const habits = state.habits || [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const weekStart = startOfWeek(today);
+  const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i));
+
+  // indicateurs du haut
+  let dueToday = 0, doneToday = 0;
+  habits.forEach(h => { if (habitScheduledOn(h, today)) { dueToday++; if (habitDayDone(h, today)) doneToday++; } });
+  // taux de complétion de la semaine (jours prévus faits / jours prévus jusqu'à aujourd'hui)
+  let wkDue = 0, wkDone = 0;
+  habits.forEach(h => weekDays.forEach(d => {
+    if (d > today) return;
+    if (!habitScheduledOn(h, d)) return;
+    wkDue++; if (habitDayDone(h, d)) wkDone++;
+  }));
+  const wkPct = wkDue ? Math.round(wkDone / wkDue * 100) : 0;
+  const meilleure = habits.reduce((m, h) => Math.max(m, habitStreak(h)), 0);
+
+  let html = `<div class="space">
+    <div class="space-head">
+      <span class="space-title">Habitudes</span>
+      <span class="space-count">${dueToday ? `${doneToday}/${dueToday} aujourd'hui` : "rien de prévu aujourd'hui"}</span>
+    </div>`;
+
+  if (!habits.length) {
+    html += `<div class="space-empty" style="padding:40px 20px">Aucune habitude pour l'instant.<br>Clique sur « ＋ Ajouter » pour un rappel récurrent (sport, médicament, lecture…).</div>
+      <div style="margin-top:16px"><span class="space-add" onclick="openHabitModal()">${ICON_PLUS} Ajouter une habitude</span></div></div>`;
+    canvas.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="kpis">
+      <div class="kpi"><div class="kpi-val">${habits.length}</div><div class="kpi-lbl">habitude${habits.length > 1 ? 's' : ''}</div></div>
+      <div class="kpi"><div class="kpi-val">${doneToday}/${dueToday}</div><div class="kpi-lbl">faites aujourd'hui</div></div>
+      <div class="kpi"><div class="kpi-val">${wkPct} %</div><div class="kpi-lbl">cette semaine</div></div>
+      <div class="kpi"><div class="kpi-val">${meilleure} 🔥</div><div class="kpi-lbl">plus longue série en cours</div></div>
+    </div>
+    <div class="space-bar"><span class="space-add" onclick="openHabitModal()">${ICON_PLUS} Ajouter une habitude</span></div>`;
+
+  const dowLetters = weekDays.map(d => DOW_SHORT[d.getDay()].charAt(0).toUpperCase());
+  html += '<div class="hs-list">';
+  habits.forEach(h => {
+    const col = h.color || '#eae8e4';
+    const streak = habitStreak(h), best = habitBestStreak(h);
+    const marque = h.icon
+      ? `<span class="hs-ico" style="background:${lighten(col)}">${iconOf(h, 'habits', 16)}</span>`
+      : `<span class="hs-ico" style="background:${lighten(col)}"><span class="hs-swatch" style="background:${dotOf(col)}"></span></span>`;
+    // grille de la semaine
+    const cells = weekDays.map((d, i) => {
+      const k = ymd(d);
+      const prevu = habitScheduledOn(h, d);
+      const futur = d > today;
+      const done = prevu && habitDayDone(h, d);
+      const partial = prevu && habitDayPartial(h, d);
+      const cls = ['hs-cell', !prevu ? 'off' : '', done ? 'done' : '', partial ? 'partial' : '',
+        futur ? 'future' : '', ymd(d) === ymd(today) ? 'today' : ''].filter(Boolean).join(' ');
+      const style = done ? `background:${dotOf(col)};border-color:${dotOf(col)}`
+        : (prevu ? `border-color:${dotOf(col)}` : '');
+      const onclick = (prevu && !futur) ? ` onclick="toggleHabitDay('${h.id}','${k}',event)"` : '';
+      return `<div class="hs-day">
+        <span class="hs-dow">${dowLetters[i]}</span>
+        <span class="${cls}" style="${style}"${onclick}>${done ? '✓' : ''}</span>
+      </div>`;
+    }).join('');
+    html += `<div class="hs-card">
+      <div class="hs-top" onclick="openHabitModal('${h.id}')">
+        ${marque}
+        <div class="hs-name-wrap">
+          <div class="hs-name">${esc(h.name)}</div>
+          <div class="hs-sub">${habitTimes(h).join(' · ')}${best ? ` · record ${best} j` : ''}</div>
+        </div>
+        <div class="hs-streak" title="Série en cours">${streak}<span class="hs-fire">🔥</span></div>
+      </div>
+      <div class="hs-week">${cells}</div>
+    </div>`;
+  });
+  html += '</div></div>';
+  canvas.innerHTML = html;
 }
 
 /* ============================================================
@@ -8945,7 +9112,57 @@ function handleLaunchAction() {
   if (go === 'task') openModal('task');
   else if (go === 'note') openNote();
   else if (go === 'today') { cursor = new Date(); state.view = lastCalView || 'month'; save(); render(); }
+  else if (go === 'habits') { state.view = 'habits'; save(); render(); }   // clic sur une notif d'habitude
 }
+
+/* ---------- Habitude cochée depuis une notification ----------
+   Le service worker ne peut pas écrire dans les données de l'app. Quand on touche
+   « ✓ Fait » sur une notification (app fermée), il dépose la coche dans une petite
+   file (IndexedDB) ; l'app la vide à sa prochaine ouverture. Si l'app est déjà
+   ouverte, le service worker la prévient en direct (message). Idempotent. */
+function applyHabitDone(habitId, date, time) {
+  if (!habitId || !date || !time) return false;
+  if (!state.habitDone) state.habitDone = {};
+  const key = `${habitId}|${date}|${time}`;
+  if (state.habitDone[key]) return false;
+  state.habitDone[key] = true;
+  return true;
+}
+function idbDrainHabitDone() {
+  return new Promise(res => {
+    let open;
+    try { open = indexedDB.open('mon-agenda-pending', 1); } catch (e) { return res([]); }
+    open.onupgradeneeded = () => { if (!open.result.objectStoreNames.contains('habitDone')) open.result.createObjectStore('habitDone', { keyPath: 'key' }); };
+    open.onerror = () => res([]);
+    open.onsuccess = () => {
+      const db = open.result;
+      if (!db.objectStoreNames.contains('habitDone')) { db.close(); return res([]); }
+      const tx = db.transaction('habitDone', 'readwrite');
+      const store = tx.objectStore('habitDone');
+      const all = store.getAll();
+      all.onsuccess = () => store.clear();
+      tx.oncomplete = () => { db.close(); res(all.result || []); };
+      tx.onerror = () => { db.close(); res([]); };
+    };
+  });
+}
+async function drainPendingHabitDone() {
+  try {
+    const recs = await idbDrainHabitDone();
+    let changed = false;
+    recs.forEach(r => { if (applyHabitDone(r.habitId, r.date, r.time)) changed = true; });
+    if (changed) { save(); render(); }
+  } catch (e) { /* pas bloquant */ }
+}
+if ('serviceWorker' in navigator && navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    const m = e.data || {};
+    if (m.type === 'navigate' && m.go === 'habits') { state.view = 'habits'; save(); render(); }
+    else if (m.type === 'habit-done') { if (applyHabitDone(m.habitId, m.date, m.time)) { save(); render(); } }
+  });
+}
+// à chaque retour au premier plan, on vide la file (coches faites app fermée)
+document.addEventListener('visibilitychange', () => { if (!document.hidden) drainPendingHabitDone(); });
 
 async function doInstall() {
   if (!deferredInstall) return;
@@ -11222,7 +11439,11 @@ window.deleteTable = deleteTable;
    ============================================================ */
 $('addBtn').onclick = () => openModal('event');
 // bouton flottant (mobile) : ajoute une tâche dans l'espace Tâches/Projets, un événement ailleurs
-$('fab').onclick = () => { closeDrawer(); openModal((state.view === 'tasks' || state.view === 'projects') ? 'task' : 'event'); };
+$('fab').onclick = () => {
+  closeDrawer();
+  if (state.view === 'habits') { openHabitModal(); return; }   // espace Habitudes : nouvelle habitude
+  openModal((state.view === 'tasks' || state.view === 'projects') ? 'task' : 'event');
+};
 $('dataBtn').onclick = openDataPanel;
 $('automBtn').onclick = openAutoms;
 $('automAddBtn').onclick = automAdd;
@@ -11324,7 +11545,7 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', bilan: 'bilan' };
+const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
@@ -12133,6 +12354,7 @@ render();
 initCloud();            // synchro : reprend la session, va chercher les changements de l'autre appareil
 registerServiceWorker(); // app installable + fonctionnement hors ligne
 handleLaunchAction();    // raccourcis d'icône (appui long) : nouvelle tâche / note / aujourd'hui
+drainPendingHabitDone(); // habitudes cochées depuis une notification pendant que l'app était fermée
 </script>
 </body>
 </html>

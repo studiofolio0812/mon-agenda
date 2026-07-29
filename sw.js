@@ -23,29 +23,72 @@ self.addEventListener('activate', e => {
   );
 });
 
-/* ---------- Notifications push (rappels de traitement, événements, tâches) ----------
-   Le message envoyé par la fonction serveur est un JSON { title, body, url, tag }.
-   `tag` évite d'empiler deux notifications identiques (ex. si l'envoi est relancé). */
+/* ---------- Notifications push (rappels d'habitudes et d'événements) ----------
+   Le message envoyé par la fonction serveur est un JSON { title, body, url, tag,
+   data?, actions? }. `tag` évite d'empiler deux notifications identiques.
+   `data` porte le type (habit/event) et, pour une habitude, de quoi la cocher
+   (habitId, date, time). `actions` = boutons affichés sous la notification. */
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: 'Mon Agenda', body: e.data ? e.data.text() : '' }; }
   const titre = data.title || 'Mon Agenda';
-  e.waitUntil(self.registration.showNotification(titre, {
+  // repli : si la fonction serveur n'envoie pas encore `data`, on déduit le type de l'étiquette
+  const meta = data.data || (typeof data.tag === 'string' && data.tag.startsWith('habit-') ? { type: 'habit' } : {});
+  const opts = {
     body: data.body || '',
     icon: './icon-192.png',
     badge: './icon-192.png',
     tag: data.tag || undefined,
-    data: { url: data.url || './' },
-  }));
+    data: { url: data.url || (meta.type === 'habit' ? './?go=habits' : './'), meta },
+  };
+  if (Array.isArray(data.actions) && data.actions.length) opts.actions = data.actions;
+  e.waitUntil(self.registration.showNotification(titre, opts));
 });
-// clic sur la notification : on retrouve un onglet déjà ouvert, sinon on en ouvre un
+
+// dépose une habitude cochée dans une petite file IndexedDB, que l'app videra à sa prochaine ouverture
+function queueHabitDone(meta) {
+  return new Promise(res => {
+    let open;
+    try { open = indexedDB.open('mon-agenda-pending', 1); } catch (err) { return res(); }
+    open.onupgradeneeded = () => { if (!open.result.objectStoreNames.contains('habitDone')) open.result.createObjectStore('habitDone', { keyPath: 'key' }); };
+    open.onerror = () => res();
+    open.onsuccess = () => {
+      const db = open.result;
+      if (!db.objectStoreNames.contains('habitDone')) { db.close(); return res(); }
+      const tx = db.transaction('habitDone', 'readwrite');
+      tx.objectStore('habitDone').put({ key: `${meta.habitId}|${meta.date}|${meta.time}`, habitId: meta.habitId, date: meta.date, time: meta.time });
+      tx.oncomplete = () => { db.close(); res(); };
+      tx.onerror = () => { db.close(); res(); };
+    };
+  });
+}
+
 self.addEventListener('notificationclick', e => {
-  e.notification.close();
+  const meta = (e.notification.data && e.notification.data.meta) || {};
   const url = (e.notification.data && e.notification.data.url) || './';
+  e.notification.close();
+
+  // bouton « ✓ Fait » sur une habitude : on coche sans ouvrir l'app
+  if (e.action === 'done' && meta.type === 'habit' && meta.habitId) {
+    e.waitUntil((async () => {
+      // 1) si un onglet est ouvert, on le prévient en direct
+      const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      let livre = false;
+      for (const c of list) { if (c.url.includes(self.location.origin)) { c.postMessage({ type: 'habit-done', habitId: meta.habitId, date: meta.date, time: meta.time }); livre = true; } }
+      // 2) et dans tous les cas on met en file (appliqué à la prochaine ouverture, app fermée comprise)
+      await queueHabitDone(meta);
+    })());
+    return;
+  }
+
+  // clic normal : on ouvre l'app (et on l'envoie sur la section Habitudes si c'est une habitude)
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const dejaOuvert = list.find(c => c.url.includes(self.location.origin));
-      if (dejaOuvert) return dejaOuvert.focus();
+      if (dejaOuvert) {
+        if (meta.type === 'habit') dejaOuvert.postMessage({ type: 'navigate', go: 'habits' });
+        return dejaOuvert.focus();
+      }
       return self.clients.openWindow(url);
     })
   );
