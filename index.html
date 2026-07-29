@@ -1195,6 +1195,9 @@
   .rep-badge button.danger { color: #c0564f; }
 
   .settings-grid label { margin-top: 16px; }
+  .settings-mobile-only { display: none; }   /* agendas + base de données : téléphone seulement */
+  .hint-inline { font-weight: 400; font-size: 11.5px; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
+  .settings-cats { display: flex; flex-direction: column; gap: 1px; }
   .theme-toggle-row { display: flex; gap: 10px; }
   .theme-toggle-row button { flex: 1; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-strong); font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
   .theme-toggle-row button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
@@ -1203,6 +1206,14 @@
   .sidebar { transition: margin-left .22s ease; }
   #app.sidebar-collapsed .sidebar { margin-left: -301px; }
   #sidebarToggle { font-size: 18px; }
+  /* logo dans la barre d'outils (téléphone) : ouvre les Réglages ; masqué sur ordinateur */
+  .tb-logo {
+    display: none; width: 30px; height: 30px; border-radius: var(--radius-sm);
+    background: var(--accent); color: #fff; font-size: 15px; font-weight: 600;
+    place-items: center; overflow: hidden; flex-shrink: 0; border: none; cursor: pointer;
+  }
+  .tb-logo.has-img { background: var(--surface-2); }
+  .tb-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   /* ---------- Bouton + dans les cellules du mois ---------- */
   .cell-head { display: flex; align-items: center; justify-content: space-between; }
@@ -1625,16 +1636,14 @@
     html, body { overflow-x: hidden; }
     .app { height: 100dvh; }   /* tient compte de la barre d'adresse mobile */
 
-    /* --- barre latérale en tiroir --- */
-    .sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; width: min(86vw, 320px); z-index: 60;
-      transform: translateX(-100%); transition: transform .24s ease; box-shadow: 0 0 40px rgba(0,0,0,.18);
-    }
-    #app.drawer-open .sidebar { transform: none; }
-    #app.sidebar-collapsed .sidebar { margin-left: 0; }   /* on ignore le repli desktop */
-    #app.drawer-open .drawer-backdrop {
-      display: block; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 55;
-    }
+    /* --- plus de barre latérale sur téléphone ---
+       La navigation passe entièrement par la barre du bas ; les agendas et la base
+       de données sont dans les Réglages (logo en haut à gauche). La barre latérale
+       reste rendue (ses conteneurs sont alimentés) mais masquée. */
+    .sidebar, .drawer-backdrop { display: none !important; }
+    #sidebarToggle { display: none; }          /* remplacé par le logo → Réglages */
+    .tb-logo { display: grid; }
+    .settings-mobile-only { display: block; }  /* agendas + base de données dans les Réglages */
 
     /* --- barre d'outils sur deux lignes --- */
     .toolbar { height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
@@ -1785,6 +1794,14 @@
     .ho-sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; margin: 22px 0 6px; }
     .ho-list .ag-item { padding: 10px 8px; border-bottom: 1px solid var(--border); border-radius: 0; }
     .ho-list .ag-item:last-child { border-bottom: none; }
+
+    /* rangées colorées (vues du jour) : événement en aplat plein, projet en fond clair
+       + contour, tâche avec bande de couleur à gauche — mêmes règles que le calendrier */
+    .ag-chip { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 11px; border-radius: 9px; font-size: 14px; }
+    .ag-chip .ag-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ag-chip.task-lite { background: var(--surface-2); color: var(--text); }
+    .ag-item.done .ag-chip.task-lite .ag-title { text-decoration: line-through; color: var(--text-faint); }
 
     /* --- Vue Mois mobile : calendrier compact + liste du jour --- */
     .mm-wrap { display: flex; flex-direction: column; }
@@ -1968,6 +1985,7 @@
   <main class="main">
     <div class="toolbar">
       <button class="icon-btn" id="sidebarToggle" title="Replier / afficher le panneau">☰</button>
+      <button class="tb-logo" id="toolbarLogo" title="Réglages" aria-label="Réglages">M</button>
       <button class="sync-badge" id="syncBadge" title="Synchronisation"><span class="sync-dot"></span><span class="sync-txt"></span></button>
       <div class="nav-btns">
         <button class="today-btn" id="todayBtn">Aujourd'hui</button>
@@ -2529,6 +2547,17 @@
         <option value="1">Lundi</option>
         <option value="0">Dimanche</option>
       </select>
+      <!-- Agendas & base de données : sur téléphone il n'y a plus de barre latérale,
+           on y accède donc ici. Masqués sur ordinateur (la barre latérale les porte). -->
+      <div class="settings-mobile-only">
+        <label style="margin-top:20px;">Mes agendas <span class="hint-inline">afficher / masquer sur le calendrier</span></label>
+        <div id="settingsCatList" class="settings-cats"></div>
+        <button class="btn-ghost" id="settingsAddCat" style="width:100%; margin-top:8px;">＋ Ajouter un agenda</button>
+
+        <label style="margin-top:20px;">Base de données</label>
+        <button class="btn-ghost" id="settingsDataBtn" style="width:100%;">Ouvrir la base de données</button>
+      </div>
+
       <label style="margin-top:20px;">Compte & synchronisation</label>
       <div id="accountBox"></div>
 
@@ -3095,6 +3124,13 @@ function render() {
   logo.classList.toggle('has-img', !!state.logo);
   if (state.logo) logo.innerHTML = `<img src="${state.logo}" alt="Logo">`;
   else logo.textContent = (state.title.trim()[0] || 'M').toUpperCase();
+  // logo de la barre d'outils (téléphone) : même image/initiale que celui de la barre latérale
+  const tbLogo = $('toolbarLogo');
+  if (tbLogo) {
+    tbLogo.classList.toggle('has-img', !!state.logo);
+    if (state.logo) tbLogo.innerHTML = `<img src="${state.logo}" alt="Logo">`;
+    else tbLogo.textContent = (state.title.trim()[0] || 'M').toUpperCase();
+  }
   applyFavicon();
   document.title = state.title;
   $('app').classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
@@ -3299,11 +3335,14 @@ function renderAgenda() {
 }
 
 /* Entrées d'un jour (habitudes, projets, événements, tâches), triées par heure.
-   Partagé par la vue Agenda et la vue Mois mobile. */
-function dayEntries(d) {
+   Partagé par la vue Agenda et les vues Aujourd'hui / Mois mobile.
+   `styled` = rendu coloré (mêmes règles que le calendrier : événement en aplat plein,
+   projet en fond clair + contour foncé, tâche avec bande de couleur à gauche) pour
+   les vues du jour sur téléphone ; sinon simple pastille (vue Agenda). */
+function dayEntries(d, styled) {
   const k = ymd(d);
   const entrees = [];
-  // habitudes (avec heure)
+  // habitudes (avec heure) — inchangé : la coche prime sur la couleur
   habitsOn(d).forEach(occ => {
     const h = occ.habit, done = habitIsDone(h.id, k, occ.time), col = h.color || '#eae8e4';
     entrees.push({ t: occ.time, html:
@@ -3315,30 +3354,34 @@ function dayEntries(d) {
   });
   // projets couvrant ce jour (pas d'heure → en tête)
   projectsOn(d).forEach(p => {
+    const inner = `${iconOf(p, 'projects', 13)}<span class="ag-title">${esc(p.name)}</span>`;
+    const body = styled
+      ? `<span class="ag-chip" style="background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)};color:var(--ink-on-pastel)">${inner}</span>`
+      : `<span class="ag-dot" style="background:${dotOf(p.color)}"></span>${inner}`;
     entrees.push({ t: '', html:
-      `<div class="ag-item" onclick="openPage('projects','${p.id}')">
-        <span class="ag-time">projet</span>
-        <span class="ag-dot" style="background:${dotOf(p.color)}"></span>
-        ${iconOf(p, 'projects', 13)}<span class="ag-title">${esc(p.name)}</span>
-      </div>` });
+      `<div class="ag-item" onclick="openPage('projects','${p.id}')"><span class="ag-time">projet</span>${body}</div>` });
   });
   // événements touchant ce jour
   eventsOn(d).forEach(e => {
     const look = eventLook(e), timed = !isAllDayEv(e) && e.start;
+    const inner = `${repIco(e)}${iconOf(e, 'events', 13)}<span class="ag-title">${esc(e.title)}</span>`;
+    const body = styled
+      ? `<span class="ag-chip" style="${look.style}">${inner}</span>`
+      : `<span class="ag-dot" style="background:${look.dot}"></span>${inner}`;
     entrees.push({ t: timed ? e.start : '', html:
-      `<div class="ag-item" onclick="openEdit('event','${e.id}',event)">
-        <span class="ag-time">${timed ? e.start : 'journée'}</span>
-        <span class="ag-dot" style="background:${look.dot}"></span>
-        ${repIco(e)}${iconOf(e, 'events', 13)}<span class="ag-title">${esc(e.title)}</span>
-      </div>` });
+      `<div class="ag-item" onclick="openEdit('event','${e.id}',event)"><span class="ag-time">${timed ? e.start : 'journée'}</span>${body}</div>` });
   });
   // tâches du jour
   tasksOn(d).forEach(t => {
+    const inner = `${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>`;
+    const body = styled
+      ? `<span class="ag-chip task-lite" style="border-left:3px solid ${taskStripe(t)}">${inner}</span>`
+      : inner;
     entrees.push({ t: t.dueTime || '~', html:
       `<div class="ag-item task ${t.done ? 'done' : ''}" onclick="openEdit('task','${t.id}',event)">
         <span class="ag-time">${t.dueTime || ''}</span>
         <span class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
-        ${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>
+        ${body}
       </div>` });
   });
   // tri : sans heure d'abord (projets, journée entière), puis par heure croissante
@@ -3393,7 +3436,7 @@ function renderHomeMobile() {
     </div>`;
   }
 
-  const entrees = dayEntries(today);
+  const entrees = dayEntries(today, true);
   html += `<div class="ho-sec-title">Aujourd'hui</div>`;
   html += entrees.length
     ? `<div class="ag-items ho-list">${entrees.map(e => e.html).join('')}</div>`
@@ -3443,7 +3486,7 @@ function renderMonthMobile() {
   grid += '</div>';
 
   const titre = `${DOW_LONG[cursor.getDay()]} ${cursor.getDate()} ${MONTHS[cursor.getMonth()]}`;
-  const entrees = dayEntries(cursor);
+  const entrees = dayEntries(cursor, true);
   const liste = entrees.length
     ? `<div class="ag-items">${entrees.map(e => e.html).join('')}</div>`
     : `<div class="mm-empty">Rien ce jour-là. Touche <b>+</b> pour ajouter un événement ou une tâche.</div>`;
@@ -5644,11 +5687,15 @@ function catRowHtml(c, sub) {
   </div>`;
 }
 function renderCategories() {
-  $('catList').innerHTML = topCats().map(c => {
+  const html = topCats().map(c => {
     const replie = (state.catCollapsed || []).includes(c.id);
     const listes = replie ? [] : subCats(c.id);
     return catRowHtml(c, false) + listes.map(s => catRowHtml(s, true)).join('');
   }).join('');
+  $('catList').innerHTML = html;
+  // copie dans les Réglages (téléphone : plus de barre latérale)
+  const sc = $('settingsCatList');
+  if (sc) sc.innerHTML = html || '<p class="hint-txt" style="margin:0">Aucun agenda pour l\'instant.</p>';
 }
 // replie/déplie les listes d'un agenda dans la barre latérale
 function toggleCatCollapse(id, ev) {
@@ -11567,6 +11614,9 @@ $('sidebarToggle').onclick = () => {
   state.sidebarCollapsed = !state.sidebarCollapsed; save(); render();      // desktop : repli classique
 };
 $('drawerBackdrop').onclick = closeDrawer;
+$('toolbarLogo').onclick = openSettings;   // téléphone : le logo ouvre les Réglages
+$('settingsAddCat').onclick = () => openCatModal();
+$('settingsDataBtn').onclick = () => { $('settingsOverlay').classList.remove('show'); openDataPanel(); };
 // délégation : les boutons de la barre sont régénérés à chaque changement de page
 $('tabbar').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) goTab(b.dataset.tab); });
 
