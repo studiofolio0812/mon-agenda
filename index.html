@@ -1738,6 +1738,44 @@
     .time-grid { padding: 0 6px; }
     /* en vue Jour le bandeau remplace l'en-tête de colonne (sinon la date apparaît deux fois) */
     .day-strip + .time-grid .tg-head { display: none; }
+
+    /* --- Vue Mois mobile : calendrier compact + liste du jour --- */
+    .mm-wrap { display: flex; flex-direction: column; }
+    .mm-cal { padding: 8px 8px 12px; border-bottom: 1px solid var(--border); }
+    .mm-dow { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .mm-dow span { text-align: center; font-size: 10.5px; text-transform: uppercase;
+      letter-spacing: .03em; color: var(--text-faint); padding: 4px 0 6px; }
+    .mm-weeks { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .mm-cell {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 4px 0 5px; border: none; background: none; cursor: pointer;
+    }
+    .mm-num {
+      font-size: 14px; width: 32px; height: 32px; display: grid; place-items: center;
+      border-radius: 50%; color: var(--text);
+    }
+    .mm-cell.out .mm-num { color: var(--text-faint); opacity: .45; }
+    .mm-cell.today .mm-num { color: var(--accent); font-weight: 700; }
+    .mm-cell.sel .mm-num { background: var(--accent); color: #fff; font-weight: 600; }
+    .mm-dots { display: flex; gap: 2px; height: 5px; align-items: center; }
+    .mm-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .mm-cell.sel .mm-dots { visibility: hidden; }   /* le jour sélectionné : pastille pleine, dots redondants */
+    .mm-day { padding: 14px 14px 30px; }
+    .mm-day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .mm-day-title { font-size: 15.5px; font-weight: 600; }
+    .mm-add {
+      width: 34px; height: 34px; border-radius: 50%; flex: none;
+      background: var(--accent); color: #fff; border: none;
+      display: grid; place-items: center; cursor: pointer;
+    }
+    .mm-add:active { transform: scale(.93); }
+    .mm-day .ag-items { gap: 1px; }
+    .mm-day .ag-item { padding: 9px 8px; border-bottom: 1px solid var(--border); border-radius: 0; }
+    .mm-day .ag-item:last-child { border-bottom: none; }
+    .mm-empty { color: var(--text-faint); font-size: 13.5px; padding: 20px 4px; line-height: 1.5; }
+
+    /* la vue Semaine (grille 7 colonnes) est illisible sur téléphone : on masque son bouton */
+    .view-switch button[data-view="week"] { display: none; }
     /* on réserve la place de la barre pour que rien ne passe dessous */
     .main { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
     /* le tiroir passe au-dessus de la barre du bas */
@@ -3018,6 +3056,8 @@ const canvas = $('canvas');
    RENDU PRINCIPAL
    ============================================================ */
 function render() {
+  // la vue Semaine n'existe pas sur téléphone (grille 7 colonnes illisible) : on retombe sur Jour
+  if (state.view === 'week' && isMobile()) state.view = 'day';
   document.documentElement.setAttribute('data-theme', state.theme);
   document.documentElement.style.setProperty('--accent', state.accent);
   document.documentElement.style.setProperty('--accent-soft', state.accent + '33');
@@ -3044,6 +3084,8 @@ function render() {
   renderPeriodTitle();
   if (!isSpaceView(state.view)) lastCalView = state.view;   // pour que l'onglet « Calendrier » y revienne
   renderTabbar();
+  // vue Mois mobile : le « + » de la liste du jour remplace le bouton flottant (sinon deux + identiques)
+  $('fab').classList.toggle('hidden', isMobile() && state.view === 'month');
 
   // le sélecteur du nombre de jours ne s'affiche que dans la vue « N jours »
   $('daysViewBtn').textContent = `${dayBlockN()} jours`;
@@ -3063,7 +3105,7 @@ function render() {
   else if (state.view === 'crm') renderCrmSpace();
   else if (state.view === 'health') renderHealthSpace();
   else if (state.view === 'bilan') renderBilanSpace();
-  else if (state.view === 'month') renderMonth();
+  else if (state.view === 'month') { isMobile() ? renderMonthMobile() : renderMonth(); }
   else if (state.view === 'agenda') renderAgenda();
   else renderTimeGrid(viewDayCount());
 
@@ -3207,51 +3249,8 @@ function renderAgenda() {
 
   for (let i = 0; i < AGENDA_DAYS; i++) {
     const d = addDays(start, i);
-    const k = ymd(d);
-    const entrees = [];
-
-    // habitudes (avec heure)
-    habitsOn(d).forEach(occ => {
-      const h = occ.habit, done = habitIsDone(h.id, k, occ.time), col = h.color || '#eae8e4';
-      entrees.push({ t: occ.time, html:
-        `<div class="ag-item habit ${done ? 'done' : ''}" onclick="toggleHabitDone('${h.id}','${k}','${occ.time}',event)">
-          <span class="ag-time">${occ.time}</span>
-          <span class="habit-check" style="border-color:${dotOf(col)};${done ? `background:${dotOf(col)}` : ''}">${done ? '✓' : ''}</span>
-          ${iconOf(h, 'habits', 13)}<span class="ag-title">${esc(h.name)}</span>
-        </div>` });
-    });
-    // projets couvrant ce jour (pas d'heure → en tête)
-    projectsOn(d).forEach(p => {
-      entrees.push({ t: '', html:
-        `<div class="ag-item" onclick="openPage('projects','${p.id}')">
-          <span class="ag-time">projet</span>
-          <span class="ag-dot" style="background:${dotOf(p.color)}"></span>
-          ${iconOf(p, 'projects', 13)}<span class="ag-title">${esc(p.name)}</span>
-        </div>` });
-    });
-    // événements touchant ce jour
-    eventsOn(d).forEach(e => {
-      const look = eventLook(e), timed = !isAllDayEv(e) && e.start;
-      entrees.push({ t: timed ? e.start : '', html:
-        `<div class="ag-item" onclick="openEdit('event','${e.id}',event)">
-          <span class="ag-time">${timed ? e.start : 'journée'}</span>
-          <span class="ag-dot" style="background:${look.dot}"></span>
-          ${repIco(e)}${iconOf(e, 'events', 13)}<span class="ag-title">${esc(e.title)}</span>
-        </div>` });
-    });
-    // tâches du jour
-    tasksOn(d).forEach(t => {
-      entrees.push({ t: t.dueTime || '~', html:
-        `<div class="ag-item task ${t.done ? 'done' : ''}" onclick="openEdit('task','${t.id}',event)">
-          <span class="ag-time">${t.dueTime || ''}</span>
-          <span class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
-          ${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>
-        </div>` });
-    });
-
+    const entrees = dayEntries(d);
     if (!entrees.length) { vides++; continue; }
-    // tri : sans heure d'abord (projets, journée entière), puis par heure croissante
-    entrees.sort((a, b) => (a.t || '').localeCompare(b.t || ''));
     html += `<div class="ag-day ${isToday(d) ? 'today' : ''}">
       <div class="ag-date">
         <div class="ag-dow">${DOW_SHORT[d.getDay()]}</div>
@@ -3268,6 +3267,119 @@ function renderAgenda() {
   canvas.innerHTML = html;
   wireItemDrag();
 }
+
+/* Entrées d'un jour (habitudes, projets, événements, tâches), triées par heure.
+   Partagé par la vue Agenda et la vue Mois mobile. */
+function dayEntries(d) {
+  const k = ymd(d);
+  const entrees = [];
+  // habitudes (avec heure)
+  habitsOn(d).forEach(occ => {
+    const h = occ.habit, done = habitIsDone(h.id, k, occ.time), col = h.color || '#eae8e4';
+    entrees.push({ t: occ.time, html:
+      `<div class="ag-item habit ${done ? 'done' : ''}" onclick="toggleHabitDone('${h.id}','${k}','${occ.time}',event)">
+        <span class="ag-time">${occ.time}</span>
+        <span class="habit-check" style="border-color:${dotOf(col)};${done ? `background:${dotOf(col)}` : ''}">${done ? '✓' : ''}</span>
+        ${iconOf(h, 'habits', 13)}<span class="ag-title">${esc(h.name)}</span>
+      </div>` });
+  });
+  // projets couvrant ce jour (pas d'heure → en tête)
+  projectsOn(d).forEach(p => {
+    entrees.push({ t: '', html:
+      `<div class="ag-item" onclick="openPage('projects','${p.id}')">
+        <span class="ag-time">projet</span>
+        <span class="ag-dot" style="background:${dotOf(p.color)}"></span>
+        ${iconOf(p, 'projects', 13)}<span class="ag-title">${esc(p.name)}</span>
+      </div>` });
+  });
+  // événements touchant ce jour
+  eventsOn(d).forEach(e => {
+    const look = eventLook(e), timed = !isAllDayEv(e) && e.start;
+    entrees.push({ t: timed ? e.start : '', html:
+      `<div class="ag-item" onclick="openEdit('event','${e.id}',event)">
+        <span class="ag-time">${timed ? e.start : 'journée'}</span>
+        <span class="ag-dot" style="background:${look.dot}"></span>
+        ${repIco(e)}${iconOf(e, 'events', 13)}<span class="ag-title">${esc(e.title)}</span>
+      </div>` });
+  });
+  // tâches du jour
+  tasksOn(d).forEach(t => {
+    entrees.push({ t: t.dueTime || '~', html:
+      `<div class="ag-item task ${t.done ? 'done' : ''}" onclick="openEdit('task','${t.id}',event)">
+        <span class="ag-time">${t.dueTime || ''}</span>
+        <span class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
+        ${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>
+      </div>` });
+  });
+  // tri : sans heure d'abord (projets, journée entière), puis par heure croissante
+  entrees.sort((a, b) => (a.t || '').localeCompare(b.t || ''));
+  return entrees;
+}
+
+/* ============================================================
+   VUE MOIS — TÉLÉPHONE
+   Calendrier compact en haut + liste du jour sélectionné en dessous.
+   (Sur ordinateur, c'est renderMonth() qui reste utilisé.)
+   ============================================================ */
+// pastilles de couleur d'un jour (max 4, dédupliquées) pour la grille compacte
+function dayDots(d) {
+  const cols = [];
+  eventsOn(d).forEach(e => cols.push(eventLook(e).dot));
+  tasksOn(d).forEach(t => cols.push(taskStripe(t)));
+  projectsOn(d).forEach(p => cols.push(dotOf(p.color)));
+  habitsOn(d).forEach(occ => cols.push(dotOf(occ.habit.color || '#eae8e4')));
+  if (!cols.length) return '';
+  return [...new Set(cols)].slice(0, 4)
+    .map(c => `<span class="mm-dot" style="background:${c}"></span>`).join('');
+}
+
+function renderMonthMobile() {
+  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const gridStart = startOfWeek(first);
+  const selKey = ymd(cursor);
+  const curMonth = cursor.getMonth();
+
+  const dows = [...Array(7)].map((_, i) => DOW_SHORT[(state.weekStart + i) % 7]);
+  let grid = '<div class="mm-dow">' + dows.map(x => `<span>${x.charAt(0).toUpperCase()}</span>`).join('') + '</div><div class="mm-weeks">';
+  for (let n = 0; n < 42; n++) {
+    const d = addDays(gridStart, n);
+    const k = ymd(d);
+    const cls = ['mm-cell', d.getMonth() === curMonth ? '' : 'out',
+      k === selKey ? 'sel' : '', isToday(d) ? 'today' : ''].filter(Boolean).join(' ');
+    grid += `<button class="${cls}" onclick="selectMonthDay('${k}')">
+      <span class="mm-num">${d.getDate()}</span>
+      <span class="mm-dots">${dayDots(d)}</span>
+    </button>`;
+  }
+  grid += '</div>';
+
+  const titre = `${DOW_LONG[cursor.getDay()]} ${cursor.getDate()} ${MONTHS[cursor.getMonth()]}`;
+  const entrees = dayEntries(cursor);
+  const liste = entrees.length
+    ? `<div class="ag-items">${entrees.map(e => e.html).join('')}</div>`
+    : `<div class="mm-empty">Rien ce jour-là. Touche <b>+</b> pour ajouter un événement ou une tâche.</div>`;
+
+  canvas.innerHTML = `<div class="mm-wrap">
+    <div class="mm-cal">${grid}</div>
+    <div class="mm-day">
+      <div class="mm-day-head">
+        <span class="mm-day-title">${titre.charAt(0).toUpperCase() + titre.slice(1)}</span>
+        <button class="mm-add" onclick="openModal('event')" title="Ajouter ce jour-là">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      ${liste}
+    </div>
+  </div>`;
+  wireItemDrag();
+}
+// toucher un jour : le sélectionner ; toucher le jour déjà sélectionné : ouvrir la vue Jour
+function selectMonthDay(k) {
+  if (ymd(cursor) === k) { goToDay(k); return; }
+  cursor = parseYmd(k);
+  render();
+}
+window.selectMonthDay = selectMonthDay;
 
 /* ============================================================
    HABITUDES
@@ -8412,7 +8524,9 @@ function openModal(kind, id, opts) {
     $('fAllDay').checked = false;
     setType(draft.type); setPrio('med');
     $('fTitle').value = '';
-    $('fDate').value = ymd(state.view === 'month' ? new Date() : cursor);
+    // vue Mois ordinateur : cursor pointe le 1er du mois, on préfère aujourd'hui ;
+    // vue Mois mobile : cursor EST le jour sélectionné, on le garde
+    $('fDate').value = ymd((state.view === 'month' && !isMobile()) ? new Date() : cursor);
     $('fEndDate').value = $('fDate').value;
     $('fStart').value = '09:00'; $('fEnd').value = '10:00';
     $('fTaskStart').value = '';
