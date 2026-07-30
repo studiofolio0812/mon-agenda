@@ -680,6 +680,22 @@
   .ag-item .task-check { width: 15px; height: 15px; flex: none; }
   .ag-item .habit-check { width: 14px; height: 14px; }
 
+  /* rangées colorées (vue Agenda + vues du jour) : événement en aplat plein,
+     projet en fond clair + contour, tâche avec bande de couleur à gauche —
+     mêmes règles que le calendrier */
+  .ag-chip { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 11px; border-radius: 9px; font-size: 14px; }
+  .ag-chip .ag-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag-chip.task-lite { background: var(--surface-2); color: var(--text); }
+  /* glisser pour cocher : la ligne (.ag-swipe-fg) coulisse au-dessus d'une zone verte « ✓ » */
+  .ag-item.task.swiping { position: relative; overflow: hidden; }
+  .ag-swipe-fg { position: relative; z-index: 1; flex: 1; display: flex; align-items: center; gap: 9px;
+    background: var(--bg); will-change: transform; }
+  .ag-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 22px;
+    color: #40682f; font-weight: 700; font-size: 16px; background: color-mix(in oklab, #7ba36f 26%, var(--bg)); }
+  .ag-swipe-bg.ready { background: color-mix(in oklab, #7ba36f 52%, var(--bg)); }
+  .ag-item.done .ag-chip.task-lite .ag-title { text-decoration: line-through; color: var(--text-faint); }
+
   /* pastille d'habitude (rappel à heure fixe, cochable) */
   .habit-chip { display: flex; align-items: center; gap: 4px; padding: 1px 6px 1px 3px; border-radius: 20px;
     font-size: 11px; cursor: pointer; overflow: hidden; white-space: nowrap; }
@@ -807,6 +823,12 @@
   .color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .color-picker .dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
   .color-picker .dot.sel { border-color: var(--text); }
+  /* réglage « couleur des priorités » : un libellé + une seule pastille cliquable par niveau */
+  .prio-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+  .prio-row-label { font-size: 13px; width: 84px; flex: none; color: var(--text-soft); }
+  .prio-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    border: 2px solid var(--border-strong); padding: 0; transition: transform .1s; }
+  .prio-swatch:hover { transform: scale(1.08); }
   .prio-picker { display: flex; gap: 8px; }
   .prio-picker button { flex: 1; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); font-size: 13px; font-weight: 500; color: var(--text); }
   .prio-picker button.sel { border-color: transparent; }
@@ -1795,14 +1817,6 @@
     .ho-list .ag-item { padding: 10px 8px; border-bottom: 1px solid var(--border); border-radius: 0; }
     .ho-list .ag-item:last-child { border-bottom: none; }
 
-    /* rangées colorées (vues du jour) : événement en aplat plein, projet en fond clair
-       + contour, tâche avec bande de couleur à gauche — mêmes règles que le calendrier */
-    .ag-chip { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 11px; border-radius: 9px; font-size: 14px; }
-    .ag-chip .ag-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ag-chip.task-lite { background: var(--surface-2); color: var(--text); }
-    .ag-item.done .ag-chip.task-lite .ag-title { text-decoration: line-through; color: var(--text-faint); }
-
     /* --- Vue Mois mobile : calendrier compact + liste du jour --- */
     .mm-wrap { display: flex; flex-direction: column; }
     .mm-cal { padding: 8px 8px 12px; border-bottom: 1px solid var(--border); }
@@ -2547,6 +2561,9 @@
         <option value="1">Lundi</option>
         <option value="0">Dimanche</option>
       </select>
+      <label style="margin-top:20px;">Couleur des priorités <span class="hint-inline">la case à cocher d'une tâche prend cette couleur</span></label>
+      <div id="prioColorRows"></div>
+      <button class="btn-ghost" id="prioColorReset" style="width:100%; margin-top:8px;">Rétablir les couleurs par défaut</button>
       <!-- Agendas & base de données : sur téléphone il n'y a plus de barre latérale,
            on y accède donc ici. Masqués sur ordinateur (la barre latérale les porte). -->
       <div class="settings-mobile-only">
@@ -2686,6 +2703,8 @@ const defaultState = () => ({
   colOrder: {},   // ordre des colonnes par table
   colHidden: {},  // colonnes masquées par table (ID comprise)
   customColors: [],
+  // couleurs des 3 niveaux de priorité (modifiables dans les Réglages)
+  prioColors: { low: '#7ba36f', med: '#cfa055', high: '#d98a8a' },
   // les 5 dernières couleurs utilisées : c'est ce que montrent les sélecteurs
   recentColors: PALETTE.slice(0, 5),
   categories: [
@@ -2730,6 +2749,8 @@ function load() {
       if (AUTO_ACCENTS.includes(s.accent)) s.accent = DEFAULT_ACCENT;
       migrateColorsToDesignSystem(s);
       migrateHiddenCols(s);
+      // on ne conserve que les 5 dernières couleurs personnalisées (les plus récentes = en fin de liste)
+      s.customColors = (s.customColors || []).slice(-5);
       return s;
     }
   } catch (e) {}
@@ -3315,7 +3336,7 @@ function renderAgenda() {
 
   for (let i = 0; i < AGENDA_DAYS; i++) {
     const d = addDays(start, i);
-    const entrees = dayEntries(d);
+    const entrees = dayEntries(d, true);
     if (!entrees.length) { vides++; continue; }
     html += `<div class="ag-day ${isToday(d) ? 'today' : ''}">
       <div class="ag-date">
@@ -3373,14 +3394,18 @@ function dayEntries(d, styled) {
   });
   // tâches du jour
   tasksOn(d).forEach(t => {
+    const pr = t.prio || 'med', pc = prioCol(pr);
     const inner = `${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>`;
     const body = styled
       ? `<span class="ag-chip task-lite" style="border-left:3px solid ${taskStripe(t)}">${inner}</span>`
       : inner;
+    // la case à cocher porte la couleur de priorité (contour ; pleine une fois cochée) :
+    // la priorité se lit sans rien ajouter à la ligne, le titre garde toute la largeur (idée de Clémence)
+    const chkStyle = t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`;
     entrees.push({ t: t.dueTime || '~', html:
-      `<div class="ag-item task ${t.done ? 'done' : ''}" onclick="openEdit('task','${t.id}',event)">
+      `<div class="ag-item task ${t.done ? 'done' : ''}" data-task="${t.id}" onclick="openEdit('task','${t.id}',event)">
         <span class="ag-time">${t.dueTime || ''}</span>
-        <span class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
+        <span class="task-check ${t.done ? 'done' : ''}" style="${chkStyle}" onclick="toggleTask('${t.id}',event)" title="Priorité ${PRIO_LABEL[pr].toLowerCase()} — cocher / décocher"></span>
         ${body}
       </div>` });
   });
@@ -4123,9 +4148,13 @@ function tasksSpaceCfg() {
   return state.tasksSpace;
 }
 const PRIO_LABEL = { high: 'Haute', med: 'Moyenne', low: 'Basse' };
+// couleurs par défaut ; les couleurs réellement affichées passent par prioCol() ci-dessous,
+// qui respecte le choix de l'utilisatrice (state.prioColors, réglable dans les Réglages)
 const PRIO_COLOR = { low: '#7ba36f', med: '#cfa055', high: '#d98a8a' };
-// fond pastel des pilules de priorité (le PRIO_COLOR sert de pastille soutenue)
 const PRIO_PASTEL = { low: '#d3e8cf', med: '#f6dfb5', high: '#f2d3d0' };
+// couleur choisie pour un niveau (repli sur la valeur par défaut) + sa version pastel dérivée
+const prioCol = p => (state.prioColors && state.prioColors[p]) || PRIO_COLOR[p];
+const prioPastel = p => lighten(prioCol(p));
 
 /* Répartit les tâches en groupes selon le regroupement choisi.
    Règle unique et prévisible : une tâche terminée va toujours dans « Terminées »,
@@ -4160,7 +4189,7 @@ function groupTasks(list, mode, all) {
     push('Sans projet', todoTop.filter(t => !t.projectId || !projById(t.projectId)), false, null, false, '');
   } else if (mode === 'prio') {
     ['high', 'med', 'low'].forEach(p =>
-      push(PRIO_LABEL[p], todoTop.filter(t => (t.prio || 'med') === p), false, PRIO_PASTEL[p], false, p));
+      push(PRIO_LABEL[p], todoTop.filter(t => (t.prio || 'med') === p), false, prioPastel(p), false, p));
   } else {
     push('En retard', todoTop.filter(t => t.due && t.due < today), true, null, false, 'late');
     push("Aujourd'hui", todoTop.filter(t => t.due === today), false, null, false, 'today');
@@ -4210,7 +4239,7 @@ function tblOpenCat(id, ev) {
 function tblOpenPrio(id, ev) {
   if (ev) ev.stopPropagation();
   const t = state.tasks.find(x => x.id === id); if (!t) return;
-  const groups = [{ items: ['high', 'med', 'low'].map(p => ({ value: p, label: PRIO_LABEL[p], dot: PRIO_COLOR[p] })) }];
+  const groups = [{ items: ['high', 'med', 'low'].map(p => ({ value: p, label: PRIO_LABEL[p], dot: prioCol(p) })) }];
   openStyledMenu(ev.currentTarget, groups, t.prio || 'med', v => { t.prio = v || 'med'; applyAutomations('tasks', t); save(); render(); });
 }
 function tblSetDue(id, ev) {
@@ -4305,7 +4334,7 @@ function renderTasksSpace() {
         return `<div class="kb-card ${t.done ? 'is-done' : ''}" draggable="true" ondragstart="kbDragStart(event,'${t.id}')">
           <div class="kb-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${esc(t.title)}</div>
           <div class="kb-meta">
-            ${(cfg.cardProps.prio && cfg.groupBy !== 'prio') ? `<span class="prio-dot" style="background:${PRIO_COLOR[t.prio] || '#999'}" title="Priorité ${(PRIO_LABEL[t.prio] || 'moyenne').toLowerCase()}"></span>` : ''}
+            ${(cfg.cardProps.prio && cfg.groupBy !== 'prio') ? `<span class="prio-dot" style="background:${prioCol(t.prio)}" title="Priorité ${(PRIO_LABEL[t.prio] || 'moyenne').toLowerCase()}"></span>` : ''}
             ${(cfg.cardProps.project && p && cfg.groupBy !== 'project') ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
             ${(cfg.cardProps.cat && c && cfg.groupBy !== 'cat') ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}" title="${esc(catPath(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>` : ''}
             ${(cfg.cardProps.due && t.due) ? `<span class="t-due ${late ? 'late' : ''}">${esc(taskDueText(t))}</span>` : ''}
@@ -4361,7 +4390,7 @@ function renderTasksSpace() {
   };
   const prioCell = t => {
     const pr = t.prio || 'med';
-    return `<td class="tbl-cell" onclick="tblOpenPrio('${t.id}',event)"><span class="prio-pill" style="background:${tblTint(PRIO_COLOR[pr], .2)};color:${dotOf(PRIO_COLOR[pr])}"><span class="pill-dot" style="background:${PRIO_COLOR[pr]}"></span>${PRIO_LABEL[pr]}</span></td>`;
+    return `<td class="tbl-cell" onclick="tblOpenPrio('${t.id}',event)"><span class="prio-pill" style="background:${tblTint(prioCol(pr), .2)};color:${dotOf(prioCol(pr))}"><span class="pill-dot" style="background:${prioCol(pr)}"></span>${PRIO_LABEL[pr]}</span></td>`;
   };
 
   const ligne = (t, sub, gkey) => {
@@ -5565,7 +5594,7 @@ function renderTasks() {
     box.innerHTML = `<div class="empty-hint">${proj ? 'Aucune tâche dans ce projet pour ce filtre. Crée une tâche et choisis ce projet, ou glisse-en une ici.' : 'Aucune tâche ici. Clique sur <b>＋ Nouveau</b> pour en ajouter une. '}</div>`;
     return;
   }
-  const prioColor = { low:'#7ba36f', med:'#cfa055', high:'#d98a8a' };
+  const prioColor = { low: prioCol('low'), med: prioCol('med'), high: prioCol('high') };
   const item = (t, sub) => {
     const c = catById(t.catId);
     const p = t.projectId ? projById(t.projectId) : null;
@@ -5877,7 +5906,7 @@ function linkMenuGroups() {
     value: 'e:' + e.id, label: e.title, dot: eventLook(e).dot,
     sub: (e.date ? fmtDateLong(e.date) : 'sans date') + (e.start && !isAllDayEv(e) ? ' · ' + e.start : '') })) });
   const tks = topLevelTasks(state.tasks).slice().sort((a, b) => (a.title || '').localeCompare(b.title || '')).slice(0, 80);
-  if (tks.length) g.push({ label: 'Tâches', items: tks.map(t => ({ value: 't:' + t.id, label: t.title, dot: PRIO_COLOR[t.prio] || '#999' })) });
+  if (tks.length) g.push({ label: 'Tâches', items: tks.map(t => ({ value: 't:' + t.id, label: t.title, dot: prioCol(t.prio) })) });
   return g;
 }
 function folderMenuGroups() {
@@ -6896,9 +6925,9 @@ function bilanPrioData(days) {
   const map = { high: 0, med: 0, low: 0 };
   days.forEach(k => timedEventsOn(parseYmd(k)).forEach(e => { const m = evMinutes(e); if (m) map[e.prio || 'med'] += m; }));
   return [
-    { key: 'high', label: 'Haute', color: PRIO_COLOR.high, total: map.high },
-    { key: 'med', label: 'Moyenne', color: PRIO_COLOR.med, total: map.med },
-    { key: 'low', label: 'Basse', color: PRIO_COLOR.low, total: map.low },
+    { key: 'high', label: 'Haute', color: prioCol('high'), total: map.high },
+    { key: 'med', label: 'Moyenne', color: prioCol('med'), total: map.med },
+    { key: 'low', label: 'Basse', color: prioCol('low'), total: map.low },
   ].filter(g => g.total > 0);
 }
 // graphique en barres empilées : une barre par jour, un segment coloré par groupe (agenda/projet)
@@ -8270,6 +8299,87 @@ function toggleTask(id, ev) {
 window.toggleTask = toggleTask;
 
 /* ============================================================
+   GLISSER POUR COCHER (tactile) — listes du jour
+   ------------------------------------------------------------
+   Un glissement horizontal sur une tâche (accueil, calendrier, agenda) la
+   coche / décoche, sans ouvrir sa fiche. Pendant le geste, la ligne suit le
+   doigt et laisse voir une zone verte « ✓ » derrière elle. Sous le seuil, elle
+   revient en place ; au-delà, elle file et la coche s'applique.
+   L'enveloppe (.ag-swipe-fg / .ag-swipe-bg) est créée à la volée : le rendu des
+   listes n'est pas alourdi, et le prochain render() la reconstruit proprement. */
+const SWIPE_COMMIT = 72;        // distance (px) à partir de laquelle le geste coche
+let swipeState = null, swipeSuppressClick = false;
+
+function swipeWrap(s) {
+  const el = s.item;
+  let fg = el.querySelector(':scope > .ag-swipe-fg');
+  if (fg) {                     // déjà enveloppée (retour de ressort) : on réutilise
+    fg.style.transition = 'none';
+    s.fg = fg; s.bg = el.querySelector(':scope > .ag-swipe-bg');
+    return;
+  }
+  fg = document.createElement('div');
+  fg.className = 'ag-swipe-fg';
+  fg.style.padding = getComputedStyle(el).padding;
+  while (el.firstChild) fg.appendChild(el.firstChild);
+  const bg = document.createElement('div');
+  bg.className = 'ag-swipe-bg';
+  bg.innerHTML = '<span class="ag-swipe-ico">✓</span>';
+  el.append(bg, fg);
+  el.classList.add('swiping');
+  el.style.padding = '0';
+  s.fg = fg; s.bg = bg;
+}
+
+document.addEventListener('touchstart', e => {
+  if (swipeState || e.touches.length !== 1) return;
+  const item = e.target.closest('.ag-item.task[data-task]');
+  if (!item || !item.closest('.agenda, .ho-list, .mm-day')) return;
+  const t = e.touches[0];
+  swipeState = { item, id: item.dataset.task, x0: t.clientX, y0: t.clientY, dx: 0, decided: false, horiz: false };
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  const s = swipeState; if (!s) return;
+  const t = e.touches[0];
+  const dx = t.clientX - s.x0, dy = t.clientY - s.y0;
+  if (!s.decided) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    s.decided = true;
+    // horizontal franc uniquement, sinon on laisse le défilement vertical tranquille
+    s.horiz = Math.abs(dx) > Math.abs(dy) * 1.3;
+    if (s.horiz) swipeWrap(s); else { swipeState = null; return; }
+  }
+  if (!s.horiz) return;
+  e.preventDefault();
+  s.dx = dx;
+  s.fg.style.transform = `translateX(${dx}px)`;
+  s.bg.style.justifyContent = dx >= 0 ? 'flex-start' : 'flex-end';
+  s.bg.classList.toggle('ready', Math.abs(dx) >= SWIPE_COMMIT);
+}, { passive: false });
+
+function swipeEnd() {
+  const s = swipeState; swipeState = null;
+  if (!s || !s.horiz || !s.fg) return;
+  swipeSuppressClick = true;                       // neutralise le clic qui suit le geste
+  setTimeout(() => { swipeSuppressClick = false; }, 450);
+  if (Math.abs(s.dx) >= SWIPE_COMMIT) {
+    s.fg.style.transition = 'transform .16s ease-out';
+    s.fg.style.transform = `translateX(${s.dx >= 0 ? innerWidth : -innerWidth}px)`;
+    setTimeout(() => toggleTask(s.id), 120);       // render() reconstruit la liste
+  } else {
+    s.fg.style.transition = 'transform .16s ease-out';
+    s.fg.style.transform = 'translateX(0)';
+    s.bg.classList.remove('ready');
+  }
+}
+document.addEventListener('touchend', swipeEnd, { passive: true });
+document.addEventListener('touchcancel', swipeEnd, { passive: true });
+document.addEventListener('click', e => {
+  if (swipeSuppressClick) { e.stopPropagation(); e.preventDefault(); swipeSuppressClick = false; }
+}, true);
+
+/* ============================================================
    GLISSER-DÉPOSER : tâche → jour du calendrier
    ============================================================ */
 // Élément en cours de déplacement : { kind:'event'|'task', id, grabMin }
@@ -8502,6 +8612,13 @@ function rememberColor(c) {
   state.recentColors = [c, ...reste].slice(0, RECENT_MAX);
   save();
 }
+// couleurs personnalisées (nuancier) : on ne garde que les 5 dernières, sinon les
+// pastilles s'accumulent sans fin dans le choix de la couleur principale
+function rememberCustom(c) {
+  if (!c) return;
+  const reste = (state.customColors || []).filter(x => normColor(x) !== normColor(c));
+  state.customColors = [c, ...reste].slice(0, RECENT_MAX);
+}
 // la couleur en cours figure toujours dans la ligne, même si elle est plus ancienne
 function recentColors(selected) {
   let list = (state.recentColors && state.recentColors.length ? state.recentColors : PALETTE).slice(0, RECENT_MAX);
@@ -8671,7 +8788,8 @@ window.pickColor = pickColor;
 let colorCtx = 'item';
 function addCustomColor(ctx) {
   colorCtx = ctx;
-  const cur = ctx === 'item' ? draft.color : ctx === 'cat' ? catDraft.color : ctx === 'proj' ? projDraftColor
+  const cur = ctx.startsWith('prio:') ? prioCol(ctx.slice(5))
+            : ctx === 'item' ? draft.color : ctx === 'cat' ? catDraft.color : ctx === 'proj' ? projDraftColor
             : ctx === 'habit' ? habitDraft.color : ctx === 'note' ? noteDraftColor : ctx === 'folder' ? folderDraftColor : state.accent;
   const hx = $('hexInput');
   hx.value = /^#[0-9a-fA-F]{6}$/.test(cur) ? cur : DEFAULT_ACCENT;
@@ -9105,6 +9223,7 @@ window.deleteCat = deleteCat;
 function openSettings() {
   $$('#themeToggle button').forEach(b => b.classList.toggle('active', b.dataset.theme === state.theme));
   $('accentPicker').innerHTML = paletteHtml(state.accent, 'setAccent', 'accent', ACCENT_PALETTE);
+  renderPrioColors();
   $('weekStart').value = state.weekStart;
   $('logoClearBtn').classList.toggle('hidden', !state.logo);
   renderAccountBox();
@@ -9115,6 +9234,19 @@ function openSettings() {
 }
 function setAccent(c) { state.accent = c; save(); render(); openSettings(); }
 window.setAccent = setAccent;
+
+/* ---------- Couleur des priorités (réglable) ----------
+   Une seule pastille par niveau (il n'y a jamais qu'une couleur par priorité) :
+   un clic ouvre le sélecteur de couleur, comme le « + » de la couleur principale. */
+function renderPrioColors() {
+  const box = $('prioColorRows'); if (!box) return;
+  box.innerHTML = ['high', 'med', 'low'].map(p =>
+    `<div class="prio-row">
+       <span class="prio-row-label">${PRIO_LABEL[p]}</span>
+       <button type="button" class="prio-swatch" style="background:${prioCol(p)}"
+         title="Choisir la couleur — priorité ${PRIO_LABEL[p].toLowerCase()}" onclick="addCustomColor('prio:${p}')"></button>
+     </div>`).join('');
+}
 
 /* ---------- Logo de l'application ----------
    L'image choisie est réduite à 256 px et recadrée au centre avant d'être
@@ -11644,10 +11776,11 @@ document.querySelector('.sidebar').addEventListener('click', e => {
 });
 $('hexInput').onchange = e => {
   const c = e.target.value;
-  if (!state.customColors.includes(c)) state.customColors.push(c);
+  rememberCustom(c);
   if (colorCtx !== 'accent') rememberColor(c);   // la couleur choisie au nuancier rejoint la ligne
   save();
-  if (colorCtx === 'item') { draft.color = c; renderColorPicker(); }
+  if (colorCtx.startsWith('prio:')) { if (!state.prioColors) state.prioColors = { ...PRIO_COLOR }; state.prioColors[colorCtx.slice(5)] = c; save(); renderPrioColors(); render(); }
+  else if (colorCtx === 'item') { draft.color = c; renderColorPicker(); }
   else if (colorCtx === 'cat') { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
   else if (colorCtx === 'proj') { projDraftColor = c; renderProjPicker(); }
   else if (colorCtx === 'habit') { habitDraft.color = c; renderHabitColor(); syncHabitIcon(); }
@@ -12449,6 +12582,7 @@ $('pdAddTaskBtn').onclick = () => {
 $('settingsBtn').onclick = openSettings;
 $('themeToggle').onclick = e => { const b = e.target.closest('button'); if (b) { state.theme = b.dataset.theme; save(); render(); openSettings(); } };
 $('weekStart').onchange = e => { state.weekStart = Number(e.target.value); save(); render(); };
+$('prioColorReset').onclick = () => { state.prioColors = { ...PRIO_COLOR }; save(); renderPrioColors(); render(); };
 $('exportBtn').onclick = exportData;
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = e => { if (e.target.files[0]) importData(e.target.files[0]); };
