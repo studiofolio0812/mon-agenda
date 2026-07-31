@@ -726,6 +726,122 @@
     background: var(--surface); color: #a4463f; cursor: pointer; white-space: nowrap; font-weight: 500; }
   .overdue-btn:hover { background: #c0564f; color: #fff; }
 
+  /* --- Accueil : tableau de bord (ordinateur) --- */
+  .hs-banner { margin: 0 0 18px; }
+  .hs-hello { font-size: 26px; font-weight: 600; letter-spacing: -.015em; }
+  .hs-date { font-size: 13.5px; color: var(--text-faint); margin-top: 3px; }
+  .hs-resume { font-size: 14px; color: var(--text-soft); margin-top: 8px; }
+  .hs-resume b { color: var(--text); font-weight: 600; }
+  .hs-actions { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .hs-actions .quick-add { flex: 1; min-width: 260px; margin: 0; }
+  .hs-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .hw { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm); overflow: hidden; }
+  .hw-wide { grid-column: 1 / -1; }
+  .hw-head { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  .hw.is-collapsed .hw-head { border-bottom: none; }
+  .hw-title { flex: 1; min-width: 0; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em;
+    font-weight: 600; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-chev { border: none; background: none; color: var(--text-faint); cursor: pointer; display: grid; place-items: center;
+    padding: 2px; border-radius: 4px; transition: transform .14s; }
+  .hw:not(.is-collapsed) .hw-chev { transform: rotate(90deg); }
+  .hw-chev:hover { color: var(--accent); }
+  .hw-tools { display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+  .hw:hover .hw-tools, .hw:focus-within .hw-tools { opacity: 1; }
+  .hw-tool { border: none; background: none; color: var(--text-faint); cursor: pointer; font-size: 13px;
+    width: 22px; height: 22px; border-radius: 5px; line-height: 1; }
+  .hw-tool:hover:not(:disabled) { background: var(--surface-2); color: var(--accent); }
+  .hw-tool:disabled { opacity: .28; cursor: default; }
+  .hw-body { padding: 12px 14px 14px; }
+
+  .hw-empty { text-align: center; padding: 14px 8px 6px; }
+  .hw-empty p { font-size: 13.5px; color: var(--text-soft); margin: 0 0 10px; line-height: 1.5; }
+  .hw-cta { font-size: 13px; padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit; }
+  .hw-cta:hover { border-color: var(--accent); color: var(--accent); }
+  .hw-dim { color: var(--text-faint); font-size: 12px; }
+
+  /* Focus du jour */
+  .hw-tl { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .hw-tl-row { display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 3px 4px; border-radius: var(--radius-sm); }
+  .hw-tl-row:hover { background: var(--surface-2); }
+  .hw-tl-time { width: 104px; flex: none; font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .hw-tl-chip { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 9px; font-size: 13.5px; }
+  .hw-tl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-tasks { display: flex; flex-direction: column; }
+  .hw-task { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--border); }
+  .hw-task:first-child { border-top: none; }
+  .hw-task-title { flex: 1; min-width: 130px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-task.done .hw-task-title { text-decoration: line-through; color: var(--text-faint); }
+  .hw-cell { flex: none; cursor: pointer; border-radius: var(--radius-sm); padding: 2px 4px; }
+  .hw-cell:hover { background: var(--surface-2); }
+  .hw-due { flex: none; font-size: 12px; font-family: inherit; color: var(--text-soft); background: none;
+    border: 1px solid transparent; border-radius: var(--radius-sm); padding: 3px 5px; cursor: pointer; }
+  .hw-due:hover { border-color: var(--border-strong); }
+  .hw-due.late { color: #a4463f; font-weight: 600; }
+
+  /* Projets */
+  .hw-proj { padding: 9px 4px; border-top: 1px solid var(--border); cursor: pointer; }
+  .hw-proj:first-child { border-top: none; }
+  .hw-proj:hover .hw-proj-name { color: var(--accent); }
+  .hw-proj-top { display: flex; align-items: center; gap: 7px; }
+  .hw-proj-name { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-proj-pct { font-size: 12px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+  .hw-bar { height: 5px; border-radius: 3px; background: var(--surface-2); margin: 6px 0 5px; overflow: hidden; }
+  .hw-bar i { display: block; height: 100%; border-radius: 3px; transition: width .2s; }
+  .hw-proj-sub { font-size: 11.5px; color: var(--text-faint); }
+  .hw-late { color: #a4463f; }
+
+  /* Habitudes */
+  .hw-habit { display: flex; align-items: center; gap: 9px; padding: 8px 4px; border-top: 1px solid var(--border); }
+  .hw-habit:first-child { border-top: none; }
+  .hw-habit-checks { display: inline-flex; gap: 4px; flex: none; }
+  .hw-habit .habit-check { width: 16px; height: 16px; cursor: pointer; }
+  .hw-habit-name { flex: 1; min-width: 0; font-size: 14px; display: inline-flex; align-items: center; gap: 5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-habit-name.done { color: var(--text-faint); }
+  .hw-streak { flex: none; font-size: 12px; color: var(--text-soft); font-weight: 600; }
+
+  /* Santé */
+  .hw-health { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .hw-h-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .hw-h-lbl { flex: 1; font-size: 13px; color: var(--text-soft); }
+  .hw-h-val { font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+  .hw-health .hw-cta { margin-top: 4px; }
+
+  /* Notes */
+  .hw-note { padding: 8px 4px; border-top: 1px solid var(--border); cursor: pointer; border-radius: var(--radius-sm); }
+  .hw-note:first-child { border-top: none; }
+  .hw-note:hover .hw-note-title { color: var(--accent); }
+  .hw-note-top { display: flex; align-items: center; gap: 6px; }
+  .hw-note-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-note-x { font-size: 12px; color: var(--text-faint); margin-top: 3px; line-height: 1.45;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Bilan express */
+  .hw-bilan { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; }
+  .hw-kpi { min-width: 84px; }
+  .hw-kpi-v { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .hw-kpi-l { font-size: 11.5px; color: var(--text-soft); margin-top: 2px; }
+
+  /* Horoscope */
+  .hw-horo { cursor: pointer; }
+  .hw-horo-txt { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text); }
+  .hw-horo-maj { margin-top: 9px; font-size: 11.5px; }
+  .hw-horo-maj.frais { color: var(--accent); }
+  .hw-horo-maj.vieux { color: var(--text-faint); }
+
+  /* widgets masqués */
+  .hw-hidden { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+  .hw-hidden-lbl { font-size: 12px; color: var(--text-faint); }
+  .hw-chip { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1px dashed var(--border-strong);
+    background: none; color: var(--text-soft); cursor: pointer; font-family: inherit; }
+  .hw-chip:hover { border-style: solid; border-color: var(--accent); color: var(--accent); }
+  .hw-chip span { opacity: .6; }
+
   /* --- Toast de confirmation --- */
   .toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%) translateY(12px); z-index: 3000;
     background: var(--text); color: var(--bg); font-size: 13.5px; padding: 10px 16px; border-radius: 999px;
@@ -1954,6 +2070,12 @@
     </div>
 
     <nav class="side-nav">
+      <!-- Accueil (tableau de bord, ordinateur) -->
+      <button class="nav-item" data-section="home">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
+        <span class="nav-label">Accueil</span>
+      </button>
+
       <!-- Mes tâches -->
       <button class="nav-item" data-section="tasks">
         <span class="nav-label">Mes tâches</span>
@@ -2730,7 +2852,9 @@ const defaultState = () => ({
   theme: 'light',
   accent: DEFAULT_ACCENT,
   weekStart: 1,
-  view: 'month',
+  view: 'home',
+  // tableau de bord d'accueil (ordinateur) : ordre, widgets masqués, widgets repliés
+  home: { order: [], hidden: [], collapsed: {} },
   dayBlock: 3,          // nombre de jours affichés par la vue « N jours »
   sidebarCollapsed: false,
   // sections dépliées de la barre latérale (repliables pour ne pas manger tout l'espace)
@@ -2803,6 +2927,9 @@ function load() {
       migrateHiddenCols(s);
       // on ne conserve que les 5 dernières couleurs personnalisées (les plus récentes = en fin de liste)
       s.customColors = (s.customColors || []).slice(-5);
+      // arrivée du tableau de bord : on l'ouvre une fois comme écran d'accueil (elle peut
+      // ensuite choisir n'importe quelle autre vue, son choix est mémorisé comme avant)
+      if (!s._homeSpaceV1) { s._homeSpaceV1 = true; s.view = 'home'; }
       return s;
     }
   } catch (e) {}
@@ -3186,8 +3313,9 @@ const canvas = $('canvas');
 function render() {
   // la vue Semaine n'existe pas sur téléphone (grille 7 colonnes illisible) : on retombe sur Jour
   if (state.view === 'week' && isMobile()) state.view = 'day';
-  // l'accueil « Aujourd'hui » est propre au téléphone : sur ordinateur on retombe sur le mois
-  if (state.view === 'home' && !isMobile()) state.view = 'month';
+  /* La vue « home » existe des deux côtés mais n'a rien à voir : sur téléphone c'est
+     l'accueil « Aujourd'hui » (simple et factuel), sur ordinateur le tableau de bord
+     modulaire. L'aiguillage se fait au rendu (comme pour la vue Mois). */
   document.documentElement.setAttribute('data-theme', state.theme);
   document.documentElement.style.setProperty('--accent', state.accent);
   document.documentElement.style.setProperty('--accent-soft', state.accent + '33');
@@ -3236,7 +3364,7 @@ function render() {
   document.querySelector('.nav-btns').classList.toggle('hidden', inSpace);
   $('periodTitle').classList.toggle('hidden', inSpace);
 
-  if (state.view === 'home') renderHomeMobile();
+  if (state.view === 'home') { isMobile() ? renderHomeMobile() : renderHomeSpace(); }
   else if (state.view === 'tasks') renderTasksSpace();
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
@@ -4487,6 +4615,320 @@ function showToast(msg) {
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+/* ============================================================
+   ACCUEIL — TABLEAU DE BORD (ORDINATEUR)
+   ------------------------------------------------------------
+   Pendant « grand écran » de l'accueil Aujourd'hui du téléphone (qui reste
+   inchangé : l'aiguillage se fait dans render() selon isMobile()).
+   Widgets repliables / masquables / réordonnables, persistés dans la seule
+   clé `state.home` = { order, hidden, collapsed }.
+   Toute coche de tâche passe par setTaskDone ; l'édition en place réutilise
+   tblOpenProj/tblOpenCat/tblOpenPrio/tblSetDue (qui appellent render(), donc
+   se re-dessinent correctement depuis l'accueil sans rien dupliquer).
+   ============================================================ */
+const HOME_WIDGETS = {
+  focus:    { label: 'Focus du jour', wide: true, body: () => hwFocus() },
+  projects: { label: 'Projets',                   body: () => hwProjects() },
+  habits:   { label: 'Habitudes',                 body: () => hwHabits() },
+  health:   { label: 'Suivi santé',               body: () => hwHealth() },
+  notes:    { label: 'Notes récentes',            body: () => hwNotes() },
+  bilan:    { label: 'Bilan express',             body: () => hwBilan() },
+  horoscope:{ label: 'Horoscope du jour',         body: () => hwHoroscope() },
+};
+const HOME_ORDER_DEFAUT = ['focus', 'projects', 'habits', 'horoscope', 'health', 'notes', 'bilan'];
+
+/* Config saine quoi qu'il arrive : on ignore les clés inconnues (widget supprimé
+   un jour) et on ajoute à la fin les widgets apparus depuis le dernier lancement. */
+function homeCfg() {
+  if (!state.home || typeof state.home !== 'object') state.home = { order: [], hidden: [], collapsed: {} };
+  const c = state.home;
+  if (!Array.isArray(c.order)) c.order = [];
+  if (!Array.isArray(c.hidden)) c.hidden = [];
+  if (!c.collapsed || typeof c.collapsed !== 'object') c.collapsed = {};
+  const ordre = c.order.filter(k => HOME_WIDGETS[k]);
+  HOME_ORDER_DEFAUT.forEach(k => { if (!ordre.includes(k)) ordre.push(k); });
+  c.order = ordre;
+  c.hidden = c.hidden.filter(k => HOME_WIDGETS[k]);
+  return c;
+}
+const homeVisibleOrder = () => { const c = homeCfg(); return c.order.filter(k => !c.hidden.includes(k)); };
+
+function homeMove(key, dir, ev) {
+  if (ev) ev.stopPropagation();
+  const c = homeCfg(), vis = homeVisibleOrder();
+  const i = vis.indexOf(key), j = i + dir;
+  if (i < 0 || j < 0 || j >= vis.length) return;
+  const a = c.order.indexOf(vis[i]), b = c.order.indexOf(vis[j]);
+  [c.order[a], c.order[b]] = [c.order[b], c.order[a]];
+  save(); render();
+}
+function homeToggleCollapse(key, ev) { if (ev) ev.stopPropagation(); const c = homeCfg(); c.collapsed[key] = !c.collapsed[key]; save(); render(); }
+function homeHide(key, ev) { if (ev) ev.stopPropagation(); const c = homeCfg(); if (!c.hidden.includes(key)) c.hidden.push(key); save(); render(); }
+function homeShow(key, ev) { if (ev) ev.stopPropagation(); const c = homeCfg(); c.hidden = c.hidden.filter(k => k !== key); save(); render(); }
+window.homeMove = homeMove; window.homeToggleCollapse = homeToggleCollapse;
+window.homeHide = homeHide; window.homeShow = homeShow;
+
+// aucun widget ne doit être une zone vide et triste : message + action, toujours
+const hwEmpty = (msg, cta, action) =>
+  `<div class="hw-empty"><p>${msg}</p>${cta ? `<button class="hw-cta" onclick="${action}">${cta}</button>` : ''}</div>`;
+
+function hwCard(key) {
+  const c = homeCfg(), w = HOME_WIDGETS[key];
+  const replie = !!c.collapsed[key];
+  const vis = homeVisibleOrder(), i = vis.indexOf(key);
+  return `<section class="hw ${w.wide ? 'hw-wide' : ''} ${replie ? 'is-collapsed' : ''}">
+    <header class="hw-head">
+      <button class="hw-chev" onclick="homeToggleCollapse('${key}',event)" title="${replie ? 'Déplier' : 'Replier'}">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+      <span class="hw-title">${w.label}</span>
+      <span class="hw-tools">
+        <button class="hw-tool" onclick="homeMove('${key}',-1,event)" ${i <= 0 ? 'disabled' : ''} title="Monter">↑</button>
+        <button class="hw-tool" onclick="homeMove('${key}',1,event)" ${i >= vis.length - 1 ? 'disabled' : ''} title="Descendre">↓</button>
+        <button class="hw-tool" onclick="homeHide('${key}',event)" title="Masquer ce widget">✕</button>
+      </span>
+    </header>
+    ${replie ? '' : `<div class="hw-body">${w.body()}</div>`}
+  </section>`;
+}
+
+/* ---- Tâches mises en avant : en retard d'abord, puis aujourd'hui, puis à venir ---- */
+function homeFocusTasks(limit) {
+  const tk = ymd(new Date());
+  const ouvertes = (state.tasks || []).filter(t => !t.done && catVisible(t.catId));
+  const retard = ouvertes.filter(t => t.due && t.due < tk).sort((a, b) => a.due.localeCompare(b.due));
+  const jour = ouvertes.filter(t => t.due === tk);
+  const suite = ouvertes.filter(t => t.due && t.due > tk).sort((a, b) => a.due.localeCompare(b.due));
+  const liste = [...retard, ...jour, ...suite];
+  return limit ? liste.slice(0, limit) : liste;
+}
+// ce qui « reste à faire aujourd'hui » : sert à la petite gratification de fin de journée
+const homeDueTodayCount = () => { const tk = ymd(new Date()); return (state.tasks || []).filter(t => !t.done && t.due && t.due <= tk && catVisible(t.catId)).length; };
+
+function homeToggleTask(id, ev) {
+  if (ev) ev.stopPropagation();
+  const t = (state.tasks || []).find(x => x.id === id); if (!t) return;
+  const restait = !t.done;
+  setTaskDone(t, !t.done);                     // seul point de bascule (déclenche les automatisations)
+  save();
+  if (restait && homeDueTodayCount() === 0) showToast('Journée bouclée ✨');
+  render();
+}
+function homePlanDay() { openModal('task'); $('fDate').value = ymd(new Date()); }
+window.homeToggleTask = homeToggleTask; window.homePlanDay = homePlanDay;
+
+// une ligne de tâche entièrement éditable sans ouvrir la fiche
+function hwTaskRow(t, tk) {
+  const late = t.due && t.due < tk;
+  const p = t.projectId ? projById(t.projectId) : null;
+  const c = catById(t.catId);
+  const pr = t.prio || 'med', pc = prioCol(pr);
+  return `<div class="hw-task ${t.done ? 'done' : ''}">
+    <span class="task-check ${t.done ? 'done' : ''}" style="border-color:${pc}${t.done ? `;background:${pc}` : ''}"
+      onclick="homeToggleTask('${t.id}',event)" title="Priorité ${PRIO_LABEL[pr].toLowerCase()} — cocher"></span>
+    <span class="hw-task-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${iconOf(t, 'tasks', 13)}${esc(t.title)}</span>
+    <span class="hw-cell" onclick="tblOpenProj('${t.id}',event)" title="Changer le projet">${p
+      ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>`
+      : '<span class="hw-dim">projet</span>'}</span>
+    <span class="hw-cell" onclick="tblOpenCat('${t.id}',event)" title="Changer l'agenda">${c
+      ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>`
+      : '<span class="hw-dim">agenda</span>'}</span>
+    <span class="hw-cell" onclick="tblOpenPrio('${t.id}',event)" title="Changer la priorité"><span class="prio-pill" style="background:${tblTint(pc, .2)};color:${dotOf(pc)}"><span class="pill-dot" style="background:${pc}"></span>${PRIO_LABEL[pr]}</span></span>
+    <input type="date" class="hw-due ${late ? 'late' : ''}" value="${t.due || ''}" onchange="tblSetDue('${t.id}',event)" onclick="event.stopPropagation()" title="Changer l'échéance">
+  </div>`;
+}
+
+function hwFocus() {
+  const today = new Date(), tk = ymd(today);
+  const evs = (state.events || []).filter(e => e.date === tk && catVisible(e.catId))
+    .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  const taches = homeFocusTasks(5);
+  if (!evs.length && !taches.length)
+    return hwEmpty("Rien d'urgent aujourd'hui. Profites-en !", 'Planifier ma journée', 'homePlanDay()');
+
+  let h = '';
+  if (evs.length) h += `<div class="hw-tl">` + evs.map(e => {
+    const look = eventLook(e);
+    const heure = isAllDayEv(e) ? 'journée' : `${e.start || ''}${e.end ? ' – ' + e.end : ''}`;
+    return `<div class="hw-tl-row" onclick="openEdit('event','${e.id}',event)">
+      <span class="hw-tl-time">${esc(heure)}</span>
+      <span class="hw-tl-chip" style="${look.style}">${iconOf(e, 'events', 13)}<span class="hw-tl-name">${esc(e.title)}</span></span>
+    </div>`;
+  }).join('') + `</div>`;
+  if (taches.length) h += `<div class="hw-tasks">` + taches.map(t => hwTaskRow(t, tk)).join('') + `</div>`;
+  else h += hwEmpty('Aucune tâche en attente. Tout est à jour !', 'Planifier ma journée', 'homePlanDay()');
+  return h;
+}
+
+function hwProjects() {
+  const ordre = { retard: 0, encours: 1, avenir: 2, sansdate: 3, fini: 4 };
+  const list = (state.projects || []).filter(p => projStatut(p) !== 'fini')
+    .sort((a, b) => (ordre[projStatut(a)] ?? 9) - (ordre[projStatut(b)] ?? 9)).slice(0, 5);
+  if (!list.length) return hwEmpty('Aucun projet en cours.', 'Créer un projet', 'openProjModal()');
+  return list.map(p => {
+    const st = projStats(p);
+    return `<div class="hw-proj" onclick="openProjectDetail('${p.id}')">
+      <div class="hw-proj-top">
+        <span class="pill-dot" style="background:${dotOf(p.color)}"></span>
+        <span class="hw-proj-name">${esc(p.name)}</span>
+        <span class="hw-proj-pct">${st.pct}%</span>
+      </div>
+      <div class="hw-bar"><i style="width:${st.pct}%;background:${dotOf(p.color)}"></i></div>
+      <div class="hw-proj-sub">${st.done}/${st.total} tâche${st.total > 1 ? 's' : ''}${st.next ? ` · prochaine ${esc(friendlyDate(st.next.due))}` : ''}${st.late ? ` · <b class="hw-late">${st.late} en retard</b>` : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function hwHabits() {
+  const today = new Date(), tk = ymd(today);
+  const list = (state.habits || []).filter(h => habitScheduledOn(h, today));
+  if (!list.length) return hwEmpty("Aucune habitude prévue aujourd'hui.", 'Ajouter une habitude', 'openHabitModal()');
+  return list.map(h => {
+    const col = h.color || '#eae8e4', faite = habitDayDone(h, today), serie = habitStreak(h);
+    const heures = habitTimes(h);
+    return `<div class="hw-habit">
+      <span class="hw-habit-checks">${heures.map(t => {
+        const d = habitIsDone(h.id, tk, t);
+        return `<span class="habit-check" style="border-color:${dotOf(col)};${d ? `background:${dotOf(col)}` : ''}"
+          onclick="toggleHabitDay('${h.id}','${tk}',event)" title="${esc(t)} — cocher">${d ? '✓' : ''}</span>`;
+      }).join('')}</span>
+      <span class="hw-habit-name ${faite ? 'done' : ''}">${iconOf(h, 'habits', 13)}${esc(h.name)}</span>
+      ${serie > 0 ? `<span class="hw-streak" title="${serie} jour${serie > 1 ? 's' : ''} d'affilée">${serie} 🔥</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function hwHealth() {
+  const tk = ymd(new Date());
+  const log = healthLogFor(tk);
+  const m = log && log.mood != null ? moodInfo(log.mood) : null;
+  const dernierSommeil = (state.healthLogs || []).filter(l => l.sleepHours != null)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!m && !dernierSommeil)
+    return hwEmpty('Pas encore de suivi santé.', 'Noter ma journée', "openSpace('health')");
+  return `<div class="hw-health">
+    <div class="hw-h-row">
+      <span class="hw-h-lbl">Humeur du jour</span>
+      ${m ? `<span class="hw-h-val"><span class="pill-dot" style="background:${dotOf(m.color)}"></span>${esc(m.label)}</span>`
+          : `<span class="hw-dim">pas encore notée</span>`}
+    </div>
+    <div class="hw-h-row">
+      <span class="hw-h-lbl">Dernier sommeil</span>
+      ${dernierSommeil ? `<span class="hw-h-val">${esc(String(dernierSommeil.sleepHours))} h <span class="hw-dim">· ${esc(friendlyDate(dernierSommeil.date))}</span></span>`
+                       : `<span class="hw-dim">aucune donnée</span>`}
+    </div>
+    <button class="hw-cta" onclick="openSpace('health')">Noter ma journée</button>
+  </div>`;
+}
+
+function hwNotes() {
+  const list = (state.notes || []).slice().sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 3);
+  if (!list.length) return hwEmpty('Aucune note pour l’instant.', 'Créer une note', 'openNote()');
+  return list.map(n => {
+    const extrait = texteExtrait(n.body, 80);
+    return `<div class="hw-note" onclick="openNote('${n.id}')">
+      <div class="hw-note-top">${iconOf(n, 'notes', 13)}<span class="hw-note-title">${esc(n.title || 'Sans titre')}</span></div>
+      ${extrait ? `<div class="hw-note-x">${esc(extrait)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+// texte brut court à partir du HTML d'une note (pour l'extrait des tuiles d'accueil)
+function texteExtrait(html, max) {
+  const t = String(html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  return t.length > max ? t.slice(0, max) + '…' : t;
+}
+
+/* ---- Horoscope : alimenté de l'extérieur (routine Claude) ----
+   Aucune donnée nouvelle à synchroniser : le texte vit dans une NOTE ordinaire au
+   titre convenu, que la routine réécrit chaque matin via le connecteur
+   (agenda_modifier_note). Le widget ne fait que la lire et signaler si elle date. */
+const HOROSCOPE_TITRE = 'Horoscope du jour';
+const horoscopeNote = () => (state.notes || []).find(n => (n.title || '').trim().toLowerCase() === HOROSCOPE_TITRE.toLowerCase());
+function homeCreateHoroscope() {
+  (state.notes = state.notes || []).push({ id: uid(), title: HOROSCOPE_TITRE, body: '', color: PALETTE[4],
+    folderId: '', projectId: '', eventId: '', fav: false, updated: Date.now() });
+  save(); render();
+  showToast(`Note « ${HOROSCOPE_TITRE} » créée — ta routine peut la remplir`);
+}
+window.homeCreateHoroscope = homeCreateHoroscope;
+function hwHoroscope() {
+  const n = horoscopeNote();
+  if (!n) return hwEmpty(`Aucune note « ${HOROSCOPE_TITRE} ».<br>Crée-la une fois : ta routine Claude la remplira ensuite chaque matin.`,
+    'Créer la note', 'homeCreateHoroscope()');
+  const texte = texteExtrait(n.body, 420);
+  if (!texte) return hwEmpty('La note existe, mais elle est encore vide.<br>Ta routine la remplira au prochain passage.',
+    'Ouvrir la note', `openNote('${n.id}')`);
+  const jour = n.updated ? ymd(new Date(n.updated)) : '';
+  const dujour = jour === ymd(new Date());
+  return `<div class="hw-horo" onclick="openNote('${n.id}')">
+    <p class="hw-horo-txt">${esc(texte)}</p>
+    <div class="hw-horo-maj ${dujour ? 'frais' : 'vieux'}">${dujour ? "Mis à jour aujourd'hui" : `Dernière mise à jour : ${esc(friendlyDate(jour))}`}</div>
+  </div>`;
+}
+
+function hwBilan() {
+  const d = bilanData();
+  const totalMin = d.groups.reduce((s, g) => s + g.total, 0);
+  const jours = d.days || [];
+  const debut = jours[0], fin = jours[jours.length - 1];
+  const faites = (state.tasks || []).filter(t => t.done && t.doneAt && debut && fin
+    && ymd(new Date(t.doneAt)) >= debut && ymd(new Date(t.doneAt)) <= fin).length;
+  if (!totalMin && !faites)
+    return hwEmpty('Rien à résumer sur la période.', 'Ouvrir le bilan', "openSpace('bilan')");
+  return `<div class="hw-bilan">
+    <div class="hw-kpi"><div class="hw-kpi-v">${esc(fmtMinutes(totalMin, true) || '0')}</div><div class="hw-kpi-l">de temps planifié</div></div>
+    <div class="hw-kpi"><div class="hw-kpi-v">${faites}</div><div class="hw-kpi-l">tâche${faites > 1 ? 's' : ''} terminée${faites > 1 ? 's' : ''}</div></div>
+    <button class="hw-cta" onclick="openSpace('bilan')">Voir le bilan</button>
+  </div>`;
+}
+
+function renderHomeSpace() {
+  const c = homeCfg();
+  const today = new Date(), tk = ymd(today);
+  const prenom = state.userName || 'Clémence';
+  const heure = today.getHours();
+  const salut = heure < 12 ? 'Bonjour' : heure < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const dateTxt = `${DOW_LONG[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]} ${today.getFullYear()}`;
+
+  // mini-résumé dynamique du bandeau
+  const nTaches = (state.tasks || []).filter(t => !t.done && t.due && t.due <= tk && catVisible(t.catId)).length;
+  const nEv = (state.events || []).filter(e => e.date === tk && catVisible(e.catId)).length;
+  let habRest = 0;
+  (state.habits || []).forEach(h => { if (habitScheduledOn(h, today) && !habitDayDone(h, today)) habRest++; });
+  const bouts = [];
+  if (nTaches) bouts.push(`<b>${nTaches}</b> tâche${nTaches > 1 ? 's' : ''} pour aujourd'hui`);
+  if (nEv) bouts.push(`<b>${nEv}</b> événement${nEv > 1 ? 's' : ''}`);
+  if (habRest) bouts.push(`<b>${habRest}</b> habitude${habRest > 1 ? 's' : ''} à cocher`);
+  const resume = bouts.length ? bouts.join(', ') + '.' : 'Rien de prévu : la journée est à toi.';
+
+  let html = `<div class="space wide home-space">
+    <div class="hs-banner">
+      <div class="hs-hello">${salut} ${esc(prenom)}</div>
+      <div class="hs-date">${dateTxt.charAt(0).toUpperCase() + dateTxt.slice(1)}</div>
+      <div class="hs-resume">${resume}</div>
+    </div>
+    <div class="hs-actions">
+      ${quickAddHtml('qaHome')}
+      <div class="hs-btns">
+        <button class="hw-cta" onclick="openModal('task')">＋ Tâche</button>
+        <button class="hw-cta" onclick="openModal('event')">＋ Événement</button>
+        <button class="hw-cta" onclick="openNote()">＋ Note</button>
+      </div>
+    </div>
+    ${overdueBarHtml()}
+    ${inboxBlockHtml()}
+    <div class="hw-grid">${homeVisibleOrder().map(k => hwCard(k)).join('')}</div>`;
+
+  // widgets masqués : rangée de pastilles pour les réafficher (même patron que les notes)
+  if (c.hidden.length) html += `<div class="hw-hidden">
+    <span class="hw-hidden-lbl">Widgets masqués :</span>
+    ${c.hidden.map(k => `<button class="hw-chip" onclick="homeShow('${k}',event)" title="Réafficher">${HOME_WIDGETS[k].label} <span>＋</span></button>`).join('')}
+  </div>`;
+
+  html += `</div>`;
+  canvas.innerHTML = html;
 }
 
 function renderTasksSpace() {
@@ -12063,7 +12505,7 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan' };
+const SECTION_SPACE = { home: 'home', tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
