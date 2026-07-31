@@ -772,12 +772,19 @@
   .hw-tl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Tâches du Focus : vraie grille alignée (colonnes fixes, sans filets verticaux).
      L'intitulé prend TOUTE la place restante ; chaque pilule s'abrège dans sa colonne. */
-  .hw-tasks { display: flex; flex-direction: column; }
-  .hw-task { display: grid; grid-template-columns: 18px minmax(0, 1fr) 152px 132px 102px 96px;
+  .hw-tasks { display: flex; flex-direction: column; position: relative; }
+  .hw-task { display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) var(--c-projet, 152px) var(--c-agenda, 132px) var(--c-prio, 102px) var(--c-due, 96px);
     align-items: center; gap: 12px; padding: 9px 4px; border-top: 1px solid var(--border); }
-  .hw-task.hw-thead { border-top: none; padding: 0 4px 7px; font-size: 10.5px; text-transform: uppercase;
-    letter-spacing: .05em; color: var(--text-faint); font-weight: 600; }
-  .hw-task.hw-thead + .hw-task { border-top: none; }
+  .hw-task:first-child { border-top: none; }
+  /* poignées invisibles pour ajuster la largeur des colonnes (un filet apparaît au survol) */
+  .hw-grips { position: absolute; inset: 0; display: grid; gap: 12px; padding: 0 4px; pointer-events: none;
+    grid-template-columns: 18px minmax(0, 1fr) var(--c-projet, 152px) var(--c-agenda, 132px) var(--c-prio, 102px) var(--c-due, 96px); }
+  .hw-grip { position: relative; pointer-events: auto; cursor: col-resize; }
+  .hw-grip::before { content: ''; position: absolute; top: 0; bottom: 0; left: -9px; width: 16px; }
+  .hw-grip::after { content: ''; position: absolute; top: 4px; bottom: 4px; left: -2px; width: 2px; border-radius: 2px;
+    background: var(--accent); opacity: 0; transition: opacity .12s; }
+  .hw-grip:hover::after, .hw-grip.on::after { opacity: .5; }
   .hw-task-title { min-width: 0; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
   .hw-t-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hw-task.done .hw-task-title { text-decoration: line-through; color: var(--text-faint); }
@@ -792,12 +799,12 @@
   .hw-due.late { color: #a4463f; font-weight: 600; }
   /* écran moins large : on sacrifie l'agenda puis le projet, jamais l'intitulé */
   @media (max-width: 1180px) {
-    .hw-task { grid-template-columns: 18px minmax(0, 1fr) 152px 102px 96px; }
-    .hw-task > .hw-cell:nth-of-type(2), .hw-task.hw-thead > span:nth-child(4) { display: none; }
+    .hw-task, .hw-grips { grid-template-columns: 18px minmax(0, 1fr) var(--c-projet, 152px) var(--c-prio, 102px) var(--c-due, 96px); }
+    .hw-c-agenda, .hw-grips > *:nth-child(4) { display: none; }
   }
   @media (max-width: 960px) {
-    .hw-task { grid-template-columns: 18px minmax(0, 1fr) 102px 96px; }
-    .hw-task > .hw-cell:nth-of-type(1), .hw-task.hw-thead > span:nth-child(3) { display: none; }
+    .hw-task, .hw-grips { grid-template-columns: 18px minmax(0, 1fr) var(--c-prio, 102px) var(--c-due, 96px); }
+    .hw-c-projet, .hw-grips > *:nth-child(3) { display: none; }
   }
 
   /* Projets */
@@ -4655,6 +4662,9 @@ const HOME_WIDGETS = {
   horoscope:{ label: 'Horoscope du jour',         body: () => hwHoroscope() },
 };
 const HOME_ORDER_DEFAUT = ['focus', 'projects', 'habits', 'horoscope', 'health', 'notes', 'bilan'];
+// largeurs (px) des colonnes du Focus du jour — ajustables à la souris, mémorisées dans state.home.cols
+const HOME_COLS_DEFAUT = { projet: 152, agenda: 132, prio: 102, due: 96 };
+const HOME_COL_MIN = 62, HOME_COL_MAX = 340;
 
 /* Config saine quoi qu'il arrive : on ignore les clés inconnues (widget supprimé
    un jour) et on ajoute à la fin les widgets apparus depuis le dernier lancement. */
@@ -4664,6 +4674,12 @@ function homeCfg() {
   if (!Array.isArray(c.order)) c.order = [];
   if (!Array.isArray(c.hidden)) c.hidden = [];
   if (!c.collapsed || typeof c.collapsed !== 'object') c.collapsed = {};
+  // largeurs des colonnes du Focus, ajustables à la souris
+  if (!c.cols || typeof c.cols !== 'object') c.cols = {};
+  Object.keys(HOME_COLS_DEFAUT).forEach(k => {
+    const v = Number(c.cols[k]);
+    c.cols[k] = (v >= HOME_COL_MIN && v <= HOME_COL_MAX) ? Math.round(v) : HOME_COLS_DEFAUT[k];
+  });
   const ordre = c.order.filter(k => HOME_WIDGETS[k]);
   HOME_ORDER_DEFAUT.forEach(k => { if (!ordre.includes(k)) ordre.push(k); });
   c.order = ordre;
@@ -4686,6 +4702,44 @@ function homeHide(key, ev) { if (ev) ev.stopPropagation(); const c = homeCfg(); 
 function homeShow(key, ev) { if (ev) ev.stopPropagation(); const c = homeCfg(); c.hidden = c.hidden.filter(k => k !== key); save(); render(); }
 window.homeMove = homeMove; window.homeToggleCollapse = homeToggleCollapse;
 window.homeHide = homeHide; window.homeShow = homeShow;
+
+/* ---- Largeur des colonnes du Focus : poignées invisibles entre les colonnes ----
+   Les largeurs vivent dans des variables CSS portées par le conteneur `.hw-tasks`,
+   donc un seul écrit pendant le glissement mets à jour TOUTES les lignes d'un coup
+   (pas de re-rendu, geste fluide). On n'enregistre qu'au relâché. */
+const homeColsStyle = () => Object.entries(homeCfg().cols).map(([k, v]) => `--c-${k}:${v}px`).join(';');
+let homeColDrag = null;
+function homeColResizeStart(col, ev) {
+  ev.preventDefault(); ev.stopPropagation();
+  const box = ev.currentTarget.closest('.hw-tasks'); if (!box) return;
+  homeColDrag = { col, box, x0: ev.clientX, w0: homeCfg().cols[col] };
+  ev.currentTarget.classList.add('on');
+  document.body.style.cursor = 'col-resize';
+  document.addEventListener('mousemove', homeColResizeMove);
+  document.addEventListener('mouseup', homeColResizeEnd);
+}
+function homeColResizeMove(e) {
+  if (!homeColDrag) return;
+  // la poignée est à GAUCHE de sa colonne : tirer vers la gauche élargit la colonne
+  const w = Math.max(HOME_COL_MIN, Math.min(HOME_COL_MAX, Math.round(homeColDrag.w0 - (e.clientX - homeColDrag.x0))));
+  homeCfg().cols[homeColDrag.col] = w;
+  homeColDrag.box.style.setProperty('--c-' + homeColDrag.col, w + 'px');
+}
+function homeColResizeEnd() {
+  if (!homeColDrag) return;
+  homeColDrag.box.querySelectorAll('.hw-grip.on').forEach(g => g.classList.remove('on'));
+  homeColDrag = null;
+  document.body.style.cursor = '';
+  document.removeEventListener('mousemove', homeColResizeMove);
+  document.removeEventListener('mouseup', homeColResizeEnd);
+  save();
+}
+function homeColReset(col, ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  homeCfg().cols[col] = HOME_COLS_DEFAUT[col];
+  save(); render();
+}
+window.homeColResizeStart = homeColResizeStart; window.homeColReset = homeColReset;
 
 // aucun widget ne doit être une zone vide et triste : message + action, toujours
 const hwEmpty = (msg, cta, action) =>
@@ -4746,10 +4800,10 @@ function hwTaskRow(t, tk) {
     <span class="task-check ${t.done ? 'done' : ''}" style="border-color:${pc}${t.done ? `;background:${pc}` : ''}"
       onclick="homeToggleTask('${t.id}',event)" title="Priorité ${PRIO_LABEL[pr].toLowerCase()} — cocher"></span>
     <span class="hw-task-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="hw-t-txt">${esc(t.title)}</span></span>
-    <span class="hw-cell" onclick="tblOpenProj('${t.id}',event)" title="Changer le projet">${p
+    <span class="hw-cell hw-c-projet" onclick="tblOpenProj('${t.id}',event)" title="Changer le projet">${p
       ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span><span class="pill-txt">${esc(p.name)}</span></span>`
       : '<span class="hw-dim">projet</span>'}</span>
-    <span class="hw-cell" onclick="tblOpenCat('${t.id}',event)" title="Changer l'agenda">${c
+    <span class="hw-cell hw-c-agenda" onclick="tblOpenCat('${t.id}',event)" title="Changer l'agenda">${c
       ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span><span class="pill-txt">${esc(c.name)}</span></span>`
       : '<span class="hw-dim">agenda</span>'}</span>
     <span class="hw-cell" onclick="tblOpenPrio('${t.id}',event)" title="Changer la priorité"><span class="prio-pill" style="background:${tblTint(pc, .2)};color:${dotOf(pc)}"><span class="pill-dot" style="background:${pc}"></span><span class="pill-txt">${PRIO_LABEL[pr]}</span></span></span>
@@ -4774,9 +4828,14 @@ function hwFocus() {
       <span class="hw-tl-chip" style="${look.style}">${iconOf(e, 'events', 13)}<span class="hw-tl-name">${esc(e.title)}</span></span>
     </div>`;
   }).join('') + `</div>`;
-  if (taches.length) h += `<div class="hw-tasks">
-      <div class="hw-task hw-thead"><span></span><span>Tâche</span><span>Projet</span><span>Agenda</span><span>Priorité</span><span>Échéance</span></div>
-      ${taches.map(t => hwTaskRow(t, tk)).join('')}</div>`;
+  if (taches.length) {
+    const grip = (col, lbl) => `<span class="hw-grip" onmousedown="homeColResizeStart('${col}',event)"
+      ondblclick="homeColReset('${col}',event)" title="Glisser pour ajuster la colonne ${lbl} · double-clic pour réinitialiser"></span>`;
+    h += `<div class="hw-tasks" style="${homeColsStyle()}">
+      ${taches.map(t => hwTaskRow(t, tk)).join('')}
+      <div class="hw-grips" aria-hidden="true"><span></span><span></span>${grip('projet', 'Projet')}${grip('agenda', 'Agenda')}${grip('prio', 'Priorité')}${grip('due', 'Échéance')}</div>
+    </div>`;
+  }
   else h += hwEmpty('Aucune tâche en attente. Tout est à jour !', 'Planifier ma journée', 'homePlanDay()');
   return h;
 }
