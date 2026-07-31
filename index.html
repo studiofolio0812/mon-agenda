@@ -770,18 +770,35 @@
   .hw-tl-time { width: 104px; flex: none; font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
   .hw-tl-chip { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 9px; font-size: 13.5px; }
   .hw-tl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Tâches du Focus : vraie grille alignée (colonnes fixes, sans filets verticaux).
+     L'intitulé prend TOUTE la place restante ; chaque pilule s'abrège dans sa colonne. */
   .hw-tasks { display: flex; flex-direction: column; }
-  .hw-task { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--border); }
-  .hw-task:first-child { border-top: none; }
-  .hw-task-title { flex: 1; min-width: 130px; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-task { display: grid; grid-template-columns: 18px minmax(0, 1fr) 152px 132px 102px 96px;
+    align-items: center; gap: 12px; padding: 9px 4px; border-top: 1px solid var(--border); }
+  .hw-task.hw-thead { border-top: none; padding: 0 4px 7px; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--text-faint); font-weight: 600; }
+  .hw-task.hw-thead + .hw-task { border-top: none; }
+  .hw-task-title { min-width: 0; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .hw-t-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hw-task.done .hw-task-title { text-decoration: line-through; color: var(--text-faint); }
-  .hw-cell { flex: none; cursor: pointer; border-radius: var(--radius-sm); padding: 2px 4px; }
+  .hw-cell { min-width: 0; cursor: pointer; border-radius: var(--radius-sm); padding: 3px 4px; }
   .hw-cell:hover { background: var(--surface-2); }
-  .hw-due { flex: none; font-size: 12px; font-family: inherit; color: var(--text-soft); background: none;
-    border: 1px solid transparent; border-radius: var(--radius-sm); padding: 3px 5px; cursor: pointer; }
+  /* les pilules restent dans leur colonne et s'abrègent proprement */
+  .hw-cell .proj-pill, .hw-cell .cat-pill, .hw-cell .prio-pill { max-width: 100%; }
+  .hw-cell .pill-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-due { width: 100%; font-size: 12px; font-family: inherit; color: var(--text-soft); background: none;
+    border: 1px solid transparent; border-radius: var(--radius-sm); padding: 3px 4px; cursor: pointer; }
   .hw-due:hover { border-color: var(--border-strong); }
   .hw-due.late { color: #a4463f; font-weight: 600; }
+  /* écran moins large : on sacrifie l'agenda puis le projet, jamais l'intitulé */
+  @media (max-width: 1180px) {
+    .hw-task { grid-template-columns: 18px minmax(0, 1fr) 152px 102px 96px; }
+    .hw-task > .hw-cell:nth-of-type(2), .hw-task.hw-thead > span:nth-child(4) { display: none; }
+  }
+  @media (max-width: 960px) {
+    .hw-task { grid-template-columns: 18px minmax(0, 1fr) 102px 96px; }
+    .hw-task > .hw-cell:nth-of-type(1), .hw-task.hw-thead > span:nth-child(3) { display: none; }
+  }
 
   /* Projets */
   .hw-proj { padding: 9px 4px; border-top: 1px solid var(--border); cursor: pointer; }
@@ -4728,14 +4745,14 @@ function hwTaskRow(t, tk) {
   return `<div class="hw-task ${t.done ? 'done' : ''}">
     <span class="task-check ${t.done ? 'done' : ''}" style="border-color:${pc}${t.done ? `;background:${pc}` : ''}"
       onclick="homeToggleTask('${t.id}',event)" title="Priorité ${PRIO_LABEL[pr].toLowerCase()} — cocher"></span>
-    <span class="hw-task-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${iconOf(t, 'tasks', 13)}${esc(t.title)}</span>
+    <span class="hw-task-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="hw-t-txt">${esc(t.title)}</span></span>
     <span class="hw-cell" onclick="tblOpenProj('${t.id}',event)" title="Changer le projet">${p
-      ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>`
+      ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span><span class="pill-txt">${esc(p.name)}</span></span>`
       : '<span class="hw-dim">projet</span>'}</span>
     <span class="hw-cell" onclick="tblOpenCat('${t.id}',event)" title="Changer l'agenda">${c
-      ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span>${esc(c.name)}</span>`
+      ? `<span class="cat-pill" style="background:${catColor(c)};color:${inkOn(catColor(c))}"><span class="pill-dot" style="background:${dotOf(catColor(c))}"></span><span class="pill-txt">${esc(c.name)}</span></span>`
       : '<span class="hw-dim">agenda</span>'}</span>
-    <span class="hw-cell" onclick="tblOpenPrio('${t.id}',event)" title="Changer la priorité"><span class="prio-pill" style="background:${tblTint(pc, .2)};color:${dotOf(pc)}"><span class="pill-dot" style="background:${pc}"></span>${PRIO_LABEL[pr]}</span></span>
+    <span class="hw-cell" onclick="tblOpenPrio('${t.id}',event)" title="Changer la priorité"><span class="prio-pill" style="background:${tblTint(pc, .2)};color:${dotOf(pc)}"><span class="pill-dot" style="background:${pc}"></span><span class="pill-txt">${PRIO_LABEL[pr]}</span></span></span>
     <input type="date" class="hw-due ${late ? 'late' : ''}" value="${t.due || ''}" onchange="tblSetDue('${t.id}',event)" onclick="event.stopPropagation()" title="Changer l'échéance">
   </div>`;
 }
@@ -4757,7 +4774,9 @@ function hwFocus() {
       <span class="hw-tl-chip" style="${look.style}">${iconOf(e, 'events', 13)}<span class="hw-tl-name">${esc(e.title)}</span></span>
     </div>`;
   }).join('') + `</div>`;
-  if (taches.length) h += `<div class="hw-tasks">` + taches.map(t => hwTaskRow(t, tk)).join('') + `</div>`;
+  if (taches.length) h += `<div class="hw-tasks">
+      <div class="hw-task hw-thead"><span></span><span>Tâche</span><span>Projet</span><span>Agenda</span><span>Priorité</span><span>Échéance</span></div>
+      ${taches.map(t => hwTaskRow(t, tk)).join('')}</div>`;
   else h += hwEmpty('Aucune tâche en attente. Tout est à jour !', 'Planifier ma journée', 'homePlanDay()');
   return h;
 }
