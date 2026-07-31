@@ -687,13 +687,64 @@
     padding: 7px 11px; border-radius: 9px; font-size: 14px; }
   .ag-chip .ag-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ag-chip.task-lite { background: var(--surface-2); color: var(--text); }
+
+  /* --- Saisie rapide (langage naturel) --- */
+  .quick-add { margin: 2px 0 16px; }
+  .qa-row { display: flex; align-items: center; gap: 8px; background: var(--surface);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-md); padding: 9px 12px; transition: border-color .12s; }
+  .qa-row:focus-within { border-color: var(--accent); }
+  .qa-ico { display: inline-flex; color: var(--text-faint); flex: none; }
+  .qa-ico svg { width: 16px; height: 16px; }
+  .qa-input { flex: 1; min-width: 0; border: none; background: none; font-size: 14px; color: var(--text); outline: none; font-family: inherit; }
+  .qa-preview { display: none; margin: 7px 4px 0; font-size: 12.5px; color: var(--text-soft); line-height: 1.45; }
+  .qa-preview.show { display: block; }
+  .qa-pv-title { color: var(--text); font-weight: 500; }
+  .qa-pv-sep { color: var(--text-faint); margin: 0 6px; }
+  .qa-inbox { color: var(--accent); }
+  .qa-dim { color: var(--text-faint); font-style: italic; }
+
+  /* --- Boîte de réception --- */
+  .inbox-block { background: var(--accent-soft); border-radius: var(--radius-md); padding: 10px 13px; margin: 0 0 16px; }
+  .inbox-head { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft);
+    font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+  .inbox-count { background: var(--accent); color: #fff; border-radius: 20px; padding: 0 7px; font-size: 11px; line-height: 18px; font-weight: 700; }
+  .inbox-sub { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-faint); }
+  .inbox-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .inbox-item:first-of-type { border-top: none; }
+  .inbox-title { flex: 1; min-width: 120px; font-size: 14px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inbox-actions { display: flex; gap: 6px; flex: none; }
+  .inbox-btn { font-size: 12px; padding: 4px 9px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; }
+  .inbox-btn:hover { border-color: var(--accent); }
+  .inbox-btn.ghost { color: var(--text-soft); }
+
+  /* --- Barre « tâches en retard » (report groupé) --- */
+  .overdue-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 16px;
+    background: color-mix(in oklab, #c0564f 12%, var(--bg)); border-radius: var(--radius-md); padding: 9px 13px; }
+  .overdue-txt { font-size: 13px; color: #a4463f; font-weight: 600; flex: 1; min-width: 110px; }
+  .overdue-btn { font-size: 12.5px; padding: 5px 11px; border-radius: var(--radius-sm); border: 1px solid #c0564f;
+    background: var(--surface); color: #a4463f; cursor: pointer; white-space: nowrap; font-weight: 500; }
+  .overdue-btn:hover { background: #c0564f; color: #fff; }
+
+  /* --- Toast de confirmation --- */
+  .toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%) translateY(12px); z-index: 3000;
+    background: var(--text); color: var(--bg); font-size: 13.5px; padding: 10px 16px; border-radius: 999px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.22); opacity: 0; pointer-events: none;
+    transition: opacity .18s, transform .18s; max-width: 90vw; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   /* glisser pour cocher : la ligne (.ag-swipe-fg) coulisse au-dessus d'une zone verte « ✓ » */
   .ag-item.task.swiping { position: relative; overflow: hidden; }
   .ag-swipe-fg { position: relative; z-index: 1; flex: 1; display: flex; align-items: center; gap: 9px;
     background: var(--bg); will-change: transform; }
-  .ag-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 22px;
-    color: #40682f; font-weight: 700; font-size: 16px; background: color-mix(in oklab, #7ba36f 26%, var(--bg)); }
-  .ag-swipe-bg.ready { background: color-mix(in oklab, #7ba36f 52%, var(--bg)); }
+  .ag-swipe-bg { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 22px; font-weight: 700; font-size: 15px; }
+  .ag-swipe-bg .sw-done, .ag-swipe-bg .sw-snooze { display: none; }
+  .ag-swipe-bg.to-done { background: color-mix(in oklab, #7ba36f 26%, var(--bg)); color: #40682f; }
+  .ag-swipe-bg.to-done.ready { background: color-mix(in oklab, #7ba36f 52%, var(--bg)); }
+  .ag-swipe-bg.to-done .sw-done { display: inline; }
+  .ag-swipe-bg.to-snooze { background: color-mix(in oklab, #cfa055 26%, var(--bg)); color: #7a561d; }
+  .ag-swipe-bg.to-snooze.ready { background: color-mix(in oklab, #cfa055 52%, var(--bg)); }
+  .ag-swipe-bg.to-snooze .sw-snooze { display: inline; }
   .ag-item.done .ag-chip.task-lite .ag-title { text-decoration: line-through; color: var(--text-faint); }
 
   /* pastille d'habitude (rappel à heure fixe, cochable) */
@@ -793,6 +844,7 @@
 
   #projDetailOverlay { z-index: 49; } /* passe sous la fiche tâche / la fiche projet */
   #pageOverlay { z-index: 55; }        /* la page d'un enregistrement passe au-dessus du panneau base de données */
+  #itemOverlay { z-index: 58; }        /* la fenêtre Nouveau/Modifier passe au-dessus d'une fiche ouverte (ex. « Ajouter une sous-tâche » depuis une fiche tâche) */
   #iconOverlay { z-index: 60; }        /* le sélecteur d'icône s'ouvre PAR-DESSUS une fenêtre déjà ouverte (habitude, fiche) */
   #noteOverlay { z-index: 56; }        /* l'éditeur de note passe au-dessus d'une page projet (ouvert depuis sa section Notes) */
   #folderOverlay { z-index: 57; }      /* la fenêtre dossier passe au-dessus de l'éditeur de note */
@@ -3449,6 +3501,8 @@ function renderHomeMobile() {
       ${tile(overdue.length, 'en retard', overdue.length > 0)}
     </div>`;
 
+  html += quickAddHtml('qaHome') + overdueBarHtml() + inboxBlockHtml();
+
   if (nextEv) {
     const look = eventLook(nextEv);
     html += `<div class="ho-next" onclick="openEdit('event','${nextEv.id}',event)">
@@ -4266,6 +4320,175 @@ function taskKpisHtml() {
     ${kpi(sansDate, 'sans date')}
   </div>`;
 }
+/* ============================================================
+   SAISIE RAPIDE (langage naturel) + BOÎTE DE RÉCEPTION
+   ------------------------------------------------------------
+   Une ligne comme « Appeler Léa demain 15h !haute #Refonte » crée une tâche
+   complète (date, heure, priorité, projet/agenda extraits automatiquement).
+   Sans date reconnue, la tâche tombe dans la « boîte de réception » (capture
+   sans décider), à trier plus tard. Règle de réception : inbox && !due && !done,
+   donc une tâche qui reçoit une date en sort d'elle-même (pas de hook fragile).
+   ============================================================ */
+const stripAccents = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function parseQuickTask(input) {
+  const now = new Date();
+  const projects = state.projects || [], cats = state.categories || [];
+  let text = String(input || '').trim();
+  const out = { title: '', due: '', dueTime: '', prio: 'med', projectId: '', catId: '' };
+  const cut = (t, m) => (t.slice(0, m.index) + ' ' + t.slice(m.index + m[0].length)).replace(/\s{2,}/g, ' ').trim();
+  let m, prioSet = false;
+
+  // priorité : !haute / !moyenne / !basse (+ synonymes), ou !!! / !! / !
+  m = text.match(/(?:^|\s)!(haute?|moyenne?|basse?|urgente?|importante?)\b/i);
+  if (m) { const w = stripAccents(m[1]); out.prio = /haut|urgent|import/.test(w) ? 'high' : /moy/.test(w) ? 'med' : 'low'; prioSet = true; text = cut(text, m); }
+  if (!prioSet) { m = text.match(/(?:^|\s)(!{1,3})(?=\s|$)/); if (m) { out.prio = m[1].length === 3 ? 'high' : m[1].length === 2 ? 'med' : 'low'; text = cut(text, m); } }
+
+  // projet (#nom) et agenda (@nom) : seulement s'ils correspondent à un existant
+  const findByName = (arr, q) => { const nq = stripAccents(q); return arr.find(x => stripAccents(x.name) === nq) || arr.find(x => stripAccents(x.name).startsWith(nq)) || arr.find(x => stripAccents(x.name).includes(nq)); };
+  m = text.match(/(?:^|\s)#([\p{L}0-9][\p{L}0-9 _-]*)$/u) || text.match(/(?:^|\s)#([\p{L}0-9][\p{L}0-9_-]*)/u);
+  if (m) { const p = findByName(projects, m[1].trim()); if (p) { out.projectId = p.id; text = cut(text, m); } }
+  m = text.match(/(?:^|\s)@([\p{L}0-9][\p{L}0-9 _-]*)$/u) || text.match(/(?:^|\s)@([\p{L}0-9][\p{L}0-9_-]*)/u);
+  if (m) { const c = findByName(cats, m[1].trim()); if (c) { out.catId = c.id; text = cut(text, m); } }
+
+  // heure : midi/minuit, ou 15h / 15h30 / à 9h / 9:00
+  m = text.match(/(?:^|\s)(midi|minuit)\b/i);
+  if (m) { out.dueTime = /midi/i.test(m[1]) ? '12:00' : '00:00'; text = cut(text, m); }
+  if (!out.dueTime) { m = text.match(/(?:^|\s)(?:a |à )?(\d{1,2})\s*[:h]\s*(\d{2})?\b/i); if (m) { const h = Number(m[1]), mi = m[2] ? Number(m[2]) : 0; if (h < 24 && mi < 60) { out.dueTime = `${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}`; text = cut(text, m); } } }
+
+  // date : mots-clés relatifs, jour de semaine, « 15 août », « 15/08 », « le 15 »
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const setDue = d => { out.due = ymd(d); };
+  (function tryDate() {
+    let mm;
+    if (mm = text.match(/(?:^|\s)(aujourd'?hui|auj)\b/i)) { setDue(today); text = cut(text, mm); return; }
+    if (mm = text.match(/(?:^|\s)apr[eè]s[- ]demain\b/i)) { setDue(addDays(today, 2)); text = cut(text, mm); return; }
+    if (mm = text.match(/(?:^|\s)demain\b/i)) { setDue(addDays(today, 1)); text = cut(text, mm); return; }
+    if (mm = text.match(/(?:^|\s)ce soir\b/i)) { setDue(today); if (!out.dueTime) out.dueTime = '19:00'; text = cut(text, mm); return; }
+    if (mm = text.match(/(?:^|\s)dans (\d{1,3}) (jours?|semaines?)\b/i)) { setDue(addDays(today, Number(mm[1]) * (/sem/i.test(mm[2]) ? 7 : 1))); text = cut(text, mm); return; }
+    if (mm = text.match(/(?:^|\s)dans une semaine\b/i)) { setDue(addDays(today, 7)); text = cut(text, mm); return; }
+    for (let i = 0; i < 7; i++) { const re = new RegExp(`(?:^|\\s)${DOW_LONG[i].replace('é', '[eé]')}\\b`, 'i'); if (mm = text.match(re)) { let delta = (i - today.getDay() + 7) % 7; if (delta === 0) delta = 7; setDue(addDays(today, delta)); text = cut(text, mm); return; } }
+    for (let i = 0; i < 12; i++) { const short = stripAccents(MONTHS[i]).slice(0, 4); const re = new RegExp(`(?:^|\\s)(?:le\\s+)?(\\d{1,2})\\s+(${stripAccents(MONTHS[i])}|${short})\\w*`, 'i'); const sm = stripAccents(text).match(re); if (sm) { const day = Number(sm[1]); let d = new Date(today.getFullYear(), i, day); if (d < today) d = new Date(today.getFullYear() + 1, i, day); setDue(d); const idx = stripAccents(text).indexOf(sm[0]); text = (text.slice(0, idx) + ' ' + text.slice(idx + sm[0].length)).replace(/\s{2,}/g, ' ').trim(); return; } }
+    if (mm = text.match(/(?:^|\s)(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/)) { const day = Number(mm[1]), mo = Number(mm[2]) - 1; let y = mm[3] ? Number(mm[3]) : today.getFullYear(); if (y < 100) y += 2000; if (mo >= 0 && mo < 12 && day >= 1 && day <= 31) { let d = new Date(y, mo, day); if (!mm[3] && d < today) d = new Date(y + 1, mo, day); setDue(d); text = cut(text, mm); } return; }
+    if (mm = text.match(/(?:^|\s)le (\d{1,2})\b/i)) { const day = Number(mm[1]); if (day >= 1 && day <= 31) { let d = new Date(today.getFullYear(), today.getMonth(), day); if (d < today) d = new Date(today.getFullYear(), today.getMonth() + 1, day); setDue(d); text = cut(text, mm); } return; }
+  })();
+
+  out.title = text.replace(/\s{2,}/g, ' ').trim();
+  return out;
+}
+
+// date « parlante » pour l'aperçu et les confirmations
+function friendlyDate(ymdStr) {
+  if (!ymdStr) return 'sans date';
+  const d = parseYmd(ymdStr), t = new Date(); t.setHours(0, 0, 0, 0);
+  const diff = Math.round((d - t) / 86400000);
+  if (diff === 0) return "aujourd'hui";
+  if (diff === 1) return 'demain';
+  if (diff === -1) return 'hier';
+  if (diff > 1 && diff < 7) return DOW_LONG[d.getDay()];
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+// barre de saisie rapide (id unique par emplacement : 'qaTasks', 'qaHome'…)
+function quickAddHtml(id) {
+  return `<div class="quick-add">
+    <div class="qa-row"><span class="qa-ico">${ICON_PLUS}</span>
+      <input id="${id}" class="qa-input" type="text" autocomplete="off" spellcheck="false"
+        placeholder="Ajouter vite : « Appeler Léa demain 15h !haute »"
+        oninput="quickPreview('${id}')" onkeydown="quickAddKey(event,'${id}')"></div>
+    <div class="qa-preview" id="${id}-pv"></div>
+  </div>`;
+}
+function quickPreviewText(p) {
+  const chips = [];
+  chips.push(p.due ? `<b>${esc(friendlyDate(p.due))}</b>` : `<span class="qa-inbox">à trier (aucune date)</span>`);
+  if (p.dueTime) chips.push(esc(p.dueTime));
+  if (p.prio !== 'med') chips.push(`<span style="color:${prioCol(p.prio)}">priorité ${PRIO_LABEL[p.prio].toLowerCase()}</span>`);
+  const pr = p.projectId ? projById(p.projectId) : null; if (pr) chips.push(`projet « ${esc(pr.name)} »`);
+  const c = p.catId ? catById(p.catId) : null; if (c) chips.push(`agenda « ${esc(c.name)} »`);
+  const titre = p.title ? esc(p.title) : `<span class="qa-dim">(tape un intitulé)</span>`;
+  return `<span class="qa-pv-title">${titre}</span><span class="qa-pv-sep">›</span>${chips.join(' · ')}`;
+}
+function quickPreview(id) {
+  const el = $(id), pv = $(id + '-pv'); if (!el || !pv) return;
+  const v = el.value.trim();
+  if (!v) { pv.className = 'qa-preview'; pv.innerHTML = ''; return; }
+  pv.className = 'qa-preview show';
+  pv.innerHTML = quickPreviewText(parseQuickTask(v));
+}
+function quickAddKey(ev, id) {
+  if (ev.key === 'Enter') { ev.preventDefault(); quickAddCreate(id); }
+  else if (ev.key === 'Escape') { const el = $(id); if (el) { el.value = ''; quickPreview(id); } }
+}
+function quickAddCreate(id) {
+  const el = $(id); if (!el) return;
+  const v = el.value.trim(); if (!v) return;
+  const p = parseQuickTask(v);
+  if (!p.title) { showToast('Ajoute un intitulé à la tâche'); return; }
+  const t = { id: uid(), done: false, title: p.title, due: p.due, start: '', dueTime: p.dueTime,
+    dueEnd: '', prio: p.prio, catId: p.catId, projectId: p.projectId, note: '' };
+  if (!p.due) t.inbox = true;                       // capture sans date → réception
+  (state.tasks = state.tasks || []).push(t);
+  save();
+  showToast(p.due ? `Ajouté : « ${p.title} » (${friendlyDate(p.due)}${p.dueTime ? ' ' + p.dueTime : ''})`
+                  : `Ajouté à la réception : « ${p.title} »`);
+  render();
+  const again = $(id); if (again) { again.value = ''; again.focus(); }
+}
+
+/* ---- Boîte de réception : tâches capturées sans date, à trier ---- */
+function inboxTasks() { return (state.tasks || []).filter(t => t.inbox && !t.due && !t.done && catVisible(t.catId)); }
+function inboxBlockHtml() {
+  const items = inboxTasks(); if (!items.length) return '';
+  return `<div class="inbox-block">
+    <div class="inbox-head">Boîte de réception <span class="inbox-count">${items.length}</span><span class="inbox-sub">à trier</span></div>
+    ${items.map(t => `<div class="inbox-item">
+      <span class="inbox-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${esc(t.title)}</span>
+      <span class="inbox-actions">
+        <button class="inbox-btn" onclick="triageInbox('${t.id}','today',event)">Aujourd'hui</button>
+        <button class="inbox-btn" onclick="triageInbox('${t.id}','tomorrow',event)">Demain</button>
+        <button class="inbox-btn ghost" onclick="openPage('tasks','${t.id}')">Ranger…</button>
+      </span>
+    </div>`).join('')}
+  </div>`;
+}
+function triageInbox(id, when, ev) {
+  if (ev) ev.stopPropagation();
+  const t = (state.tasks || []).find(x => x.id === id); if (!t) return;
+  t.due = ymd(when === 'tomorrow' ? addDays(new Date(), 1) : new Date());
+  delete t.inbox;
+  save(); render();
+  showToast(`« ${t.title} » → ${friendlyDate(t.due)}`);
+}
+
+/* ---- Tâches en retard : report groupé « Tout reporter à aujourd'hui » ---- */
+function overdueTasks() { const tk = ymd(new Date()); return (state.tasks || []).filter(t => !t.done && t.due && t.due < tk && catVisible(t.catId)); }
+function overdueBarHtml() {
+  const n = overdueTasks().length; if (!n) return '';
+  return `<div class="overdue-bar">
+    <span class="overdue-txt">${n} tâche${n > 1 ? 's' : ''} en retard</span>
+    <button class="overdue-btn" onclick="rescheduleOverdue()">Tout reporter à aujourd'hui</button>
+  </div>`;
+}
+function rescheduleOverdue() {
+  const list = overdueTasks(); if (!list.length) return;
+  const tk = ymd(new Date());
+  list.forEach(t => { t.due = tk; if (t.inbox) delete t.inbox; });
+  save(); render();
+  showToast(`${list.length} tâche${list.length > 1 ? 's' : ''} reportée${list.length > 1 ? 's' : ''} à aujourd'hui`);
+}
+
+/* ---- Petit toast de confirmation (partagé) ---- */
+let toastTimer = null;
+function showToast(msg) {
+  let el = $('appToast');
+  if (!el) { el = document.createElement('div'); el.id = 'appToast'; el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
 function renderTasksSpace() {
   const cfg = tasksSpaceCfg();
   const today = ymd(new Date());
@@ -4291,6 +4514,9 @@ function renderTasksSpace() {
       <span class="space-count">${nTodo} à faire</span>
     </div>
     ${taskKpisHtml()}
+    ${quickAddHtml('qaTasks')}
+    ${overdueBarHtml()}
+    ${inboxBlockHtml()}
     <div class="space-bar">
       <span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span>
       <span style="flex:1"></span>
@@ -8298,8 +8524,18 @@ function toggleTask(id, ev) {
 }
 window.toggleTask = toggleTask;
 
+// reporter une tâche à demain (utilisé par le glissement vers la gauche)
+function rescheduleTaskTomorrow(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  t.due = ymd(addDays(new Date(), 1));
+  if (t.inbox) delete t.inbox;
+  save(); render();
+  showToast(`« ${t.title} » reporté à demain`);
+}
+
 /* ============================================================
-   GLISSER POUR COCHER (tactile) — listes du jour
+   GLISSER POUR COCHER (→) / REPORTER À DEMAIN (←) — tactile, listes du jour
    ------------------------------------------------------------
    Un glissement horizontal sur une tâche (accueil, calendrier, agenda) la
    coche / décoche, sans ouvrir sa fiche. Pendant le geste, la ligne suit le
@@ -8324,7 +8560,7 @@ function swipeWrap(s) {
   while (el.firstChild) fg.appendChild(el.firstChild);
   const bg = document.createElement('div');
   bg.className = 'ag-swipe-bg';
-  bg.innerHTML = '<span class="ag-swipe-ico">✓</span>';
+  bg.innerHTML = '<span class="sw-done">✓ Fait</span><span class="sw-snooze">→ Demain</span>';
   el.append(bg, fg);
   el.classList.add('swiping');
   el.style.padding = '0';
@@ -8353,9 +8589,10 @@ document.addEventListener('touchmove', e => {
   if (!s.horiz) return;
   e.preventDefault();
   s.dx = dx;
+  const right = dx >= 0;                            // droite = cocher, gauche = reporter à demain
   s.fg.style.transform = `translateX(${dx}px)`;
-  s.bg.style.justifyContent = dx >= 0 ? 'flex-start' : 'flex-end';
-  s.bg.classList.toggle('ready', Math.abs(dx) >= SWIPE_COMMIT);
+  s.bg.style.justifyContent = right ? 'flex-start' : 'flex-end';
+  s.bg.className = `ag-swipe-bg ${right ? 'to-done' : 'to-snooze'}${Math.abs(dx) >= SWIPE_COMMIT ? ' ready' : ''}`;
 }, { passive: false });
 
 function swipeEnd() {
@@ -8364,9 +8601,11 @@ function swipeEnd() {
   swipeSuppressClick = true;                       // neutralise le clic qui suit le geste
   setTimeout(() => { swipeSuppressClick = false; }, 450);
   if (Math.abs(s.dx) >= SWIPE_COMMIT) {
+    const right = s.dx >= 0;
     s.fg.style.transition = 'transform .16s ease-out';
-    s.fg.style.transform = `translateX(${s.dx >= 0 ? innerWidth : -innerWidth}px)`;
-    setTimeout(() => toggleTask(s.id), 120);       // render() reconstruit la liste
+    s.fg.style.transform = `translateX(${right ? innerWidth : -innerWidth}px)`;
+    // droite = cocher/décocher · gauche = reporter à demain (render() reconstruit la liste)
+    setTimeout(() => right ? toggleTask(s.id) : rescheduleTaskTomorrow(s.id), 120);
   } else {
     s.fg.style.transition = 'transform .16s ease-out';
     s.fg.style.transform = 'translateX(0)';
@@ -12626,6 +12865,29 @@ $$('.overlay').forEach(o => o.addEventListener('mousedown', e => { if (e.target 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeCtxMenu(); closeModals(); }
   if (e.key === 'Enter' && $('itemOverlay').classList.contains('show') && e.target.id === 'fTitle') saveItem();
+});
+
+/* ---------- Raccourcis clavier (ordinateur) ----------
+   Touches simples, ignorées quand on tape dans un champ ou qu'une fenêtre est ouverte,
+   et quand une touche de modification est enfoncée (pour ne pas gêner le navigateur). */
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const ae = document.activeElement;
+  if (ae && (/(INPUT|TEXTAREA|SELECT)/.test(ae.tagName) || ae.isContentEditable)) return;
+  if (document.querySelector('.overlay.show')) return;
+  switch (e.key) {
+    case 'n': e.preventDefault(); openModal('task'); break;
+    case 'e': e.preventDefault(); openModal('event'); break;
+    case 't': e.preventDefault(); cursor = new Date(); render(); break;
+    case '/': {
+      e.preventDefault();
+      let qa = $('qaTasks') || $('qaHome');
+      if (!qa) { openSpace('tasks'); qa = $('qaTasks'); }
+      if (qa) qa.focus();
+      break;
+    }
+    case '?': showToast("Raccourcis : n = tâche · e = événement · t = aujourd'hui · / = saisie rapide"); break;
+  }
 });
 
 
