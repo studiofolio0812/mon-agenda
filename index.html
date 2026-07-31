@@ -777,11 +777,14 @@
     grid-template-columns: 18px minmax(0, 1fr) var(--c-projet, 152px) var(--c-agenda, 132px) var(--c-prio, 102px) var(--c-due, 96px);
     align-items: center; gap: 12px; padding: 9px 4px; border-top: 1px solid var(--border); }
   .hw-task:first-child { border-top: none; }
-  /* poignées invisibles pour ajuster la largeur des colonnes (un filet apparaît au survol) */
+  /* poignées invisibles pour ajuster la largeur des colonnes (un filet apparaît au survol).
+     TOUT l'overlay est transparent aux clics SAUF une fine bande au bord de chaque colonne
+     (le ::before) : les cases dessous restent donc entièrement cliquables. */
   .hw-grips { position: absolute; inset: 0; display: grid; gap: 12px; padding: 0 4px; pointer-events: none;
     grid-template-columns: 18px minmax(0, 1fr) var(--c-projet, 152px) var(--c-agenda, 132px) var(--c-prio, 102px) var(--c-due, 96px); }
-  .hw-grip { position: relative; pointer-events: auto; cursor: col-resize; }
-  .hw-grip::before { content: ''; position: absolute; top: 0; bottom: 0; left: -9px; width: 16px; }
+  .hw-grip { position: relative; pointer-events: none; }        /* la case entière NE capte PAS le curseur */
+  .hw-grip::before { content: ''; position: absolute; top: 0; bottom: 0; left: -9px; width: 14px;
+    pointer-events: auto; cursor: col-resize; }                 /* seule cette fine bande est active */
   .hw-grip::after { content: ''; position: absolute; top: 4px; bottom: 4px; left: -2px; width: 2px; border-radius: 2px;
     background: var(--accent); opacity: 0; transition: opacity .12s; }
   .hw-grip:hover::after, .hw-grip.on::after { opacity: .5; }
@@ -857,6 +860,9 @@
   .hw-horo-maj { margin-top: 9px; font-size: 11.5px; }
   .hw-horo-maj.frais { color: var(--accent); }
   .hw-horo-maj.vieux { color: var(--text-faint); }
+
+  /* ajouter un widget quotidien */
+  .hw-addrow { margin-top: 14px; }
 
   /* widgets masqués */
   .hw-hidden { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
@@ -4674,19 +4680,31 @@ function homeCfg() {
   if (!Array.isArray(c.order)) c.order = [];
   if (!Array.isArray(c.hidden)) c.hidden = [];
   if (!c.collapsed || typeof c.collapsed !== 'object') c.collapsed = {};
+  // widgets « quotidiens » ajoutés par l'utilisatrice (chacun lit une note), clé 'feed:<id>'
+  if (!Array.isArray(c.feeds)) c.feeds = [];
   // largeurs des colonnes du Focus, ajustables à la souris
   if (!c.cols || typeof c.cols !== 'object') c.cols = {};
   Object.keys(HOME_COLS_DEFAUT).forEach(k => {
     const v = Number(c.cols[k]);
     c.cols[k] = (v >= HOME_COL_MIN && v <= HOME_COL_MAX) ? Math.round(v) : HOME_COLS_DEFAUT[k];
   });
-  const ordre = c.order.filter(k => HOME_WIDGETS[k]);
+  const ordre = c.order.filter(k => homeW(k));
   HOME_ORDER_DEFAUT.forEach(k => { if (!ordre.includes(k)) ordre.push(k); });
+  c.feeds.forEach(f => { const k = 'feed:' + f.id; if (!ordre.includes(k)) ordre.push(k); });
   c.order = ordre;
-  c.hidden = c.hidden.filter(k => HOME_WIDGETS[k]);
+  c.hidden = c.hidden.filter(k => homeW(k));
   return c;
 }
 const homeVisibleOrder = () => { const c = homeCfg(); return c.order.filter(k => !c.hidden.includes(k)); };
+// définition d'un widget par sa clé : soit un widget intégré, soit un « feed » (note du jour)
+function homeW(key) {
+  if (HOME_WIDGETS[key]) return HOME_WIDGETS[key];
+  if (typeof key === 'string' && key.startsWith('feed:')) {
+    const f = ((state.home && state.home.feeds) || []).find(x => 'feed:' + x.id === key);
+    if (f) return { label: f.label, feed: f, body: () => hwNoteFeed(f.note) };
+  }
+  return null;
+}
 
 function homeMove(key, dir, ev) {
   if (ev) ev.stopPropagation();
@@ -4746,9 +4764,14 @@ const hwEmpty = (msg, cta, action) =>
   `<div class="hw-empty"><p>${msg}</p>${cta ? `<button class="hw-cta" onclick="${action}">${cta}</button>` : ''}</div>`;
 
 function hwCard(key) {
-  const c = homeCfg(), w = HOME_WIDGETS[key];
+  const c = homeCfg(), w = homeW(key);
+  if (!w) return '';
   const replie = !!c.collapsed[key];
   const vis = homeVisibleOrder(), i = vis.indexOf(key);
+  // widget intégré → « masquer » (revient via les pastilles) ; widget quotidien ajouté → « retirer »
+  const closeBtn = w.feed
+    ? `<button class="hw-tool" onclick="homeRemoveFeed('${w.feed.id}',event)" title="Retirer ce widget">✕</button>`
+    : `<button class="hw-tool" onclick="homeHide('${key}',event)" title="Masquer ce widget">✕</button>`;
   return `<section class="hw ${w.wide ? 'hw-wide' : ''} ${replie ? 'is-collapsed' : ''}">
     <header class="hw-head">
       <button class="hw-chev" onclick="homeToggleCollapse('${key}',event)" title="${replie ? 'Déplier' : 'Replier'}">
@@ -4758,7 +4781,7 @@ function hwCard(key) {
       <span class="hw-tools">
         <button class="hw-tool" onclick="homeMove('${key}',-1,event)" ${i <= 0 ? 'disabled' : ''} title="Monter">↑</button>
         <button class="hw-tool" onclick="homeMove('${key}',1,event)" ${i >= vis.length - 1 ? 'disabled' : ''} title="Descendre">↓</button>
-        <button class="hw-tool" onclick="homeHide('${key}',event)" title="Masquer ce widget">✕</button>
+        ${closeBtn}
       </span>
     </header>
     ${replie ? '' : `<div class="hw-body">${w.body()}</div>`}
@@ -4918,23 +4941,30 @@ function texteExtrait(html, max) {
   return t.length > max ? t.slice(0, max) + '…' : t;
 }
 
-/* ---- Horoscope : alimenté de l'extérieur (routine Claude) ----
-   Aucune donnée nouvelle à synchroniser : le texte vit dans une NOTE ordinaire au
-   titre convenu, que la routine réécrit chaque matin via le connecteur
-   (agenda_modifier_note). Le widget ne fait que la lire et signaler si elle date. */
-const HOROSCOPE_TITRE = 'Horoscope du jour';
-const horoscopeNote = () => (state.notes || []).find(n => (n.title || '').trim().toLowerCase() === HOROSCOPE_TITRE.toLowerCase());
-function homeCreateHoroscope() {
-  (state.notes = state.notes || []).push({ id: uid(), title: HOROSCOPE_TITRE, body: '', color: PALETTE[4],
+/* ---- Widgets « quotidiens » : une note réécrite chaque matin par une routine Claude ----
+   L'horoscope en est le premier exemple. Généralisé : Clémence peut ajouter autant de
+   widgets qu'elle veut (citation, idée de post, météo…), chacun branché sur une NOTE
+   ordinaire au titre convenu que la routine réécrit via agenda_modifier_note. Aucune
+   donnée nouvelle à synchroniser : ce sont de simples notes. */
+const noteByTitle = title => (state.notes || []).find(n => (n.title || '').trim().toLowerCase() === String(title || '').trim().toLowerCase());
+const jsStr = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+// suggestions proposées d'un clic dans le menu « + Widget quotidien »
+const FEED_SUGGESTIONS = ['Citation du jour', 'Idée de post Instagram', 'Astuce productivité du jour', 'Météo du jour', 'Le chiffre du jour'];
+
+function homeCreateFeedNote(title) {
+  title = String(title || '').trim(); if (!title) return;
+  if (!noteByTitle(title)) (state.notes = state.notes || []).push({ id: uid(), title, body: '', color: PALETTE[4],
     folderId: '', projectId: '', eventId: '', fav: false, updated: Date.now() });
   save(); render();
-  showToast(`Note « ${HOROSCOPE_TITRE} » créée — ta routine peut la remplir`);
+  showToast(`Note « ${title} » créée — ta routine peut la remplir`);
 }
-window.homeCreateHoroscope = homeCreateHoroscope;
-function hwHoroscope() {
-  const n = horoscopeNote();
-  if (!n) return hwEmpty(`Aucune note « ${HOROSCOPE_TITRE} ».<br>Crée-la une fois : ta routine Claude la remplira ensuite chaque matin.`,
-    'Créer la note', 'homeCreateHoroscope()');
+window.homeCreateFeedNote = homeCreateFeedNote;
+
+// rendu générique d'un widget « note du jour » (partagé par l'horoscope et les widgets ajoutés)
+function hwNoteFeed(noteTitle) {
+  const n = noteByTitle(noteTitle);
+  if (!n) return hwEmpty(`Aucune note « ${esc(noteTitle)} ».<br>Crée-la une fois : ta routine Claude la remplira ensuite chaque matin.`,
+    'Créer la note', `homeCreateFeedNote('${jsStr(noteTitle)}')`);
   const texte = texteExtrait(n.body, 420);
   if (!texte) return hwEmpty('La note existe, mais elle est encore vide.<br>Ta routine la remplira au prochain passage.',
     'Ouvrir la note', `openNote('${n.id}')`);
@@ -4945,6 +4975,41 @@ function hwHoroscope() {
     <div class="hw-horo-maj ${dujour ? 'frais' : 'vieux'}">${dujour ? "Mis à jour aujourd'hui" : `Dernière mise à jour : ${esc(friendlyDate(jour))}`}</div>
   </div>`;
 }
+const hwHoroscope = () => hwNoteFeed('Horoscope du jour');
+
+/* ajout / retrait des widgets quotidiens personnalisés (clé de widget = 'feed:<id>') */
+function homeAddFeed(label) {
+  label = String(label || '').trim(); if (!label) return;
+  const c = homeCfg();
+  if (c.feeds.some(f => f.note.trim().toLowerCase() === label.toLowerCase()) || label.toLowerCase() === 'horoscope du jour') { showToast('Ce widget existe déjà'); return; }
+  const f = { id: 'f' + uid().slice(1, 6), label, note: label };
+  c.feeds.push(f);
+  c.order.push('feed:' + f.id);
+  c.hidden = c.hidden.filter(k => k !== 'feed:' + f.id);
+  if (!noteByTitle(label)) (state.notes = state.notes || []).push({ id: uid(), title: label, body: '', color: PALETTE[4],
+    folderId: '', projectId: '', eventId: '', fav: false, updated: Date.now() });
+  save(); render();
+  showToast(`Widget « ${label} » ajouté — ta routine peut le remplir`);
+}
+function homeRemoveFeed(id, ev) {
+  if (ev) ev.stopPropagation();
+  const c = homeCfg(), k = 'feed:' + id;
+  c.feeds = c.feeds.filter(f => f.id !== id);
+  c.order = c.order.filter(x => x !== k);
+  c.hidden = c.hidden.filter(x => x !== k);
+  save(); render();
+  showToast('Widget retiré (la note reste dans tes notes)');
+}
+function homeAddFeedMenu(ev) {
+  const existing = new Set((homeCfg().feeds || []).map(f => f.note.trim().toLowerCase()).concat('horoscope du jour'));
+  const items = FEED_SUGGESTIONS.filter(s => !existing.has(s.toLowerCase())).map(s => ({ value: s, label: s }));
+  items.push({ value: '__custom__', label: '✎ Autre… (nom personnalisé)' });
+  openStyledMenu(ev.currentTarget, [{ label: 'Ajouter un widget quotidien', items }], '', v => {
+    if (v === '__custom__') { const nom = prompt('Nom du widget (ce sera aussi le titre de la note que ta routine réécrira chaque matin) :'); if (nom) homeAddFeed(nom); }
+    else if (v) homeAddFeed(v);
+  });
+}
+window.homeAddFeed = homeAddFeed; window.homeRemoveFeed = homeRemoveFeed; window.homeAddFeedMenu = homeAddFeedMenu;
 
 function hwBilan() {
   const d = bilanData();
@@ -4997,12 +5062,15 @@ function renderHomeSpace() {
     </div>
     ${overdueBarHtml()}
     ${inboxBlockHtml()}
-    <div class="hw-grid">${homeVisibleOrder().map(k => hwCard(k)).join('')}</div>`;
+    <div class="hw-grid">${homeVisibleOrder().map(k => hwCard(k)).join('')}</div>
+    <div class="hw-addrow">
+      <button class="hw-cta" onclick="homeAddFeedMenu(event)" title="Ajouter un widget alimenté chaque matin par une routine Claude">＋ Widget quotidien</button>
+    </div>`;
 
   // widgets masqués : rangée de pastilles pour les réafficher (même patron que les notes)
   if (c.hidden.length) html += `<div class="hw-hidden">
     <span class="hw-hidden-lbl">Widgets masqués :</span>
-    ${c.hidden.map(k => `<button class="hw-chip" onclick="homeShow('${k}',event)" title="Réafficher">${HOME_WIDGETS[k].label} <span>＋</span></button>`).join('')}
+    ${c.hidden.map(k => `<button class="hw-chip" onclick="homeShow('${k}',event)" title="Réafficher">${esc((homeW(k) || {}).label || '')} <span>＋</span></button>`).join('')}
   </div>`;
 
   html += `</div>`;
