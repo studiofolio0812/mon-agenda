@@ -950,18 +950,46 @@
   /* align-content:start → les rangées (en-tête / bandeau journée / grille) gardent
      leur hauteur naturelle et ne s'étirent jamais pour remplir le vide. */
   .time-grid { display: grid; height: 100%; min-height: 900px; align-content: start; }
-  /* Vue Jour (ordinateur) : grille à gauche, colonne widgets à droite, poignée entre les deux */
-  .day-split { display: grid; grid-template-columns: minmax(0, 1fr) var(--day-aside, 340px); align-items: stretch; min-height: 100%; }
+  /* Vue Jour (ordinateur) : colonne gauche + grille centrale + colonne widgets, deux poignées */
+  .day-split { display: grid; grid-template-columns: var(--day-left, 300px) minmax(0, 1fr) var(--day-aside, 340px); align-items: stretch; min-height: 100%; }
   .day-main { min-width: 0; }
   .day-aside { position: relative; border-left: 1px solid var(--border); background: var(--surface); }
+  .day-left { border-left: none; border-right: 1px solid var(--border); }
   .day-aside-inner { position: sticky; top: 0; max-height: calc(100vh - 120px); overflow-y: auto;
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
   .day-aside .dw { margin-bottom: 0; }
   .day-grip { position: absolute; left: -4px; top: 0; bottom: 0; width: 9px; cursor: col-resize; z-index: 6; }
+  .day-grip.day-grip-r { left: auto; right: -4px; }
   .day-grip::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: transparent; transition: background .12s; }
-  .day-grip:hover::before, .day-grip.drag::before { background: var(--accent); width: 2px; left: 3px; }
+  .day-grip.day-grip-r::before { left: auto; right: 4px; }
+  .day-grip:hover::before, .day-grip.drag::before { background: var(--accent); width: 2px; }
   .da-head { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; }
   .da-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
+  /* Colonne gauche de la vue Jour */
+  .dl-sec-t { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .dl-count { background: var(--accent-soft); color: var(--text); border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; }
+  .dl-hint { font-size: 11.5px; color: var(--text-faint); line-height: 1.4; margin: -4px 0 8px; }
+  .dl-tasks, .dl-habs { display: flex; flex-direction: column; gap: 2px; }
+  .dl-task { display: flex; align-items: flex-start; gap: 8px; padding: 5px 6px; border-radius: var(--radius-sm); }
+  .dl-task:hover { background: var(--surface-2); }
+  .dl-task .task-check { width: 15px; height: 15px; flex: none; margin-top: 1px; cursor: pointer; }
+  .dl-task-title { font-size: 13px; line-height: 1.35; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+  .dl-task.done .dl-task-title { text-decoration: line-through; color: var(--text-faint); }
+  .dl-task-time { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .dl-late { cursor: grab; }
+  .dl-late:active { cursor: grabbing; }
+  .dl-late.dragging { opacity: .5; }
+  .dl-late-when { font-size: 11px; color: #b4544f; margin-left: 2px; }
+  .dl-pull { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-soft); cursor: pointer; font-size: 14px; line-height: 1; }
+  .dl-pull:hover { border-color: var(--accent); color: var(--accent); }
+  .dl-hab { display: flex; align-items: center; gap: 8px; padding: 5px 6px; }
+  .dl-hab .habit-check { width: 15px; height: 15px; flex: none; display: grid; place-items: center; font-size: 10px; color: #fff; cursor: pointer; border-radius: 4px; border-width: 1.6px; border-style: solid; }
+  .dl-hab-name { font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+  .dl-hab.done .dl-hab-name { color: var(--text-faint); }
+  .dl-hab-streak { font-size: 11.5px; flex: none; }
+  .dl-empty { font-size: 12.5px; color: var(--text-faint); padding: 2px 6px; }
+  .dl-intention { width: 100%; min-height: 64px; resize: vertical; font-family: var(--font-sans); font-size: 13px; line-height: 1.4; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .dl-intention:focus { outline: none; border-color: var(--accent); }
   .tg-head { display: grid; position: sticky; top: -18px; background: var(--bg); z-index: 5; }
   .tg-head .corner { }
   .tg-col-head { text-align: center; padding: 8px 4px; border-left: 1px solid var(--border); }
@@ -1116,6 +1144,18 @@
     border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); cursor: pointer; }
   .rev-noteitem:hover { border-color: var(--border-strong); }
   .rev-noteico { display: inline-flex; color: var(--text-faint); flex: none; }
+  .rev-projlist { display: flex; flex-direction: column; gap: 10px; }
+  .rev-proj { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer; background: var(--surface-2); transition: border-color .12s; }
+  .rev-proj:hover { border-color: var(--border-strong); }
+  .rev-proj-top { display: flex; align-items: center; gap: 8px; }
+  .rev-proj-name { font-size: 13.5px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rev-proj-pct { font-size: 12.5px; font-weight: 600; color: var(--text-soft); flex: none; }
+  .rev-proj .hw-bar { margin: 6px 0 6px; }
+  .rev-proj-next { font-size: 12.5px; color: var(--text-soft); }
+  .rev-proj-na-lbl { color: var(--text-faint); }
+  .rev-proj-due { color: var(--text-faint); }
+  .rev-proj-done { color: var(--good, #46c07d); }
+  .rev-more-proj { font-size: 12px; color: var(--text-faint); text-align: center; margin-top: 2px; }
   .bl-wrap { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 10px; }
   .bl-chart-box { flex: 1 1 440px; min-width: 300px; }
   .bl-donut-box { flex: 0 0 290px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -1384,7 +1424,7 @@
   .health-chart-wrap { margin-top: 22px; }
   .health-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; margin-top: 16px; }
   .health-card-title { font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
-  .hc-mood, .hc-sleep, .hc-cm { width: 100%; height: auto; display: block; }
+  .hc-mood, .hc-sleep, .hc-cm, .hc-corr { width: 100%; height: auto; display: block; }
   .hc-grid { stroke: var(--border); stroke-width: 1; }
   .hc-grid-mid { stroke: var(--border-strong); }
   .hc-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -1393,6 +1433,20 @@
   .hc-avg { stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 4 3; }
   .hc-cycle { fill: #e35d6a; }
   .hc-label { font-size: 9.5px; fill: var(--text-faint); }
+  .hc-trend { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; opacity: .7; }
+  .hc-corr-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; padding: 12px 2px; }
+  .health-card-hint { font-size: 11px; font-weight: 400; color: var(--text-faint); margin-left: 8px; text-transform: none; letter-spacing: 0; }
+  /* Récap des notes du suivi santé */
+  .health-notes .hn-list { display: flex; flex-direction: column; gap: 8px; }
+  .hn-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer; background: var(--surface-2); transition: border-color .12s; }
+  .hn-item:hover { border-color: var(--border-strong); }
+  .hn-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .hn-date { font-size: 12.5px; font-weight: 600; text-transform: capitalize; }
+  .hn-mood { font-size: 11px; padding: 1px 8px; border-radius: 999px; }
+  .hn-sleep { font-size: 11px; color: var(--text-faint); }
+  .hn-text { font-size: 13px; color: var(--text-soft); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .hn-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
+  .hn-more { font-size: 12px; color: var(--text-faint); margin-top: 8px; text-align: center; }
   /* Navigation de période des graphiques santé */
   .health-charts-wrap { touch-action: pan-y; }
   .health-chart-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 18px 0 4px; }
@@ -4477,11 +4531,16 @@ function renderTimeGrid(nDays) {
   // Vue Jour sur ordinateur : colonne de droite (widgets du jour), largeur ajustable à la souris.
   // La grille reste seule sur téléphone et pour les vues Semaine / N jours.
   if (state.view === 'day' && !isMobile()) {
-    const w = Math.max(DAY_ASIDE_MIN, Math.min(DAY_ASIDE_MAX, state.dayAsideW || DAY_ASIDE_DEF));
-    canvas.innerHTML = `<div class="day-split" style="--day-aside:${w}px">
+    const wR = Math.max(DAY_ASIDE_MIN, Math.min(DAY_ASIDE_MAX, state.dayAsideW || DAY_ASIDE_DEF));
+    const wL = Math.max(DAY_LEFT_MIN, Math.min(DAY_LEFT_MAX, state.dayLeftW || DAY_LEFT_DEF));
+    canvas.innerHTML = `<div class="day-split" style="--day-left:${wL}px;--day-aside:${wR}px">
+      <aside class="day-aside day-left">
+        <div class="day-aside-inner">${dayLeftHtml()}</div>
+        <div class="day-grip day-grip-r" data-grip="left" title="Ajuster la largeur — double-clic pour réinitialiser"></div>
+      </aside>
       <div class="day-main">${strip}${gridHtml}</div>
       <aside class="day-aside">
-        <div class="day-grip" title="Ajuster la largeur — double-clic pour réinitialiser"></div>
+        <div class="day-grip" data-grip="aside" title="Ajuster la largeur — double-clic pour réinitialiser"></div>
         <div class="day-aside-inner">${dayAsideHtml()}</div>
       </aside>
     </div>`;
@@ -4502,9 +4561,10 @@ function renderTimeGrid(nDays) {
   }
 }
 
-/* ---- Colonne de droite de la vue Jour (ordinateur) : widgets du jour + poignée ---- */
+/* ---- Colonnes latérales de la vue Jour (ordinateur), largeurs ajustables ---- */
 const DAY_ASIDE_MIN = 240, DAY_ASIDE_MAX = 620, DAY_ASIDE_DEF = 340;
-// contenu de la colonne : les mêmes widgets quotidiens que l'onglet mobile « Widgets »
+const DAY_LEFT_MIN = 220, DAY_LEFT_MAX = 460, DAY_LEFT_DEF = 300;
+// COLONNE DROITE : les mêmes widgets quotidiens que l'onglet mobile « Widgets »
 function dayAsideHtml() {
   const c = homeCfg();
   const keys = c.order.filter(k => k === 'horoscope' || (typeof k === 'string' && k.startsWith('feed:')));
@@ -4519,27 +4579,105 @@ function dayAsideHtml() {
   inner += `<button class="hw-cta dw-add" onclick="homeAddFeedMenu(event)">＋ Widget quotidien</button>`;
   return inner;
 }
-// glissement de la poignée (calqué sur le redimensionnement des colonnes du Focus)
+// COLONNE GAUCHE : en retard (glissables), à faire, habitudes, intention du jour affiché
+function dayLeftHtml() {
+  const d = cursor, k = ymd(d), isTodayD = k === ymd(new Date());
+  // 1) tâches en retard (dues avant ce jour, non faites) — glissables sur la grille pour re-planifier
+  const overdue = (state.tasks || []).filter(t => !t.done && t.due && t.due < k && catVisible(t.catId))
+    .sort((a, b) => (a.due || '').localeCompare(b.due || ''));
+  const overdueSec = overdue.length ? `<div class="dl-sec">
+      <div class="dl-sec-t">En retard <span class="dl-count">${overdue.length}</span></div>
+      <div class="dl-hint">Glisse une tâche sur la journée, ou clique la flèche pour l'amener ${isTodayD ? "à aujourd'hui" : 'ce jour-là'}.</div>
+      <div class="dl-tasks">${overdue.map(t => {
+        const pc = prioCol(t.prio || 'med');
+        return `<div class="dl-task dl-late" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${t.id}">
+          <span class="task-check" style="border-color:${pc}" onclick="toggleTask('${t.id}',event)" title="Cocher"></span>
+          <span class="dl-task-title" onclick="openEdit('task','${t.id}',event)">${esc(t.title)} <span class="dl-late-when">${esc(friendlyDate(t.due))}</span></span>
+          <button class="dl-pull" onclick="rescheduleTaskToDay('${t.id}','${k}',event)" title="Amener à ce jour">→</button>
+        </div>`;
+      }).join('')}</div>
+    </div>` : '';
+  // 2) à faire ce jour-là
+  const tasks = (typeof tasksOn === 'function' ? tasksOn(d) : []).slice()
+    .sort((a, b) => (a.dueTime || '99:99').localeCompare(b.dueTime || '99:99'));
+  const tasksHtml = tasks.length ? tasks.map(t => {
+    const pc = prioCol(t.prio || 'med');
+    return `<div class="dl-task ${t.done ? 'done' : ''}">
+      <span class="task-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
+      <span class="dl-task-title" onclick="openEdit('task','${t.id}',event)">${t.dueTime ? `<span class="dl-task-time">${t.dueTime}</span> ` : ''}${esc(t.title)}</span>
+    </div>`;
+  }).join('') : `<div class="dl-empty">Rien de prévu ${isTodayD ? "aujourd'hui" : 'ce jour-là'}.</div>`;
+  // 3) habitudes du jour
+  const habs = (state.habits || []).filter(h => habitScheduledOn(h, d));
+  const habsHtml = habs.length ? habs.map(h => {
+    const col = h.color || '#eae8e4', done = habitDayDone(h, d), serie = habitStreak(h);
+    return `<div class="dl-hab ${done ? 'done' : ''}">
+      <span class="habit-check" style="border-color:${dotOf(col)};${done ? `background:${dotOf(col)}` : ''}" onclick="toggleHabitDay('${h.id}','${k}',event)" title="Cocher / décocher">${done ? '✓' : ''}</span>
+      <span class="dl-hab-name">${iconOf(h, 'habits', 12)}${esc(h.name)}</span>
+      ${serie > 0 ? `<span class="dl-hab-streak">${serie} 🔥</span>` : ''}
+    </div>`;
+  }).join('') : `<div class="dl-empty">Aucune habitude ce jour-là.</div>`;
+  // 4) intention du jour
+  const intention = (state.dayIntention || {})[k] || '';
+  return `${overdueSec}
+    <div class="dl-sec">
+      <div class="dl-sec-t">À faire</div>
+      <div class="dl-tasks">${tasksHtml}</div>
+    </div>
+    <div class="dl-sec">
+      <div class="dl-sec-t">Habitudes</div>
+      <div class="dl-habs">${habsHtml}</div>
+    </div>
+    <div class="dl-sec">
+      <div class="dl-sec-t">Intention du jour</div>
+      <textarea class="dl-intention" placeholder="Ma priorité, mon intention…" onchange="setDayIntention('${k}', this.value)">${esc(intention)}</textarea>
+    </div>`;
+}
+function setDayIntention(k, v) {
+  if (!state.dayIntention) state.dayIntention = {};
+  if (v && v.trim()) state.dayIntention[k] = v; else delete state.dayIntention[k];
+  save();
+}
+window.setDayIntention = setDayIntention;
+function rescheduleTaskToDay(id, k, ev) {
+  if (ev) ev.stopPropagation();
+  const t = state.tasks.find(x => x.id === id); if (!t) return;
+  t.due = k; if (t.inbox) delete t.inbox;
+  save(); render();
+  showToast('Tâche déplacée à ce jour');
+}
+window.rescheduleTaskToDay = rescheduleTaskToDay;
+// glissement des poignées (gauche et droite), calqué sur le redimensionnement des colonnes du Focus
 function wireDayAside() {
-  const grip = canvas.querySelector('.day-grip'), split = canvas.querySelector('.day-split');
-  if (!grip || !split) return;
-  const curW = () => parseInt(getComputedStyle(split).getPropertyValue('--day-aside')) || DAY_ASIDE_DEF;
-  grip.addEventListener('mousedown', e => {
-    e.preventDefault();
-    const startX = e.clientX, startW = curW();
-    grip.classList.add('drag'); document.body.style.cursor = 'col-resize';
-    const move = ev => {
-      const w = Math.max(DAY_ASIDE_MIN, Math.min(DAY_ASIDE_MAX, startW + (startX - ev.clientX)));
-      split.style.setProperty('--day-aside', w + 'px');
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
-      grip.classList.remove('drag'); document.body.style.cursor = '';
-      state.dayAsideW = curW(); save();
-    };
-    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  const split = canvas.querySelector('.day-split');
+  if (!split) return;
+  canvas.querySelectorAll('.day-grip').forEach(grip => {
+    const left = grip.dataset.grip === 'left';
+    const vname = left ? '--day-left' : '--day-aside';
+    const MIN = left ? DAY_LEFT_MIN : DAY_ASIDE_MIN, MAX = left ? DAY_LEFT_MAX : DAY_ASIDE_MAX, DEF = left ? DAY_LEFT_DEF : DAY_ASIDE_DEF;
+    const cur = () => parseInt(getComputedStyle(split).getPropertyValue(vname)) || DEF;
+    grip.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const startX = e.clientX, startW = cur();
+      grip.classList.add('drag'); document.body.style.cursor = 'col-resize';
+      const move = ev => {
+        // gauche : glisser à droite agrandit ; droite : glisser à gauche agrandit
+        const delta = left ? (ev.clientX - startX) : (startX - ev.clientX);
+        split.style.setProperty(vname, Math.max(MIN, Math.min(MAX, startW + delta)) + 'px');
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        grip.classList.remove('drag'); document.body.style.cursor = '';
+        if (left) state.dayLeftW = cur(); else state.dayAsideW = cur();
+        save();
+      };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+    grip.addEventListener('dblclick', () => {
+      if (left) state.dayLeftW = DAY_LEFT_DEF; else state.dayAsideW = DAY_ASIDE_DEF;
+      save(); split.style.setProperty(vname, DEF + 'px');
+    });
   });
-  grip.addEventListener('dblclick', () => { state.dayAsideW = DAY_ASIDE_DEF; save(); split.style.setProperty('--day-aside', DAY_ASIDE_DEF + 'px'); });
 }
 
 /* ============================================================
@@ -7552,6 +7690,53 @@ function healthCycleMedChartHtml(days) {
     ${meds}${cycles}${labels}</svg>`;
 }
 
+// ---- CORRÉLATION HUMEUR × SOMMEIL : nuage de points + droite de tendance ----
+// chaque point = un jour où humeur ET sommeil sont notés ; x = heures de sommeil, y = humeur.
+function healthMoodSleepChartHtml(days) {
+  const pts = [];
+  days.forEach(k => { const l = healthLogFor(k); if (l && l.mood != null && l.sleepHours != null) pts.push({ sleep: l.sleepHours, mood: l.mood, d: k }); });
+  if (pts.length < 3) return `<div class="hc-corr-empty">Il faut au moins 3 jours avec humeur <b>et</b> sommeil notés sur la période pour dessiner la tendance. Continue à remplir, elle apparaîtra toute seule.</div>`;
+  const W = 860, H = 220, x0 = 74, x1 = 846, top = 18, bottom = 172, MAXH = 12;
+  const xAt = h => x0 + Math.min(Math.max(h, 0), MAXH) / MAXH * (x1 - x0);
+  const yAt = m => bottom - (m + 3) * ((bottom - top) / 6);
+  let grid = '';
+  for (let m = -3; m <= 3; m++) grid += `<line x1="${x0}" y1="${yAt(m)}" x2="${x1}" y2="${yAt(m)}" class="hc-grid ${m === 0 ? 'hc-grid-mid' : ''}"/>`;
+  [0, 3, 6, 9, 12].forEach(h => { grid += `<line x1="${xAt(h)}" y1="${top}" x2="${xAt(h)}" y2="${bottom}" class="hc-grid"/><text x="${xAt(h)}" y="${bottom + 15}" class="hc-label" text-anchor="middle">${h}h</text>`; });
+  // droite de tendance (moindres carrés : humeur ~ sommeil)
+  const n = pts.length, sx = pts.reduce((s, p) => s + p.sleep, 0), sy = pts.reduce((s, p) => s + p.mood, 0);
+  const sxx = pts.reduce((s, p) => s + p.sleep * p.sleep, 0), sxy = pts.reduce((s, p) => s + p.sleep * p.mood, 0);
+  const denom = n * sxx - sx * sx;
+  let trend = '';
+  if (Math.abs(denom) > 1e-6) {
+    const a = (n * sxy - sx * sy) / denom, b = (sy - a * sx) / n, clamp = v => Math.max(-3, Math.min(3, v));
+    trend = `<line x1="${xAt(2)}" y1="${yAt(clamp(a * 2 + b))}" x2="${xAt(11)}" y2="${yAt(clamp(a * 11 + b))}" class="hc-trend"/>`;
+  }
+  const dots = pts.map(p => `<circle cx="${xAt(p.sleep)}" cy="${yAt(p.mood)}" r="4" fill="${dotOf(moodInfo(p.mood).color)}" stroke="var(--surface)" stroke-width="1.3"><title>${esc(fmtDateShort(p.d))} · ${esc(moodInfo(p.mood).label)} · ${p.sleep} h</title></circle>`).join('');
+  const yLabels = `<text x="${x0 - 8}" y="${yAt(3) + 3}" class="hc-axis" text-anchor="end">Hypomanie</text>
+    <text x="${x0 - 8}" y="${yAt(0) + 3}" class="hc-axis" text-anchor="end">Stable</text>
+    <text x="${x0 - 8}" y="${yAt(-3) + 3}" class="hc-axis" text-anchor="end">Dépression</text>`;
+  const xTitle = `<text x="${(x0 + x1) / 2}" y="${H - 3}" class="hc-axis" text-anchor="middle">Heures de sommeil</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-corr">${grid}${yLabels}${trend}${dots}${xTitle}</svg>`;
+}
+
+// ---- RÉCAP DES NOTES DU SUIVI : toutes les journées où une note libre existe ----
+function healthNotesHtml() {
+  const logs = (state.healthLogs || []).filter(l => l.note && l.note.trim()).sort((a, b) => b.date.localeCompare(a.date));
+  if (!logs.length) return `<div class="hn-empty">Aucune note pour l'instant. Ajoute une note libre à une journée : elle apparaîtra ici, sans avoir à remonter jour par jour.</div>`;
+  const shown = logs.slice(0, 40);
+  return `<div class="hn-list">${shown.map(l => {
+    const mi = l.mood != null ? moodInfo(l.mood) : null;
+    return `<div class="hn-item" onclick="setHealthEditDate('${l.date}')" title="Ouvrir cette journée">
+      <div class="hn-item-head">
+        <span class="hn-date">${esc(fmtDateShort(l.date))}</span>
+        ${mi ? `<span class="hn-mood" style="background:${mi.color};color:${inkOn(mi.color)}">${esc(mi.label)}</span>` : ''}
+        ${l.sleepHours != null ? `<span class="hn-sleep">${l.sleepHours} h</span>` : ''}
+      </div>
+      <div class="hn-text">${esc(l.note.trim())}</div>
+    </div>`;
+  }).join('')}</div>${logs.length > 40 ? `<div class="hn-more">et ${logs.length - 40} note${logs.length - 40 > 1 ? 's' : ''} plus ancienne${logs.length - 40 > 1 ? 's' : ''}…</div>` : ''}`;
+}
+
 /* ---- Fenêtre glissante des graphiques du suivi santé ----
    Par défaut : les 30 derniers jours finissant aujourd'hui. On peut faire
    défiler la période (flèches, molette, clavier) et choisir 30 j / 90 j / mois. */
@@ -7677,9 +7862,17 @@ function renderHealthSpace() {
         ${healthSleepChartHtml(days)}
       </div>
       <div class="health-card">
+        <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">chaque point = une journée</span></div>
+        ${healthMoodSleepChartHtml(days)}
+      </div>
+      <div class="health-card">
         <div class="health-card-title">Traitement et cycle</div>
         ${healthCycleMedChartHtml(days)}
       </div>
+      </div>
+      <div class="health-card health-notes">
+        <div class="health-card-title">Mes notes</div>
+        ${healthNotesHtml()}
       </div>`;
     })()}
   </div>`;
@@ -8291,6 +8484,45 @@ function reviewRescheduleOverdue() {
 }
 window.reviewRescheduleOverdue = reviewRescheduleOverdue;
 
+// « prochaine action » d'un projet : la prochaine tâche actionnable (pas une phase à
+// sous-tâches), datée au plus tôt sinon la première non faite.
+function projNextAction(p) {
+  const undone = (state.tasks || []).filter(t => t.projectId === p.id && !t.done);
+  const pool = undone.filter(t => !hasSubtasks(t.id));
+  const base = pool.length ? pool : undone;
+  const dated = base.filter(t => t.due).sort((a, b) => a.due.localeCompare(b.due));
+  return dated[0] || base[0] || null;
+}
+// liste d'avancement des projets en cours + leur prochaine action
+function reviewProjectsHtml() {
+  const ordre = { retard: 0, encours: 1, avenir: 2, sansdate: 3, fini: 4 };
+  const list = (state.projects || []).filter(p => projStatut(p) !== 'fini')
+    .sort((a, b) => (ordre[projStatut(a)] ?? 9) - (ordre[projStatut(b)] ?? 9));
+  if (!list.length) return `<div class="rev-empty">Aucun projet en cours.</div>`;
+  const shown = list.slice(0, 8);
+  return `<div class="rev-projlist">${shown.map(p => {
+    const st = projStats(p), na = projNextAction(p), col = dotOf(p.color);
+    const next = na
+      ? `<span class="rev-proj-na-lbl">Prochaine action :</span> ${esc(na.title)}${na.due ? ` <span class="rev-proj-due">· ${esc(friendlyDate(na.due))}</span>` : ''}`
+      : `<span class="rev-proj-done">Tout est fait ✨</span>`;
+    return `<div class="rev-proj" onclick="openProjectDetail('${p.id}')" title="Ouvrir le projet">
+      <div class="rev-proj-top">
+        <span class="pill-dot" style="background:${col}"></span>
+        <span class="rev-proj-name">${esc(p.name)}</span>
+        <span class="rev-proj-pct">${st.pct}%</span>
+      </div>
+      <div class="hw-bar"><i style="width:${st.pct}%;background:${col}"></i></div>
+      <div class="rev-proj-next">${next}${st.late ? ` <b class="hw-late">· ${st.late} en retard</b>` : ''}</div>
+    </div>`;
+  }).join('')}${list.length > 8 ? `<div class="rev-more-proj">+ ${list.length - 8} autre${list.length - 8 > 1 ? 's' : ''}</div>` : ''}</div>`;
+}
+function reviewProjectsBlock() {
+  return `<div class="rev-block">
+    <div class="rev-block-t">Avancement des projets</div>
+    ${reviewProjectsHtml()}
+  </div>`;
+}
+
 function reviewPanelHtml() {
   const month = bilanMode === 'month';
   const periodDays = bilanDays();
@@ -8301,6 +8533,7 @@ function reviewPanelHtml() {
   </div>`;
   if (!bilanReviewOpen) return `<div class="rev-panel">${head}</div>`;
   const s = reviewStats(periodDays), overdue = overdueTasks();
+  const projets = reviewProjectsBlock();
   const accompli = `<div class="rev-block">
       <div class="rev-block-t">Ce que tu as accompli</div>
       <div class="rev-kpis">
@@ -8340,7 +8573,7 @@ function reviewPanelHtml() {
         <button class="rev-btn primary" onclick="openPeriodReview()">${reviewNoteExists() ? 'Continuer ma note de revue' : 'Ouvrir ma note de revue'}</button>
       </div>`;
   }
-  return `<div class="rev-panel open">${head}<div class="rev-body">${accompli}${traine}${reflexion}</div></div>`;
+  return `<div class="rev-panel open">${head}<div class="rev-body">${accompli}${traine}${projets}${reflexion}</div></div>`;
 }
 
 function renderBilanSpace() {
