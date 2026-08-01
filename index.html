@@ -950,6 +950,18 @@
   /* align-content:start → les rangées (en-tête / bandeau journée / grille) gardent
      leur hauteur naturelle et ne s'étirent jamais pour remplir le vide. */
   .time-grid { display: grid; height: 100%; min-height: 900px; align-content: start; }
+  /* Vue Jour (ordinateur) : grille à gauche, colonne widgets à droite, poignée entre les deux */
+  .day-split { display: grid; grid-template-columns: minmax(0, 1fr) var(--day-aside, 340px); align-items: stretch; min-height: 100%; }
+  .day-main { min-width: 0; }
+  .day-aside { position: relative; border-left: 1px solid var(--border); background: var(--surface); }
+  .day-aside-inner { position: sticky; top: 0; max-height: calc(100vh - 120px); overflow-y: auto;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .day-aside .dw { margin-bottom: 0; }
+  .day-grip { position: absolute; left: -4px; top: 0; bottom: 0; width: 9px; cursor: col-resize; z-index: 6; }
+  .day-grip::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: transparent; transition: background .12s; }
+  .day-grip:hover::before, .day-grip.drag::before { background: var(--accent); width: 2px; left: 3px; }
+  .da-head { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; }
+  .da-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
   .tg-head { display: grid; position: sticky; top: -18px; background: var(--bg); z-index: 5; }
   .tg-head .corner { }
   .tg-col-head { text-align: center; padding: 8px 4px; border-left: 1px solid var(--border); }
@@ -4461,7 +4473,22 @@ function renderTimeGrid(nDays) {
   const allDay = renderAllDayRow(days, colTemplate);
   // téléphone, vue Jour : bandeau de dates horizontal pour changer de jour au pouce
   const strip = (nDays === 1) ? dayStripHtml() : '';
-  canvas.innerHTML = `${strip}<div class="time-grid">${head}${allDay}${body}</div>`;
+  const gridHtml = `<div class="time-grid">${head}${allDay}${body}</div>`;
+  // Vue Jour sur ordinateur : colonne de droite (widgets du jour), largeur ajustable à la souris.
+  // La grille reste seule sur téléphone et pour les vues Semaine / N jours.
+  if (state.view === 'day' && !isMobile()) {
+    const w = Math.max(DAY_ASIDE_MIN, Math.min(DAY_ASIDE_MAX, state.dayAsideW || DAY_ASIDE_DEF));
+    canvas.innerHTML = `<div class="day-split" style="--day-aside:${w}px">
+      <div class="day-main">${strip}${gridHtml}</div>
+      <aside class="day-aside">
+        <div class="day-grip" title="Ajuster la largeur — double-clic pour réinitialiser"></div>
+        <div class="day-aside-inner">${dayAsideHtml()}</div>
+      </aside>
+    </div>`;
+    wireDayAside();
+  } else {
+    canvas.innerHTML = `${strip}${gridHtml}`;
+  }
   wireDayDrop();
   wireTimeDrag();
   wireEventResize();
@@ -4473,6 +4500,46 @@ function renderTimeGrid(nDays) {
     lastGridKey = key;
     requestAnimationFrame(() => requestAnimationFrame(() => { canvas.scrollTop = 7 * 48; }));
   }
+}
+
+/* ---- Colonne de droite de la vue Jour (ordinateur) : widgets du jour + poignée ---- */
+const DAY_ASIDE_MIN = 240, DAY_ASIDE_MAX = 620, DAY_ASIDE_DEF = 340;
+// contenu de la colonne : les mêmes widgets quotidiens que l'onglet mobile « Widgets »
+function dayAsideHtml() {
+  const c = homeCfg();
+  const keys = c.order.filter(k => k === 'horoscope' || (typeof k === 'string' && k.startsWith('feed:')));
+  const today = new Date();
+  const dateTxt = `${DOW_LONG[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
+  let inner = `<div class="da-head">${dateTxt.charAt(0).toUpperCase() + dateTxt.slice(1)}</div>`;
+  if (!keys.length) {
+    inner += `<div class="da-empty">Aucun widget quotidien pour l'instant.<br>Ajoute-en un ci-dessous ou depuis le tableau de bord.</div>`;
+  } else {
+    inner += keys.map(k => { const w = homeW(k); if (!w) return ''; return `<section class="dw"><div class="dw-title">${esc(w.label)}</div><div class="dw-body">${w.body()}</div></section>`; }).join('');
+  }
+  inner += `<button class="hw-cta dw-add" onclick="homeAddFeedMenu(event)">＋ Widget quotidien</button>`;
+  return inner;
+}
+// glissement de la poignée (calqué sur le redimensionnement des colonnes du Focus)
+function wireDayAside() {
+  const grip = canvas.querySelector('.day-grip'), split = canvas.querySelector('.day-split');
+  if (!grip || !split) return;
+  const curW = () => parseInt(getComputedStyle(split).getPropertyValue('--day-aside')) || DAY_ASIDE_DEF;
+  grip.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const startX = e.clientX, startW = curW();
+    grip.classList.add('drag'); document.body.style.cursor = 'col-resize';
+    const move = ev => {
+      const w = Math.max(DAY_ASIDE_MIN, Math.min(DAY_ASIDE_MAX, startW + (startX - ev.clientX)));
+      split.style.setProperty('--day-aside', w + 'px');
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+      grip.classList.remove('drag'); document.body.style.cursor = '';
+      state.dayAsideW = curW(); save();
+    };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  });
+  grip.addEventListener('dblclick', () => { state.dayAsideW = DAY_ASIDE_DEF; save(); split.style.setProperty('--day-aside', DAY_ASIDE_DEF + 'px'); });
 }
 
 /* ============================================================
@@ -8282,10 +8349,10 @@ function renderBilanSpace() {
   const joursActifs = days.filter(k => groups.some(g => g.perDay[k])).length;
   const moy = joursActifs ? totalMin / joursActifs : 0;
 
-  const prioGroups = bilanPrioData(days);
-  const donutGroups = bilanBreak === 'prio' ? prioGroups : groups;
+  // le donut ne montre plus que la répartition par agenda (l'onglet Priorité a été retiré)
+  const donutGroups = groups;
   const donutTotal = donutGroups.reduce((s, g) => s + g.total, 0);
-  const allowExpand = bilanBreak === 'agenda';
+  const allowExpand = true;
 
   const legend = donutGroups.length ? donutGroups.map(g => {
     const topId = allowExpand && g.key.startsWith('c:') ? g.key.slice(2) : null;
@@ -8336,11 +8403,7 @@ function renderBilanSpace() {
       </div>
       <div class="bl-donut-box">
         <div class="bl-donut-head">
-          <span class="space-sort-lbl">Répartition</span>
-          <span class="bl-break-tabs">
-            <span class="space-tab ${bilanBreak === 'agenda' ? 'on' : ''}" onclick="setBilanBreak('agenda')">Agenda</span>
-            <span class="space-tab ${bilanBreak === 'prio' ? 'on' : ''}" onclick="setBilanBreak('prio')">Priorité</span>
-          </span>
+          <span class="space-sort-lbl">Répartition par agenda</span>
         </div>
         ${bilanDonutHtml(donutGroups, donutTotal)}
         <div class="bl-legend">${legend}</div>
