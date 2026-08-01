@@ -1072,6 +1072,38 @@
   .bl-kpi-lbl { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; }
   .bl-nav { display: flex; align-items: center; gap: 8px; margin: 4px 0 6px; }
   .bl-nav-lbl { font-weight: 600; font-size: 14px; text-transform: capitalize; }
+  /* --- Revue de la semaine (panneau repliable en tête du Bilan) --- */
+  .rev-panel { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); margin: 6px 0 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+  .rev-panel.open { border-color: var(--border-strong); }
+  .rev-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; }
+  .rev-head:hover { background: var(--surface-2); }
+  .rev-title { font-weight: 600; font-size: 14.5px; }
+  .rev-sub { font-size: 12.5px; color: var(--text-faint); text-transform: capitalize; }
+  .rev-chev { margin-left: auto; display: inline-flex; color: var(--text-faint); transition: transform var(--dur) var(--ease); }
+  .rev-chev.open { transform: rotate(90deg); }
+  .rev-body { padding: 4px 16px 18px; display: flex; flex-direction: column; gap: 18px; }
+  .rev-block-t { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; margin-bottom: 8px; }
+  .rev-kpis { display: flex; gap: 10px; flex-wrap: wrap; }
+  .rev-kpi { background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 16px; min-width: 120px; }
+  .rev-kpi b { font-size: 19px; font-weight: 700; display: block; }
+  .rev-kpi span { font-size: 11.5px; color: var(--text-faint); }
+  .rev-overdue { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .rev-overdue > span { font-size: 13px; color: #b4544f; font-weight: 500; }
+  .rev-tasklist { display: flex; flex-direction: column; gap: 3px; }
+  .rev-task { font-size: 13px; color: var(--text-soft); padding-left: 4px; position: relative; }
+  .rev-task::before { content: "·"; margin-right: 6px; color: var(--text-faint); }
+  .rev-more { color: var(--text-faint); font-style: italic; }
+  .rev-empty { font-size: 13px; color: var(--text-soft); }
+  .rev-reflect-help { font-size: 12.5px; color: var(--text-faint); margin: 0 0 10px; }
+  .rev-btn { font-size: 12.5px; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; }
+  .rev-btn:hover { background: var(--surface-2); }
+  .rev-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .rev-btn.primary:hover { filter: brightness(1.05); background: var(--accent); }
+  .rev-notelist { display: flex; flex-direction: column; gap: 4px; }
+  .rev-noteitem { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); cursor: pointer; }
+  .rev-noteitem:hover { border-color: var(--border-strong); }
+  .rev-noteico { display: inline-flex; color: var(--text-faint); flex: none; }
   .bl-wrap { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 10px; }
   .bl-chart-box { flex: 1 1 440px; min-width: 300px; }
   .bl-donut-box { flex: 0 0 290px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
@@ -8105,6 +8137,145 @@ function bilanDonutHtml(groups, totalMin) {
   return `<svg viewBox="0 0 120 120" class="bl-donut">${segs}<text x="60" y="56" text-anchor="middle" class="bl-donut-total">${fmtMinutes(totalMin, true)}</text><text x="60" y="72" text-anchor="middle" class="bl-donut-sub">au total</text></svg>`;
 }
 
+/* ============================================================
+   REVUE DE LA SEMAINE (extension du Bilan, mode Semaine)
+   ------------------------------------------------------------
+   Panneau repliable en tête du Bilan : ce qui a été accompli, ce qui traîne
+   (avec report groupé), et une note de réflexion hebdo créée depuis un modèle
+   (« Revue… » dans les modèles de note, sinon un modèle par défaut). Volontairement
+   léger : 3 questions, une note par semaine, pour qu'elle le fasse vraiment.
+   ============================================================ */
+let bilanReviewOpen = false;
+function toggleBilanReview() { bilanReviewOpen = !bilanReviewOpen; renderBilanSpace(); }
+window.toggleBilanReview = toggleBilanReview;
+
+// corps par défaut de la note de revue (si aucun modèle « Revue… » n'existe)
+const REVIEW_BODY = `<p><strong>✅ Qu'est-ce qui a bien marché cette semaine ?</strong></p><p><br></p>`
+  + `<p><strong>⚠️ Qu'est-ce qui a coincé ?</strong></p><p><br></p>`
+  + `<p><strong>🎯 Ma priorité pour la semaine prochaine</strong></p><p><br></p>`;
+const REVIEW_BODY_MONTH = `<p><strong>🌱 Ce que je retiens de ce mois</strong></p><p><br></p>`
+  + `<p><strong>🔄 Ce que je veux changer</strong></p><p><br></p>`
+  + `<p><strong>🎯 Mon intention pour le mois prochain</strong></p><p><br></p>`;
+
+// synthèse chiffrée de la semaine affichée
+function reviewStats(weekDays) {
+  const ws = weekDays[0], we = weekDays[weekDays.length - 1], now = new Date();
+  const tasksDone = (state.tasks || []).filter(t => t.done && t.doneAt
+    && ymd(new Date(t.doneAt)) >= ws && ymd(new Date(t.doneAt)) <= we).length;
+  let habDone = 0, habDue = 0;
+  (state.habits || []).forEach(h => {
+    if (habitIsWeekly(h)) { const t = habitWeekTargetN(h); habDone += Math.min(habitWeekDone(h, parseYmd(ws)), t); habDue += t; }
+    else weekDays.forEach(k => { const d = parseYmd(k); if (d > now || !habitScheduledOn(h, d)) return; habDue++; if (habitDayDone(h, d)) habDone++; });
+  });
+  const evs = (state.events || []).filter(e => e.date && e.date >= ws && e.date <= we).length;
+  return { tasksDone, habDone, habDue, evs };
+}
+// dossier de revues (créé au besoin) — « Revues hebdo » ou « Revues mensuelles »
+function ensureReviewFolder(name) {
+  name = name || 'Revues hebdo';
+  if (!state.noteFolders) state.noteFolders = [];
+  let f = state.noteFolders.find(x => x.name === name);
+  if (!f) { f = { id: uid(), name, color: PALETTE[4], projectId: '', icon: '', parentId: '' }; state.noteFolders.push(f); }
+  return f.id;
+}
+const capMonth = m => MONTHS[m].charAt(0).toUpperCase() + MONTHS[m].slice(1);
+function reviewNoteTitle() {
+  if (bilanMode === 'month') return `Revue — ${capMonth(bilanCursor.getMonth())} ${bilanCursor.getFullYear()}`;
+  const ws = startOfWeek(bilanCursor); return `Revue — semaine du ${ws.getDate()} ${MONTHS_SHORT[ws.getMonth()]}`;
+}
+function reviewNoteExists() { const t = reviewNoteTitle(); return (state.notes || []).some(n => n.title === t); }
+// une semaine appartient au mois qui contient la majorité (>=4) de ses jours
+function weekBelongsToMonth(weekStartYmd, y, mo) {
+  const ws = parseYmd(weekStartYmd); let c = 0;
+  for (let i = 0; i < 7; i++) { const d = addDays(ws, i); if (d.getFullYear() === y && d.getMonth() === mo) c++; }
+  return c >= 4;
+}
+// notes de revue hebdo rattachées au mois affiché (triées par date de semaine)
+function monthWeekReviews() {
+  const y = bilanCursor.getFullYear(), mo = bilanCursor.getMonth();
+  return (state.notes || []).filter(n => n.reviewWeek && weekBelongsToMonth(n.reviewWeek, y, mo))
+    .sort((a, b) => a.reviewWeek.localeCompare(b.reviewWeek));
+}
+// ouvre (ou crée) la note de revue de la période affichée (semaine ou mois), remplie depuis le modèle
+function openPeriodReview() {
+  const month = bilanMode === 'month';
+  const title = reviewNoteTitle();
+  let n = (state.notes || []).find(x => x.title === title);
+  if (!n) {
+    const folderId = ensureReviewFolder(month ? 'Revues mensuelles' : 'Revues hebdo');
+    const re = month ? /revue.*(mois|mensuel)/i : /revue/i;
+    const tpl = ((state.templates && state.templates.note) || []).find(t => re.test(t.name));
+    const body = (tpl && tpl.data && tpl.data.body) ? tpl.data.body : (month ? REVIEW_BODY_MONTH : REVIEW_BODY);
+    n = { id: uid(), title, body, color: PALETTE[4], icon: '', folderId, projectId: '', eventId: '', taskId: '', fav: false, updated: Date.now() };
+    if (month) n.reviewMonth = `${bilanCursor.getFullYear()}-${String(bilanCursor.getMonth() + 1).padStart(2, '0')}`;
+    else n.reviewWeek = ymd(startOfWeek(bilanCursor));
+    state.notes.push(n); save();
+  }
+  openNote(n.id);
+}
+window.openPeriodReview = openPeriodReview;
+// reporter toutes les tâches en retard à la semaine prochaine
+function reviewRescheduleOverdue() {
+  const list = overdueTasks(); if (!list.length) return;
+  const nextStart = ymd(addDays(startOfWeek(new Date()), 7));
+  list.forEach(t => { t.due = nextStart; if (t.inbox) delete t.inbox; });
+  save(); render();
+  showToast(`${list.length} tâche${list.length > 1 ? 's' : ''} reportée${list.length > 1 ? 's' : ''} à la semaine prochaine`);
+}
+window.reviewRescheduleOverdue = reviewRescheduleOverdue;
+
+function reviewPanelHtml() {
+  const month = bilanMode === 'month';
+  const periodDays = bilanDays();
+  const head = `<div class="rev-head" onclick="toggleBilanReview()">
+    <span class="rev-title">${month ? 'Revue du mois' : 'Revue de la semaine'}</span>
+    <span class="rev-sub">${esc(bilanPeriodLabel())}</span>
+    <span class="rev-chev ${bilanReviewOpen ? 'open' : ''}">${ICON_CHEV}</span>
+  </div>`;
+  if (!bilanReviewOpen) return `<div class="rev-panel">${head}</div>`;
+  const s = reviewStats(periodDays), overdue = overdueTasks();
+  const accompli = `<div class="rev-block">
+      <div class="rev-block-t">Ce que tu as accompli</div>
+      <div class="rev-kpis">
+        <div class="rev-kpi"><b>${s.tasksDone}</b><span>tâche${s.tasksDone > 1 ? 's' : ''} cochée${s.tasksDone > 1 ? 's' : ''}</span></div>
+        <div class="rev-kpi"><b>${s.habDue ? `${s.habDone}/${s.habDue}` : '—'}</b><span>habitudes tenues</span></div>
+        <div class="rev-kpi"><b>${s.evs}</b><span>événement${s.evs > 1 ? 's' : ''}</span></div>
+      </div>
+    </div>`;
+  const traine = `<div class="rev-block">
+      <div class="rev-block-t">Ce qui traîne</div>
+      ${overdue.length ? `<div class="rev-overdue">
+          <span>${overdue.length} tâche${overdue.length > 1 ? 's' : ''} en retard</span>
+          <button class="rev-btn" onclick="reviewRescheduleOverdue()">Tout reporter à la semaine prochaine</button>
+        </div>
+        <div class="rev-tasklist">${overdue.slice(0, 6).map(t => `<div class="rev-task">${esc(t.title)}</div>`).join('')}${overdue.length > 6 ? `<div class="rev-task rev-more">+ ${overdue.length - 6} autre${overdue.length - 6 > 1 ? 's' : ''}</div>` : ''}</div>`
+      : `<div class="rev-empty">Rien en retard. Bravo.</div>`}
+    </div>`;
+  let reflexion;
+  if (month) {
+    const weeks = monthWeekReviews();
+    const weeksList = weeks.length
+      ? `<div class="rev-notelist">${weeks.map(n => `<div class="rev-noteitem" onclick="openNote('${n.id}')"><span class="rev-noteico"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></span>${esc(n.title.replace(/^Revue — semaine du /, 'Semaine du ').replace(/^Revue — /, ''))}</div>`).join('')}</div>`
+      : `<div class="rev-empty">Aucune revue de semaine ce mois-ci pour l'instant.</div>`;
+    reflexion = `<div class="rev-block">
+        <div class="rev-block-t">Tes revues de la semaine</div>
+        ${weeksList}
+      </div>
+      <div class="rev-block">
+        <div class="rev-block-t">Ta réflexion du mois</div>
+        <p class="rev-reflect-help">Un pas de recul sur le mois entier, une note par mois.</p>
+        <button class="rev-btn primary" onclick="openPeriodReview()">${reviewNoteExists() ? 'Continuer ma revue du mois' : 'Ouvrir ma revue du mois'}</button>
+      </div>`;
+  } else {
+    reflexion = `<div class="rev-block">
+        <div class="rev-block-t">Ta réflexion</div>
+        <p class="rev-reflect-help">3 questions, une note par semaine. Reste courte, l'important c'est de le faire.</p>
+        <button class="rev-btn primary" onclick="openPeriodReview()">${reviewNoteExists() ? 'Continuer ma note de revue' : 'Ouvrir ma note de revue'}</button>
+      </div>`;
+  }
+  return `<div class="rev-panel open">${head}<div class="rev-body">${accompli}${traine}${reflexion}</div></div>`;
+}
+
 function renderBilanSpace() {
   const { days, groups } = bilanData();
   const totalMin = groups.reduce((s, g) => s + g.total, 0);
@@ -8149,6 +8320,8 @@ function renderBilanSpace() {
       <span class="mini-arrow" onclick="bilanShift(1)" title="Période suivante">›</span>
       <span class="space-tab" onclick="bilanGoToday()">Revenir à ${bilanMode === 'week' ? 'cette semaine' : 'ce mois'}</span>
     </div>
+
+    ${reviewPanelHtml()}
 
     <div class="bl-kpis">
       <div class="bl-kpi"><div class="bl-kpi-val">${fmtMinutes(totalMin, true)}</div><div class="bl-kpi-lbl">au total</div></div>
