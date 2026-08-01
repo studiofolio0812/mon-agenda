@@ -857,12 +857,26 @@
   /* Horoscope */
   .hw-horo { cursor: pointer; }
   .hw-horo-txt { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text); }
+  /* contenu formaté de la note, directement dans le widget (borné en hauteur) */
+  .hw-horo-rich { max-height: 15em; overflow: hidden; color: var(--text); font-size: 13.5px; }
+  .hw-horo-rich > *:first-child { margin-top: 0; }
   .hw-horo-maj { margin-top: 9px; font-size: 11.5px; }
   .hw-horo-maj.frais { color: var(--accent); }
   .hw-horo-maj.vieux { color: var(--text-faint); }
 
   /* ajouter un widget quotidien */
   .hw-addrow { margin-top: 14px; }
+
+  /* onglet « Mes widgets du jour » (téléphone) */
+  .daily-space { padding: 10px 14px calc(80px + env(safe-area-inset-bottom)); }
+  .ds-head { margin: 4px 2px 14px; }
+  .ds-title { font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
+  .ds-sub { font-size: 13px; color: var(--text-faint); margin-top: 2px; }
+  .dw { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm); padding: 13px 15px; margin-bottom: 12px; }
+  .dw-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
+  .dw-body .hw-horo-txt { font-size: 14px; }
+  .dw-add { width: 100%; margin-top: 4px; }
 
   /* widgets masqués */
   .hw-hidden { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
@@ -1218,6 +1232,37 @@
   .hs-cell.today { box-shadow: 0 0 0 2px var(--accent-soft); }
   .hs-cell:not(.off):not(.future) { cursor: pointer; }
   .hs-cell:not(.off):not(.future):active { transform: scale(.88); }
+  .hs-goal { color: var(--text-soft); font-weight: 600; }
+  .hs-goal.ok { color: var(--good, #46c07d); }
+  /* --- Formulaire : fréquence + objectif hebdo --- */
+  .hb-weektarget { display: flex; align-items: center; gap: 14px; }
+  .hb-weektarget .icon-btn { width: 30px; height: 30px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 17px; line-height: 1; }
+  .hb-weektarget span { font-size: 14px; font-weight: 600; min-width: 110px; text-align: center; }
+  /* --- Fiche détail d'une habitude --- */
+  .hd-title { display: flex; align-items: center; gap: 8px; }
+  .hd-swatch { width: 13px; height: 13px; border-radius: 50%; }
+  .hd-freq { font-size: 12.5px; color: var(--text-faint); margin-bottom: 14px; }
+  .hd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+  .hd-stat { background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 6px; text-align: center; }
+  .hd-stat-val { font-size: 18px; font-weight: 700; }
+  .hd-stat-unit { font-size: 12px; font-weight: 600; color: var(--text-soft); }
+  .hd-stat-lbl { font-size: 10.5px; color: var(--text-faint); margin-top: 2px; line-height: 1.2; }
+  .hd-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .hd-cal-month { font-size: 14px; font-weight: 600; }
+  .hd-cal-head .icon-btn { font-size: 18px; width: 30px; height: 30px; }
+  .hd-cal-head .icon-btn.disabled { opacity: .3; pointer-events: none; }
+  .hd-cal-dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+  .hd-cal-dows span { font-size: 10.5px; color: var(--text-faint); text-align: center; text-transform: uppercase; }
+  .hd-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .hd-cell { aspect-ratio: 1; border-radius: 50%; border: 1.6px solid var(--border); display: grid; place-items: center;
+    font-size: 12.5px; color: var(--text-soft); transition: transform var(--dur) var(--ease); }
+  .hd-cell.out { border: none; }
+  .hd-cell.noplan { border-style: dashed; opacity: .55; }
+  .hd-cell.done { color: #fff; font-weight: 600; }
+  .hd-cell.fut { opacity: .4; }
+  .hd-cell.today { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .hd-cell[onclick] { cursor: pointer; }
+  .hd-cell[onclick]:active { transform: scale(.85); }
   .ptable-wrap { margin-top: 18px; overflow-x: auto; }
   .ptable { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .ptable th { text-align: left; font-size: 11.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); padding: 8px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
@@ -2519,11 +2564,23 @@
     <div class="modal-body">
       <label>Nom</label>
       <input id="habitName" placeholder="Ex : Traitement du matin, Sport…" autocomplete="off">
-      <label>Horaires</label>
-      <div id="habitTimes"></div>
-      <button class="btn-ghost" id="habitAddTime" style="margin-top:6px;font-size:12px;padding:5px 10px">＋ Ajouter un horaire</button>
-      <label style="margin-top:16px">Quels jours</label>
-      <div class="dow-picker" id="habitDows"></div>
+      <label style="margin-top:16px">Fréquence</label>
+      <div class="dow-picker hb-freq" id="habitFreq"></div>
+      <div id="habitDaysBlock">
+        <label style="margin-top:16px">Horaires</label>
+        <div id="habitTimes"></div>
+        <button class="btn-ghost" id="habitAddTime" style="margin-top:6px;font-size:12px;padding:5px 10px">＋ Ajouter un horaire</button>
+        <label style="margin-top:16px">Quels jours</label>
+        <div class="dow-picker" id="habitDows"></div>
+      </div>
+      <div id="habitWeekBlock" class="hidden">
+        <label style="margin-top:16px">Combien de fois par semaine</label>
+        <div class="hb-weektarget">
+          <button type="button" class="icon-btn" onclick="setHabitWeekTarget(-1)" title="Moins">−</button>
+          <span id="habitWeekTargetVal">3× / semaine</span>
+          <button type="button" class="icon-btn" onclick="setHabitWeekTarget(1)" title="Plus">＋</button>
+        </div>
+      </div>
       <label style="margin-top:16px">Couleur</label>
       <div class="color-picker" id="habitColorPicker"></div>
       <label style="margin-top:16px">Icône</label>
@@ -2534,6 +2591,18 @@
       <button class="btn-ghost btn-danger hidden" id="deleteHabitBtn">Supprimer</button>
       <button class="btn-primary" id="saveHabitBtn">Ajouter</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: DÉTAIL D'UNE HABITUDE (heatmap + stats) ============ -->
+<div class="overlay" id="habitDetailOverlay">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-head">
+      <h2 id="habitDetailTitle" class="hd-title">Habitude</h2>
+      <button class="icon-btn" id="habitDetailEditBtn" title="Modifier l'habitude"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      <button class="icon-btn" data-close>✕</button>
+    </div>
+    <div class="modal-body" id="habitDetailBody"></div>
   </div>
 </div>
 
@@ -3395,6 +3464,7 @@ function render() {
   $('periodTitle').classList.toggle('hidden', inSpace);
 
   if (state.view === 'home') { isMobile() ? renderHomeMobile() : renderHomeSpace(); }
+  else if (state.view === 'daily') renderDailySpace();
   else if (state.view === 'tasks') renderTasksSpace();
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
@@ -3417,7 +3487,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['home', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan'];
+const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -3764,11 +3834,15 @@ function habitsOn(d) {
   const dow = d.getDay();
   const out = [];
   (state.habits || []).forEach(h => {
+    if (habitIsWeekly(h)) return;                 // objectif hebdo : pas de créneau fixe
     if (!habitDays(h).includes(dow)) return;
     habitTimes(h).forEach(t => out.push({ habit: h, time: t }));
   });
   return out.sort((a, b) => a.time.localeCompare(b.time));
 }
+// Fréquence : 'days' (jours fixes, comportement historique) ou 'week' (objectif « X fois / semaine »)
+const habitIsWeekly = h => h.freq === 'week';
+const habitWeekTargetN = h => Math.max(1, Math.min(7, h.weekTarget || 3));
 const habitKey = (id, k, t) => `${id}|${k}|${t}`;
 const habitIsDone = (id, k, t) => !!(state.habitDone || {})[habitKey(id, k, t)];
 function toggleHabitDone(id, k, t, ev) {
@@ -3808,7 +3882,8 @@ function habitChip(occ, k) {
    ESPACE HABITUDES — séries (streaks) + vue de la semaine
    ============================================================ */
 // une habitude est « prévue » un jour si ce jour de la semaine fait partie de ses jours
-const habitScheduledOn = (h, d) => habitDays(h).includes(d.getDay());
+// (les habitudes à objectif hebdo n'ont pas de jour fixe : jamais « prévues » un jour précis)
+const habitScheduledOn = (h, d) => !habitIsWeekly(h) && habitDays(h).includes(d.getDay());
 // un jour est « fait » quand TOUTES les prises prévues ce jour-là sont cochées
 function habitDayDone(h, d) {
   const k = ymd(d);
@@ -3850,6 +3925,40 @@ function habitBestStreak(h) {
   }
   return best;
 }
+/* ---- Habitudes à objectif hebdomadaire (« X fois / semaine ») ----
+   Pas de jour fixe : n'importe quel jour coché compte. On raisonne en semaines. */
+// nombre de jours faits dans la semaine commençant à ws
+function habitWeekDone(h, ws) {
+  let n = 0;
+  for (let i = 0; i < 7; i++) if (habitDayDone(h, addDays(ws, i))) n++;
+  return n;
+}
+// série en semaines : semaines consécutives où l'objectif est atteint, en remontant.
+// La semaine en cours, objectif pas encore atteint, ne casse pas la série.
+function habitWeekStreak(h) {
+  const base = startOfWeek(new Date()), target = habitWeekTargetN(h);
+  let streak = 0;
+  for (let i = 0; i < 520; i++) {
+    const ws = addDays(base, -7 * i);
+    if (habitWeekDone(h, ws) >= target) { streak++; continue; }
+    if (i === 0) continue;                          // semaine en cours pas finie : neutre
+    break;
+  }
+  return streak;
+}
+// total de jours « faits » tous temps confondus (un enregistrement = un jour fait)
+function habitTotalDone(h) {
+  const done = state.habitDone || {}, seen = new Set();
+  let n = 0;
+  Object.keys(done).forEach(key => {
+    if (!key.startsWith(h.id + '|')) return;
+    const k = key.split('|')[1];
+    if (seen.has(k)) return; seen.add(k);
+    if (habitDayDone(h, parseYmd(k))) n++;
+  });
+  return n;
+}
+
 // bascule TOUTES les prises d'une habitude pour un jour (coche/décoche la journée entière)
 function toggleHabitDay(id, k, ev) {
   if (ev) ev.stopPropagation();
@@ -3871,18 +3980,24 @@ function renderHabitsSpace() {
   const weekStart = startOfWeek(today);
   const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i));
 
-  // indicateurs du haut
-  let dueToday = 0, doneToday = 0;
-  habits.forEach(h => { if (habitScheduledOn(h, today)) { dueToday++; if (habitDayDone(h, today)) doneToday++; } });
-  // taux de complétion de la semaine (jours prévus faits / jours prévus jusqu'à aujourd'hui)
-  let wkDue = 0, wkDone = 0;
-  habits.forEach(h => weekDays.forEach(d => {
-    if (d > today) return;
-    if (!habitScheduledOn(h, d)) return;
-    wkDue++; if (habitDayDone(h, d)) wkDone++;
-  }));
+  // indicateurs du haut — les habitudes à objectif hebdo comptent tant que l'objectif
+  // de la semaine n'est pas atteint ; celles à jours fixes comptent les jours prévus.
+  let dueToday = 0, doneToday = 0, wkDue = 0, wkDone = 0;
+  habits.forEach(h => {
+    if (habitIsWeekly(h)) {
+      const target = habitWeekTargetN(h), wd = habitWeekDone(h, weekStart);
+      if (wd < target) { dueToday++; if (habitDayDone(h, today)) doneToday++; }
+      wkDue += target; wkDone += Math.min(wd, target);
+    } else {
+      if (habitScheduledOn(h, today)) { dueToday++; if (habitDayDone(h, today)) doneToday++; }
+      weekDays.forEach(d => {
+        if (d > today || !habitScheduledOn(h, d)) return;
+        wkDue++; if (habitDayDone(h, d)) wkDone++;
+      });
+    }
+  });
   const wkPct = wkDue ? Math.round(wkDone / wkDue * 100) : 0;
-  const meilleure = habits.reduce((m, h) => Math.max(m, habitStreak(h)), 0);
+  const meilleure = habits.reduce((m, h) => Math.max(m, habitIsWeekly(h) ? habitWeekStreak(h) : habitStreak(h)), 0);
 
   let html = `<div class="space">
     <div class="space-head">
@@ -3909,17 +4024,17 @@ function renderHabitsSpace() {
   html += '<div class="hs-list">';
   habits.forEach(h => {
     const col = h.color || '#eae8e4';
-    const streak = habitStreak(h), best = habitBestStreak(h);
+    const weekly = habitIsWeekly(h);
     const marque = h.icon
       ? `<span class="hs-ico" style="background:${lighten(col)}">${iconOf(h, 'habits', 16)}</span>`
       : `<span class="hs-ico" style="background:${lighten(col)}"><span class="hs-swatch" style="background:${dotOf(col)}"></span></span>`;
-    // grille de la semaine
+    // grille de la semaine (pour l'hebdo, tous les jours passés sont cochables librement)
     const cells = weekDays.map((d, i) => {
       const k = ymd(d);
-      const prevu = habitScheduledOn(h, d);
       const futur = d > today;
+      const prevu = weekly ? !futur : habitScheduledOn(h, d);
       const done = prevu && habitDayDone(h, d);
-      const partial = prevu && habitDayPartial(h, d);
+      const partial = !weekly && prevu && habitDayPartial(h, d);
       const cls = ['hs-cell', !prevu ? 'off' : '', done ? 'done' : '', partial ? 'partial' : '',
         futur ? 'future' : '', ymd(d) === ymd(today) ? 'today' : ''].filter(Boolean).join(' ');
       const style = done ? `background:${dotOf(col)};border-color:${dotOf(col)}`
@@ -3930,14 +4045,26 @@ function renderHabitsSpace() {
         <span class="${cls}" style="${style}"${onclick}>${done ? '✓' : ''}</span>
       </div>`;
     }).join('');
+    let sub, streak, streakTitle;
+    if (weekly) {
+      const target = habitWeekTargetN(h), wd = habitWeekDone(h, weekStart);
+      streak = habitWeekStreak(h);
+      streakTitle = `${streak} semaine${streak > 1 ? 's' : ''} d'affilée`;
+      sub = `${target}× / semaine · <b class="hs-goal ${wd >= target ? 'ok' : ''}">${wd}/${target}</b> cette semaine`;
+    } else {
+      const best = habitBestStreak(h);
+      streak = habitStreak(h);
+      streakTitle = 'Série en cours';
+      sub = `${habitTimes(h).join(' · ')}${best ? ` · record ${best} j` : ''}`;
+    }
     html += `<div class="hs-card">
-      <div class="hs-top" onclick="openHabitModal('${h.id}')">
+      <div class="hs-top" onclick="openHabitDetail('${h.id}')" title="Voir le détail">
         ${marque}
         <div class="hs-name-wrap">
           <div class="hs-name">${esc(h.name)}</div>
-          <div class="hs-sub">${habitTimes(h).join(' · ')}${best ? ` · record ${best} j` : ''}</div>
+          <div class="hs-sub">${sub}</div>
         </div>
-        <div class="hs-streak" title="Série en cours">${streak}<span class="hs-fire">🔥</span></div>
+        <div class="hs-streak" title="${streakTitle}">${streak}<span class="hs-fire">🔥</span></div>
       </div>
       <div class="hs-week">${cells}</div>
     </div>`;
@@ -4965,13 +5092,16 @@ function hwNoteFeed(noteTitle) {
   const n = noteByTitle(noteTitle);
   if (!n) return hwEmpty(`Aucune note « ${esc(noteTitle)} ».<br>Crée-la une fois : ta routine Claude la remplira ensuite chaque matin.`,
     'Créer la note', `homeCreateFeedNote('${jsStr(noteTitle)}')`);
-  const texte = texteExtrait(n.body, 420);
-  if (!texte) return hwEmpty('La note existe, mais elle est encore vide.<br>Ta routine la remplira au prochain passage.',
+  // vide si aucun texte ET aucune image (une note peut n'avoir qu'une image)
+  const texte = texteExtrait(n.body, 40), hasImg = /<img/i.test(n.body || '');
+  if (!texte && !hasImg) return hwEmpty('La note existe, mais elle est encore vide.<br>Ta routine la remplira au prochain passage.',
     'Ouvrir la note', `openNote('${n.id}')`);
   const jour = n.updated ? ymd(new Date(n.updated)) : '';
   const dujour = jour === ymd(new Date());
+  // on affiche la VRAIE mise en forme de la note (gras, couleurs, listes…), nettoyée
+  // par le même assainisseur que les tuiles de notes — plus besoin de cliquer pour la voir
   return `<div class="hw-horo" onclick="openNote('${n.id}')">
-    <p class="hw-horo-txt">${esc(texte)}</p>
+    <div class="hw-horo-rich note-card-body">${sanitizeNoteHtml(n.body)}</div>
     <div class="hw-horo-maj ${dujour ? 'frais' : 'vieux'}">${dujour ? "Mis à jour aujourd'hui" : `Dernière mise à jour : ${esc(friendlyDate(jour))}`}</div>
   </div>`;
 }
@@ -5073,6 +5203,36 @@ function renderHomeSpace() {
     ${c.hidden.map(k => `<button class="hw-chip" onclick="homeShow('${k}',event)" title="Réafficher">${esc((homeW(k) || {}).label || '')} <span>＋</span></button>`).join('')}
   </div>`;
 
+  html += `</div>`;
+  canvas.innerHTML = html;
+}
+
+/* ============================================================
+   MES WIDGETS DU JOUR — TÉLÉPHONE
+   Les widgets « note du jour » (horoscope + ceux qu'elle a ajoutés) empilés, en
+   lecture. Sur ordinateur ils vivent dans le tableau de bord ; ici, un onglet dédié
+   pour les consulter d'un coup sur le téléphone (le rituel du matin). Même rendu
+   (hwNoteFeed via homeW), donc rien à maintenir en double.
+   ============================================================ */
+function renderDailySpace() {
+  const c = homeCfg();
+  const keys = c.order.filter(k => k === 'horoscope' || (typeof k === 'string' && k.startsWith('feed:')));
+  const today = new Date();
+  const dateTxt = `${DOW_LONG[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
+  let html = `<div class="space daily-space">
+    <div class="ds-head">
+      <div class="ds-title">Mes widgets du jour</div>
+      <div class="ds-sub">${dateTxt.charAt(0).toUpperCase() + dateTxt.slice(1)}</div>
+    </div>`;
+  if (!keys.length) {
+    html += `<div class="mm-empty">Aucun widget quotidien pour l'instant.<br>Ajoute-en un ici, ou depuis le tableau de bord sur ordinateur. Ta routine Claude les remplira ensuite chaque matin.</div>`;
+  } else {
+    html += keys.map(k => {
+      const w = homeW(k); if (!w) return '';
+      return `<section class="dw"><div class="dw-title">${esc(w.label)}</div><div class="dw-body">${w.body()}</div></section>`;
+    }).join('');
+  }
+  html += `<button class="hw-cta dw-add" onclick="homeAddFeedMenu(event)">＋ Widget quotidien</button>`;
   html += `</div>`;
   canvas.innerHTML = html;
 }
@@ -5290,10 +5450,11 @@ const TB_ICO = {
   notes:  '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
   bilan:  '<path d="M4 20V10M12 20V4M20 20v-6"/>',
   crm:    '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="1.8"/><path d="M5.5 16c0-1.7 1.3-2.6 3-2.6s3 .9 3 2.6"/><path d="M14 9.5h4M14 13h4"/>',
+  daily:  '<path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M18.5 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
 };
 const TABBAR_PAGES = [
   [ ['home',"Aujourd'hui"], ['cal','Calendrier'], ['tasks','Tâches'], ['habits','Habitudes'], ['health','Santé'], ['more','Plus'] ],
-  [ ['back','Retour'], ['projects','Projets'], ['notes','Notes'], ['bilan','Bilan'], ['crm','CRM'] ],
+  [ ['back','Retour'], ['projects','Projets'], ['notes','Notes'], ['daily','Widgets'], ['bilan','Bilan'], ['crm','CRM'] ],
 ];
 // sur quelle page se trouve une destination (pour afficher la bonne page au chargement)
 function tabbarPageOf(view) {
@@ -6589,18 +6750,35 @@ function openHabitModal(id) {
   $('saveHabitBtn').textContent = id ? 'Enregistrer' : 'Ajouter';
   $('deleteHabitBtn').classList.toggle('hidden', !id);
   habitDraft = h
-    ? { color: h.color || PALETTE[1], icon: h.icon || '', times: habitTimes(h).slice(), days: habitDays(h).slice() }
-    : { color: PALETTE[1], icon: '', times: ['08:00'], days: [1, 2, 3, 4, 5, 6, 0] };
+    ? { color: h.color || PALETTE[1], icon: h.icon || '', times: habitTimes(h).slice(), days: habitDays(h).slice(), freq: h.freq === 'week' ? 'week' : 'days', weekTarget: habitWeekTargetN(h) }
+    : { color: PALETTE[1], icon: '', times: ['08:00'], days: [1, 2, 3, 4, 5, 6, 0], freq: 'days', weekTarget: 3 };
   $('habitName').value = h ? h.name : '';
   $('habitTrackHealth').checked = !!(h && h.trackHealth);
+  renderHabitFreq();
   renderHabitTimes();
   renderHabitDows();
+  renderHabitWeekTarget();
   renderHabitColor();
   syncHabitIcon();
   $('habitOverlay').classList.add('show');
   setTimeout(() => $('habitName').focus(), 50);
 }
 window.openHabitModal = openHabitModal;
+
+function renderHabitFreq() {
+  const opts = [['days', 'Jours fixes'], ['week', 'Objectif / semaine']];
+  $('habitFreq').innerHTML = opts.map(([f, lbl]) =>
+    `<button type="button" class="${habitDraft.freq === f ? 'sel' : ''}" onclick="setHabitFreq('${f}')">${lbl}</button>`).join('');
+  const weekly = habitDraft.freq === 'week';
+  $('habitDaysBlock').classList.toggle('hidden', weekly);
+  $('habitWeekBlock').classList.toggle('hidden', !weekly);
+}
+window.setHabitFreq = f => { habitDraft.freq = f; renderHabitFreq(); };
+function renderHabitWeekTarget() { $('habitWeekTargetVal').textContent = `${habitDraft.weekTarget}× / semaine`; }
+window.setHabitWeekTarget = delta => {
+  habitDraft.weekTarget = Math.max(1, Math.min(7, habitDraft.weekTarget + delta));
+  renderHabitWeekTarget();
+};
 
 function renderHabitTimes() {
   $('habitTimes').innerHTML = habitDraft.times.map((t, i) =>
@@ -6637,7 +6815,7 @@ $('habitAddTime') && ($('habitAddTime').onclick = () => { habitDraft.times.push(
 function saveHabit() {
   const name = $('habitName').value.trim();
   if (!name) { $('habitName').focus(); return; }
-  const data = { name, times: habitDraft.times.slice().sort(), days: habitDraft.days.slice().sort(), color: habitDraft.color, icon: habitDraft.icon, trackHealth: $('habitTrackHealth').checked };
+  const data = { name, times: habitDraft.times.slice().sort(), days: habitDraft.days.slice().sort(), color: habitDraft.color, icon: habitDraft.icon, trackHealth: $('habitTrackHealth').checked, freq: habitDraft.freq, weekTarget: habitDraft.weekTarget };
   if (editingHabit) Object.assign(state.habits.find(x => x.id === editingHabit), data);
   else state.habits.push({ id: uid(), ...data });
   save(); closeModals(); render();
@@ -6652,6 +6830,114 @@ function deleteHabit(id, ev) {
   save(); closeModals(); render();
 }
 window.deleteHabit = deleteHabit;
+
+/* ---------- Fiche détail d'une habitude : calendrier heatmap + statistiques ----------
+   Inspiré de TickTick : un mois de pastilles (jour fait = pastille pleine) + 4 tuiles
+   de stats. On peut naviguer de mois en mois et cocher/décocher un jour passé. */
+let habitDetailId = null, habitDetailMonth = null;
+function openHabitDetail(id) {
+  const h = (state.habits || []).find(x => x.id === id); if (!h) return;
+  habitDetailId = id;
+  const now = new Date();
+  habitDetailMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  renderHabitDetail();
+  $('habitDetailOverlay').classList.add('show');
+}
+window.openHabitDetail = openHabitDetail;
+function habitDetailShiftMonth(dir) {
+  const d = habitDetailMonth, now = new Date();
+  const nd = new Date(d.getFullYear(), d.getMonth() + dir, 1);
+  if (nd > new Date(now.getFullYear(), now.getMonth(), 1)) return;   // pas de mois futur
+  habitDetailMonth = nd; renderHabitDetail();
+}
+window.habitDetailShiftMonth = habitDetailShiftMonth;
+// coche/décoche un jour depuis la heatmap puis rafraîchit la fiche
+function habitDetailToggle(id, k) {
+  toggleHabitDay(id, k);
+  renderHabitDetail();
+}
+window.habitDetailToggle = habitDetailToggle;
+
+function renderHabitDetail() {
+  const h = (state.habits || []).find(x => x.id === habitDetailId);
+  if (!h) { $('habitDetailOverlay').classList.remove('show'); return; }
+  const col = h.color || '#eae8e4', dot = dotOf(col), weekly = habitIsWeekly(h);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const m = habitDetailMonth, y = m.getFullYear(), mo = m.getMonth();
+  const daysInMonth = new Date(y, mo + 1, 0).getDate();
+
+  $('habitDetailTitle').innerHTML = `${h.icon ? iconOf(h, 'habits', 18) : `<span class="hd-swatch" style="background:${dot}"></span>`} ${esc(h.name)}`;
+  $('habitDetailEditBtn').onclick = () => { closeModals(); openHabitModal(h.id); };
+
+  // ---- statistiques ----
+  let monthCount = 0;
+  for (let dd = 1; dd <= daysInMonth; dd++) { const d = new Date(y, mo, dd); if (d > today) break; if (habitDayDone(h, d)) monthCount++; }
+  const total = habitTotalDone(h);
+  let attend;
+  if (weekly) {
+    const target = habitWeekTargetN(h), weeks = new Set();
+    let doneM = 0;
+    for (let dd = 1; dd <= daysInMonth; dd++) {
+      const d = new Date(y, mo, dd); if (d > today) break;
+      weeks.add(ymd(startOfWeek(d))); if (habitDayDone(h, d)) doneM++;
+    }
+    const expected = weeks.size * target;
+    attend = expected ? Math.min(100, Math.round(doneM / expected * 100)) : 0;
+  } else {
+    let sched = 0, done = 0;
+    for (let dd = 1; dd <= daysInMonth; dd++) {
+      const d = new Date(y, mo, dd); if (d > today) break;
+      if (!habitScheduledOn(h, d)) continue; sched++; if (habitDayDone(h, d)) done++;
+    }
+    attend = sched ? Math.round(done / sched * 100) : 0;
+  }
+  const serie = weekly ? habitWeekStreak(h) : habitStreak(h);
+  const serieUnit = weekly ? `sem.` : `j`;
+
+  const tiles = `<div class="hd-stats">
+    <div class="hd-stat"><div class="hd-stat-val">${monthCount}</div><div class="hd-stat-lbl">pointage du mois</div></div>
+    <div class="hd-stat"><div class="hd-stat-val">${total}</div><div class="hd-stat-lbl">enregistrements</div></div>
+    <div class="hd-stat"><div class="hd-stat-val">${attend} %</div><div class="hd-stat-lbl">taux de présence</div></div>
+    <div class="hd-stat"><div class="hd-stat-val">${serie} <span class="hd-stat-unit">${serieUnit}</span> 🔥</div><div class="hd-stat-lbl">série en cours</div></div>
+  </div>`;
+
+  // ---- calendrier heatmap du mois ----
+  const monthLbl = MONTHS[mo].charAt(0).toUpperCase() + MONTHS[mo].slice(1) + ' ' + y;
+  const atNow = (y === today.getFullYear() && mo === today.getMonth());
+  const dows = [...Array(7)].map((_, i) => DOW_SHORT[(state.weekStart + i) % 7]);
+  const gridStart = startOfWeek(new Date(y, mo, 1));
+  const gridEndW = startOfWeek(new Date(y, mo, daysInMonth));
+  const weeksN = Math.round((gridEndW - gridStart) / (7 * 86400000)) + 1;
+  let cells = '';
+  for (let w = 0; w < weeksN; w++) for (let i = 0; i < 7; i++) {
+    const d = addDays(gridStart, w * 7 + i);
+    if (d.getMonth() !== mo || d.getFullYear() !== y) { cells += `<div class="hd-cell out"></div>`; continue; }
+    const futur = d > today;
+    const scheduled = weekly ? true : habitScheduledOn(h, d);
+    const done = habitDayDone(h, d);
+    const isToday = ymd(d) === ymd(today);
+    const cls = ['hd-cell', done ? 'done' : '', !scheduled ? 'noplan' : '', futur ? 'fut' : '', isToday ? 'today' : ''].filter(Boolean).join(' ');
+    const style = done ? `background:${dot};border-color:${dot};color:${inkOn(dot)}`
+      : (scheduled && !futur ? `border-color:${dot}` : '');
+    const onclick = (!futur && scheduled) ? ` onclick="habitDetailToggle('${h.id}','${ymd(d)}')"` : '';
+    cells += `<div class="${cls}" style="${style}"${onclick}>${d.getDate()}</div>`;
+  }
+  const cal = `<div class="hd-cal">
+    <div class="hd-cal-head">
+      <button class="icon-btn" onclick="habitDetailShiftMonth(-1)" title="Mois précédent">‹</button>
+      <span class="hd-cal-month">${monthLbl}</span>
+      <button class="icon-btn ${atNow ? 'disabled' : ''}" ${atNow ? 'disabled' : ''} onclick="habitDetailShiftMonth(1)" title="Mois suivant">›</button>
+    </div>
+    <div class="hd-cal-dows">${dows.map(d => `<span>${d.charAt(0).toUpperCase() + d.slice(1)}</span>`).join('')}</div>
+    <div class="hd-cal-grid">${cells}</div>
+  </div>`;
+
+  const freqLbl = weekly
+    ? `Objectif : ${habitWeekTargetN(h)} fois par semaine`
+    : `Jours : ${habitTimes(h).join(' · ')}`;
+
+  $('habitDetailBody').innerHTML = `<div class="hd-freq">${freqLbl}</div>${tiles}${cal}`;
+}
 
 /* ============================================================
    NOTES
