@@ -2095,6 +2095,19 @@
     .mm-day .ag-item:last-child { border-bottom: none; }
     .mm-empty { color: var(--text-faint); font-size: 13.5px; padding: 20px 4px; line-height: 1.5; }
 
+    /* Listes du jour au téléphone (Aujourd'hui + jour sélectionné) : l'intitulé prend
+       toute la largeur. L'heure passe à droite (et disparaît si absente, au lieu de
+       réserver une colonne vide à gauche) ; la case à cocher reste alignée à gauche
+       sur toutes les lignes. Les titres longs s'affichent sur 2 lignes au lieu d'être coupés. */
+    .ho-list .ag-item, .mm-day .ag-item { gap: 8px; }
+    .ho-list .ag-time, .mm-day .ag-time { order: 9; width: auto; flex: none; margin-left: 4px;
+      font-size: 11.5px; align-self: flex-start; padding-top: 2px; }
+    .ho-list .ag-time:empty, .mm-day .ag-time:empty { display: none; margin: 0; }
+    .ho-list .ag-chip, .mm-day .ag-chip { align-items: flex-start; }
+    .ho-list .ag-chip.task-lite, .mm-day .ag-chip.task-lite { padding: 8px 10px; }
+    .ho-list .ag-title, .mm-day .ag-title { white-space: normal; line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
     /* la vue Semaine (grille 7 colonnes) est illisible sur téléphone : on masque son bouton */
     .view-switch button[data-view="week"] { display: none; }
     /* on réserve la place de la barre pour que rien ne passe dessous */
