@@ -1746,6 +1746,9 @@
     background: var(--surface); border-radius: 16px; box-shadow: var(--shadow);
     width: 96vw; max-width: 1200px; height: 88vh; display: flex; flex-direction: column; overflow: hidden;
   }
+  /* mode « en grand » : le panneau remplit tout l'écran */
+  #dataOverlay.maxi { padding: 0; }
+  #dataOverlay.maxi .data-panel { width: 100vw; max-width: none; height: 100dvh; border-radius: 0; }
   .data-head { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .data-head h2 { font-size: 17px; flex-shrink: 0; }
   .data-tabs { display: flex; gap: 4px; background: var(--surface-2); border-radius: 10px; padding: 3px; flex: 1; }
@@ -1763,7 +1766,10 @@
   .data-add { background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; padding: 8px 14px; border-radius: 9px; }
   .data-add:hover { filter: brightness(1.08); }
   table.data-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  table.data-table th, table.data-table td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; vertical-align: middle; }
+  table.data-table th, table.data-table td { border: none; border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: middle; }
+  table.data-table tbody tr:last-child td { border-bottom: none; }
+  table.data-table tbody tr { transition: background .12s; }
+  table.data-table tbody tr:hover { background: var(--surface-2); }
   table.data-table th { background: var(--surface-2); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); position: sticky; top: 0; z-index: 1; white-space: nowrap; }
   table.data-table td .cid { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 11px; color: var(--text-soft); }
   table.data-table input, table.data-table select { border: 1px solid transparent; background: transparent; padding: 5px 6px; border-radius: 6px; font-size: 13px; width: 100%; min-width: 90px; }
@@ -1775,6 +1781,11 @@
   .row-del { color: var(--text-soft); font-size: 15px; padding: 4px 6px; border-radius: 6px; display: inline-grid; place-items: center; }
   .row-del:hover { color: #e74c3c; background: var(--surface-2); }
   .data-empty { color: var(--text-soft); font-size: 13.5px; padding: 20px; text-align: center; line-height: 1.6; }
+  /* cellule « Icône » : l'icône (ou un ＋ discret), cliquable pour ouvrir le sélecteur */
+  .ic-pick { border: none; background: transparent; cursor: pointer; padding: 3px 7px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-soft); line-height: 0; }
+  .ic-pick:hover { background: var(--surface-2); }
+  .ic-add { font-size: 15px; opacity: .38; }
+  .ic-pick:hover .ic-add { opacity: .75; }
 
   /* ---- menu clic droit ---- */
   .ctx-menu {
@@ -1830,7 +1841,7 @@
   .view-chip.add, .view-chip.cog { color: var(--text-soft); font-weight: 500; }
 
   /* ---- redimensionnement des colonnes ---- */
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; }
   table.data-table th { position: relative; }
   /* en-tête déplaçable pour réordonner les colonnes */
   table.data-table th[draggable="true"] { cursor: grab; }
@@ -2815,6 +2826,7 @@
         <button data-tab="cats">Agendas</button>
       </div>
       <button class="icon-btn" id="automBtn" title="Automatisations">⚡</button>
+      <button class="icon-btn" id="dataMaxBtn" title="Ouvrir en grand" onclick="toggleDataMax()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
       <button class="icon-btn" data-close title="Fermer">✕</button>
     </div>
     <div class="data-body" id="dataBody"></div>
@@ -11397,7 +11409,7 @@ function closeModals() {
   // si on revient d'un sous-formulaire (ajout/édition de tâche d'un projet), on rouvre la fenêtre du projet
   if (reopenProjDetail) { const id = reopenProjDetail; reopenProjDetail = null; openProjectDetail(id); }
   // idem pour le panneau base de données après édition d'une colonne
-  if (reopenData) { reopenData = false; $('dataOverlay').classList.add('show'); renderDataPanel(); }
+  if (reopenData) { reopenData = false; $('dataOverlay').classList.add('show'); renderDataPanel(); applyDataMax(); }
   // idem pour une page d'enregistrement (ex. après avoir ajouté une tâche depuis un projet)
   if (reopenPage) { const p = reopenPage; reopenPage = null; openPage(p.coll, p.id); }
 }
@@ -11939,12 +11951,27 @@ function pickIcon(name) {
     return;
   }
   const rec = collArr(iconCtx.coll).find(x => x.id === iconCtx.id);
-  if (rec) { rec.icon = name; save(); render(); }
+  if (rec) {
+    rec.icon = name;
+    // une note affiche son icône dans le bloc-lien de sa page parente → on resynchronise
+    if (iconCtx.coll === 'notes') { rec.updated = Date.now(); nbSyncParentLink(rec); }
+    save(); render();
+  }
   closeModals();
   if (pageCtx) renderPage();
   renderDataPanel();
 }
 window.pickIcon = pickIcon;
+// ouvre le sélecteur d'icône pour une ligne du tableau et fait revenir le panneau après le choix
+function pickRecIcon(c, id) { if ($('dataOverlay').classList.contains('show')) reopenData = true; openIconPicker(c, id); }
+window.pickRecIcon = pickRecIcon;
+// cellule « Icône » d'un tableau : l'icône actuelle (ou un ＋ discret), cliquable
+function iconCell(c, rec) {
+  const ico = c === 'notes'
+    ? (rec.icon && ICON_LIB[rec.icon] ? iconSvg(rec.icon, 18, dotOf(rec.color)) : '')
+    : iconOf(rec, c, 18);
+  return `<td style="text-align:center"><button class="ic-pick" title="Choisir une icône" onclick="pickRecIcon('${c}','${rec.id}')">${ico || '<span class="ic-add">＋</span>'}</button></td>`;
+}
 
 /* Section « Sous-tâches » de la fiche d'une tâche.
    C'est ici qu'une tâche ordinaire devient une phase : on lui ajoute des enfants. */
@@ -12055,7 +12082,14 @@ function currentView(c) {
 function setView(c, vid) { if (!state.activeView) state.activeView = {}; state.activeView[c] = vid; save(); renderDataPanel(); }
 window.setView = setView;
 
-function openDataPanel() { renderDataPanel(); $('dataOverlay').classList.add('show'); }
+function openDataPanel() { renderDataPanel(); $('dataOverlay').classList.add('show'); applyDataMax(); }
+// mode « en grand » du panneau base de données (préférence mémorisée)
+function applyDataMax() {
+  $('dataOverlay').classList.toggle('maxi', !!state.dataMax);
+  const b = $('dataMaxBtn'); if (b) b.title = state.dataMax ? 'Réduire la fenêtre' : 'Ouvrir en grand';
+}
+function toggleDataMax() { state.dataMax = !state.dataMax; save(); applyDataMax(); }
+window.toggleDataMax = toggleDataMax;
 
 // édite un champ d'un enregistrement (répercuté aussitôt sur l'agenda via render())
 function updData(c, id, field, value) {
@@ -12252,6 +12286,14 @@ const dTxt  = (c,id,f,v) => `<input value="${esc(v||'')}" onchange="updData('${c
 const dDate = (c,id,f,v) => `<input type="date" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dTime = (c,id,f,v) => `<input type="time" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dColor= (c,id,f,v) => `<input type="color" value="${v||PALETTE[0]}" onchange="updData('${c}','${id}','${f}',this.value)">`;
+// selects « pilule » colorés dans les cellules : reprennent la couleur choisie de l'agenda/projet/dossier
+function tintSelectCell(c, id, field, value, optsHtml, color) {
+  const style = color ? `background:${color};color:${inkOn(color)}` : '';
+  return `<select class="pill-select" style="${style}" onchange="updData('${c}','${id}','${field}',this.value)">${optsHtml}</select>`;
+}
+const catCell    = (c, id, v) => { const x = state.categories.find(k => k.id === v); return tintSelectCell(c, id, 'catId', v, optsCats(v), x ? catColor(x) : ''); };
+const projCell   = (c, id, v) => { const x = state.projects.find(k => k.id === v); return tintSelectCell(c, id, 'projectId', v, optsProjs(v), x ? x.color : ''); };
+const folderCell = (c, id, v) => { const x = (state.noteFolders || []).find(k => k.id === v); return tintSelectCell(c, id, 'folderId', v, optsNoteFolders(v), x ? x.color : ''); };
 
 // édite une propriété personnalisée
 function updProp(c, id, pid, value) {
@@ -12921,18 +12963,20 @@ function builtinCols(c) {
   const idCol = { key:'id', label:'ID', cell: r => `<td><span class="cid">${r.id}</span></td>` };
   if (c === 'events') return [idCol,
     { key:'title', label:'Titre',  cell: e => `<td>${dTxt(c,e.id,'title',e.title)}</td>` },
+    { key:'icon',  label:'Icône',  cell: e => iconCell(c, e) },
     { key:'date',  label:'Date',   cell: e => `<td>${dDate(c,e.id,'date',e.date)}</td>` },
     { key:'endDate', label:'Dernier jour', cell: e => `<td>${dDate(c,e.id,'endDate',e.endDate||e.date)}</td>` },
     { key:'allDay', label:'Journée entière', cell: e => `<td style="text-align:center"><input type="checkbox" ${e.allDay?'checked':''} onchange="updData('${c}','${e.id}','allDay',this.checked)"></td>` },
     { key:'start', label:'Début',  cell: e => `<td>${dTime(c,e.id,'start',e.start)}</td>` },
     { key:'end',   label:'Fin',    cell: e => `<td>${dTime(c,e.id,'end',e.end)}</td>` },
-    { key:'catId', label:'Agenda', cell: e => `<td><select onchange="updData('${c}','${e.id}','catId',this.value)">${optsCats(e.catId)}</select></td>` },
-    { key:'projectId', label:'Projet', cell: e => `<td><select onchange="updData('${c}','${e.id}','projectId',this.value)">${optsProjs(e.projectId)}</select></td>` },
+    { key:'catId', label:'Agenda', cell: e => `<td>${catCell(c,e.id,e.catId)}</td>` },
+    { key:'projectId', label:'Projet', cell: e => `<td>${projCell(c,e.id,e.projectId)}</td>` },
     { key:'color', label:'Couleur',cell: e => `<td>${dColor(c,e.id,'color',e.color)}</td>` },
     { key:'note',  label:'Note',   cell: e => `<td>${dTxt(c,e.id,'note',e.note)}</td>` }];
   if (c === 'tasks') return [idCol,
     { key:'done',  label:'Faite',  cell: t => `<td style="text-align:center"><input type="checkbox" ${t.done?'checked':''} onchange="updData('${c}','${t.id}','done',this.checked)"></td>` },
     { key:'title', label:'Titre',  cell: t => `<td>${dTxt(c,t.id,'title',t.title)}</td>` },
+    { key:'icon',  label:'Icône',  cell: t => iconCell(c, t) },
     { key:'start', label:'Début',  cell: t => `<td>${dDate(c,t.id,'start',t.start)}</td>` },
     { key:'due',   label:'Échéance', cell: t => `<td>${dDate(c,t.id,'due',t.due)}</td>` },
     { key:'dueTime', label:'Heure', cell: t => `<td>${dTime(c,t.id,'dueTime',t.dueTime)}</td>` },
@@ -12941,24 +12985,27 @@ function builtinCols(c) {
         <option value="low" ${t.prio==='low'?'selected':''}>Basse</option>
         <option value="med" ${t.prio==='med'?'selected':''}>Moyenne</option>
         <option value="high" ${t.prio==='high'?'selected':''}>Haute</option></select></td>` },
-    { key:'catId', label:'Agenda', cell: t => `<td><select onchange="updData('${c}','${t.id}','catId',this.value)">${optsCats(t.catId)}</select></td>` },
-    { key:'projectId', label:'Projet', cell: t => `<td><select onchange="updData('${c}','${t.id}','projectId',this.value)">${optsProjs(t.projectId)}</select></td>` },
+    { key:'catId', label:'Agenda', cell: t => `<td>${catCell(c,t.id,t.catId)}</td>` },
+    { key:'projectId', label:'Projet', cell: t => `<td>${projCell(c,t.id,t.projectId)}</td>` },
     { key:'parentId', label:'Tâche parente', cell: t => `<td><select onchange="updData('${c}','${t.id}','parentId',this.value)">${optsParent(t.parentId, t.id)}</select></td>` },
     { key:'note',  label:'Note',   cell: t => `<td>${dTxt(c,t.id,'note',t.note)}</td>` }];
   if (c === 'projects') return [idCol,
     { key:'name',  label:'Nom',    cell: p => `<td>${dTxt(c,p.id,'name',p.name)}</td>` },
+    { key:'icon',  label:'Icône',  cell: p => iconCell(c, p) },
     { key:'start', label:'Début',  cell: p => `<td>${dDate(c,p.id,'start',p.start)}</td>` },
     { key:'end',   label:'Fin',    cell: p => `<td>${dDate(c,p.id,'end',p.end)}</td>` },
     { key:'color', label:'Couleur',cell: p => `<td>${dColor(c,p.id,'color',p.color)}</td>` },
     { key:'tasksCount', label:'Tâches', cell: p => { const pr = projProgress(p.id); return `<td><span class="cid">${pr.done}/${pr.total}</span></td>`; } }];
   if (c === 'cats') return [idCol,
     { key:'name',  label:'Nom',    cell: a => `<td>${dTxt(c,a.id,'name',a.name)}</td>` },
+    { key:'icon',  label:'Icône',  cell: a => iconCell(c, a) },
     { key:'parentId', label:'Rangé dans', cell: a => `<td>${hasSubCats(a.id)
         ? '<span class="cid">contient des listes</span>'
         : `<select onchange="updData('${c}','${a.id}','parentId',this.value)">${optsCatParents(a.parentId, a.id)}</select>`}</td>` },
     { key:'color', label:'Couleur',cell: a => `<td>${dColor(c,a.id,'color',a.color)}</td>` }];
   if (c === 'habits') return [idCol,
     { key:'name',  label:'Nom',    cell: h => `<td>${dTxt(c,h.id,'name',h.name)}</td>` },
+    { key:'icon',  label:'Icône',  cell: h => iconCell(c, h) },
     { key:'freq',  label:'Fréquence', cell: h => `<td><select onchange="updDataR('${c}','${h.id}','freq',this.value)">
         <option value="days" ${h.freq!=='week'?'selected':''}>Jours fixes</option>
         <option value="week" ${h.freq==='week'?'selected':''}>Objectif hebdo</option></select></td>` },
@@ -12977,8 +13024,9 @@ function builtinCols(c) {
     { key:'note',  label:'Note',   cell: l => `<td>${dTxt(c,l.id,'note',l.note)}</td>` }];
   if (c === 'notes') return [idCol,
     { key:'title', label:'Titre',  cell: n => `<td>${dTxt(c,n.id,'title',n.title)}</td>` },
-    { key:'folderId', label:'Dossier', cell: n => `<td><select onchange="updData('${c}','${n.id}','folderId',this.value)">${optsNoteFolders(n.folderId)}</select></td>` },
-    { key:'projectId', label:'Projet', cell: n => `<td><select onchange="updData('${c}','${n.id}','projectId',this.value)">${optsProjs(n.projectId)}</select></td>` },
+    { key:'icon',  label:'Icône',  cell: n => iconCell(c, n) },
+    { key:'folderId', label:'Dossier', cell: n => `<td>${folderCell(c,n.id,n.folderId)}</td>` },
+    { key:'projectId', label:'Projet', cell: n => `<td>${projCell(c,n.id,n.projectId)}</td>` },
     { key:'fav',   label:'Favori', cell: n => `<td style="text-align:center"><input type="checkbox" ${n.fav?'checked':''} onchange="updData('${c}','${n.id}','fav',this.checked)"></td>` },
     { key:'color', label:'Couleur',cell: n => `<td>${dColor(c,n.id,'color',n.color)}</td>` },
     { key:'updated', label:'Modifiée', cell: n => `<td><span class="cid">${n.updated?esc(fmtDateShort(ymd(new Date(n.updated)))):'—'}</span></td>` }];
