@@ -300,7 +300,19 @@
   .sync-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px;
     border: 1px solid var(--border); background: var(--surface); font-size: 11.5px; color: var(--text-soft); cursor: pointer; flex: none; }
   .sync-badge:hover { background: var(--surface-2); }
+  .sync-badge.reconnect { border-color: #c0564f; color: #c0564f; }
+  .sync-badge.reconnect:hover { background: #c0564f14; }
   .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: none; }
+  .acct-err { background: #c0564f12; border: 1px solid #c0564f55; border-radius: var(--radius-sm); padding: 10px 12px; margin: 10px 0; font-size: 12.5px; color: var(--text); line-height: 1.45; }
+  .bk-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .bk-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); }
+  .bk-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+  .bk-date { font-size: 13px; font-weight: 500; }
+  .bk-meta { font-size: 11px; color: var(--text-faint); }
+  .bk-restore { flex: none; font-size: 12px; padding: 5px 12px; }
+  .morning-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 2px; font-size: 13px; color: var(--text-soft); }
+  .morning-row.dim { opacity: .5; }
+  .morning-row input[type="time"] { padding: 4px 8px; }
   .nav-btns { display: flex; align-items: center; gap: 4px; }
   .icon-btn {
     width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
@@ -950,19 +962,24 @@
   /* align-content:start → les rangées (en-tête / bandeau journée / grille) gardent
      leur hauteur naturelle et ne s'étirent jamais pour remplir le vide. */
   .time-grid { display: grid; height: 100%; min-height: 900px; align-content: start; }
-  /* Vue Jour (ordinateur) : colonne gauche + grille centrale + colonne widgets, deux poignées */
-  .day-split { display: grid; grid-template-columns: var(--day-left, 300px) minmax(0, 1fr) var(--day-aside, 340px); align-items: stretch; min-height: 100%; }
+  /* Vue Jour (ordinateur) : 3 panneaux en cartes arrondies, séparés par un léger espace */
+  .day-split { display: grid; grid-template-columns: var(--day-left, 300px) minmax(0, 1fr) var(--day-aside, 340px);
+    gap: 10px; padding: 8px; align-items: stretch; min-height: 100%; }
+  .day-left, .day-main, .day-aside { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-sm); }
   .day-main { min-width: 0; }
-  .day-aside { position: relative; border-left: 1px solid var(--border); background: var(--surface); }
-  .day-left { border-left: none; border-right: 1px solid var(--border); }
-  .day-aside-inner { position: sticky; top: 0; max-height: calc(100vh - 120px); overflow-y: auto;
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .day-main .tg-head { background: var(--surface); top: 0; border-radius: 18px 18px 0 0; }
+  .day-aside-inner { position: sticky; top: 0; max-height: calc(100vh - 130px); overflow-y: auto;
+    padding: 15px 16px; display: flex; flex-direction: column; gap: 14px; }
   .day-aside .dw { margin-bottom: 0; }
-  .day-grip { position: absolute; left: -4px; top: 0; bottom: 0; width: 9px; cursor: col-resize; z-index: 6; }
-  .day-grip.day-grip-r { left: auto; right: -4px; }
-  .day-grip::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: transparent; transition: background .12s; }
-  .day-grip.day-grip-r::before { left: auto; right: 4px; }
-  .day-grip:hover::before, .day-grip.drag::before { background: var(--accent); width: 2px; }
+  .day-grip { position: absolute; left: -10px; top: 0; bottom: 0; width: 12px; cursor: col-resize; z-index: 6; }
+  .day-grip.day-grip-r { left: auto; right: -10px; }
+  .day-grip::before { content: ""; position: absolute; left: 50%; transform: translateX(-50%); top: 8%; bottom: 8%; width: 2px; border-radius: 2px; background: transparent; transition: background .12s; }
+  .day-grip:hover::before, .day-grip.drag::before { background: var(--accent); }
+  .dl-review-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-top: 2px;
+    padding: 9px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface-2);
+    color: var(--text); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer; transition: border-color .12s, background .12s; }
+  .dl-review-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .dl-review-btn svg { color: var(--accent); flex: none; }
   .da-head { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; }
   .da-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
   /* Colonne gauche de la vue Jour */
@@ -1144,7 +1161,7 @@
     border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); cursor: pointer; }
   .rev-noteitem:hover { border-color: var(--border-strong); }
   .rev-noteico { display: inline-flex; color: var(--text-faint); flex: none; }
-  .rev-projlist { display: flex; flex-direction: column; gap: 10px; }
+  .rev-projlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
   .rev-proj { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer; background: var(--surface-2); transition: border-color .12s; }
   .rev-proj:hover { border-color: var(--border-strong); }
   .rev-proj-top { display: flex; align-items: center; gap: 8px; }
@@ -2967,6 +2984,7 @@
 
       <label style="margin-top:20px;">Notifications</label>
       <div id="notifBox"></div>
+      <div id="morningBox"></div>
 
       <label style="margin-top:20px;">Données</label>
       <div id="storageBox" style="margin:4px 0 10px;"></div>
@@ -2975,7 +2993,11 @@
         <button class="btn-ghost" id="importBtn" style="flex:1;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg> Importer</button>
       </div>
       <input type="file" id="importFile" accept="application/json" class="hidden">
-      <button class="btn-ghost btn-danger" id="resetBtn" style="width:100%; margin-top:10px;">Tout réinitialiser</button>
+
+      <label style="margin-top:20px;">Sauvegardes automatiques</label>
+      <div id="backupBox"></div>
+
+      <button class="btn-ghost btn-danger" id="resetBtn" style="width:100%; margin-top:16px;">Tout réinitialiser</button>
     </div>
     <div class="modal-foot"><button class="btn-primary" data-close>Fermer</button></div>
   </div>
@@ -3080,6 +3102,8 @@ const defaultState = () => ({
   noteRead: false,
   // abonnements aux notifications (un par appareil) : lus par la fonction serveur pour envoyer les rappels
   pushSubscriptions: [],
+  // résumé du matin : une notification quotidienne à l'heure choisie (lu par la fonction serveur)
+  morningSummary: { enabled: false, time: '08:00' },
   // modèles enregistrés (tâches/événements/projets/notes), par type
   templates: {},
   // propriétés épinglées / ordre des propriétés / « afficher plus » sur les fiches, par table
@@ -3238,11 +3262,15 @@ function setSession(j, email) {
   };
   saveAuth();
 }
-// renvoie un jeton valide (rafraîchi si besoin)
+// renvoie un jeton valide (rafraîchi si besoin). Si le rafraîchissement échoue
+// (jeton de session expiré/révoqué), on lève une erreur marquée `.auth` : elle ne
+// se répare pas toute seule (il faut se reconnecter avec le mot de passe).
 async function ensureToken() {
   if (!auth) return null;
   if (Date.now() < auth.expires_at - 60000) return auth.access_token;
-  const j = await supaAuthCall('token?grant_type=refresh_token', { refresh_token: auth.refresh_token });
+  let j;
+  try { j = await supaAuthCall('token?grant_type=refresh_token', { refresh_token: auth.refresh_token }); }
+  catch (e) { const err = new Error('Session expirée'); err.auth = true; throw err; }
   setSession(j);
   return auth.access_token;
 }
@@ -3253,7 +3281,7 @@ async function supaRest(method, { query = '', headers = {}, body } = {}) {
     headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...headers },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!r.ok) throw new Error(`Erreur ${r.status}`);
+  if (!r.ok) { const err = new Error(`Erreur ${r.status}`); if (r.status === 401 || r.status === 403) err.auth = true; throw err; }
   const t = await r.text();
   return t ? JSON.parse(t) : null;
 }
@@ -3288,7 +3316,34 @@ function cloudSignOut() {
 }
 
 /* ---------- envoi / réception ---------- */
-function setSyncState(s) { syncState = s; renderSyncBadge(); }
+let syncRetryTimer = null, syncRetryDelay = 0, authExpired = false;
+function setSyncState(s) {
+  syncState = s;
+  // synchro réussie : on annule les retentatives et on efface l'état « session expirée »
+  if (s === 'idle') { clearTimeout(syncRetryTimer); syncRetryTimer = null; syncRetryDelay = 0; authExpired = false; }
+  renderSyncBadge();
+  renderAccountBox();
+}
+// programme une nouvelle tentative de synchro, en espaçant de plus en plus (15s → 2 min max).
+// Ne s'applique pas aux erreurs d'authentification (celles-là attendent une reconnexion).
+function scheduleSyncRetry() {
+  if (!auth || authExpired) return;
+  clearTimeout(syncRetryTimer);
+  syncRetryDelay = Math.min(syncRetryDelay ? syncRetryDelay * 2 : 15000, 120000);
+  syncRetryTimer = setTimeout(() => {
+    if (navigator.onLine && auth && !authExpired) cloudSyncNow().catch(cloudOnError);
+  }, syncRetryDelay);
+}
+// reconnexion manuelle (bouton) : reconnexion par mot de passe si la session a expiré,
+// sinon simple nouvelle tentative de synchro immédiate.
+async function reconnect() {
+  if (!cloudReady()) return;
+  if (!auth || authExpired) { openLogin(); return; }
+  syncRetryDelay = 0; clearTimeout(syncRetryTimer);
+  setSyncState('syncing');
+  try { await cloudSyncNow(); } catch (e) { cloudOnError(e); }
+}
+window.reconnect = reconnect;
 function cloudMarkDirty() {
   if (!cloudReady() || !auth || applyingRemote) return;
   syncMeta.dirty = true; saveSyncMeta();
@@ -3387,7 +3442,14 @@ async function cloudSyncNow() {
 }
 function cloudOnError(e) {
   console.error('Synchro', e);
+  if (e && e.auth) {                               // session expirée : ne pas boucler, demander une reconnexion
+    authExpired = true;
+    clearTimeout(syncRetryTimer); syncRetryTimer = null;
+    setSyncState('error');
+    return;
+  }
   setSyncState(navigator.onLine ? 'error' : 'offline');
+  scheduleSyncRetry();                             // pépin réseau : on retente tout seul, de plus en plus espacé
 }
 // à l'ouverture et au retour sur l'onglet : on va chercher les changements de l'autre appareil
 function initCloud() {
@@ -4631,7 +4693,11 @@ function dayLeftHtml() {
     <div class="dl-sec">
       <div class="dl-sec-t">Intention du jour</div>
       <textarea class="dl-intention" placeholder="Ma priorité, mon intention…" onchange="setDayIntention('${k}', this.value)">${esc(intention)}</textarea>
-    </div>`;
+    </div>
+    <button class="dl-review-btn" onclick="openCurrentWeekReview()" title="Compléter ta revue de la semaine au fil des jours">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      Ma revue de la semaine
+    </button>`;
 }
 function setDayIntention(k, v) {
   if (!state.dayIntention) state.dayIntention = {};
@@ -8474,6 +8540,22 @@ function openPeriodReview() {
   openNote(n.id);
 }
 window.openPeriodReview = openPeriodReview;
+// ouvre (ou crée) la note de revue de la SEMAINE EN COURS (indépendant du Bilan) —
+// pour la compléter au fil des jours depuis la colonne de gauche de la vue Jour.
+function openCurrentWeekReview() {
+  const ws = startOfWeek(new Date());
+  const title = `Revue — semaine du ${ws.getDate()} ${MONTHS_SHORT[ws.getMonth()]}`;
+  let n = (state.notes || []).find(x => x.title === title);
+  if (!n) {
+    const folderId = ensureReviewFolder('Revues hebdo');
+    const tpl = ((state.templates && state.templates.note) || []).find(t => /revue/i.test(t.name));
+    const body = (tpl && tpl.data && tpl.data.body) ? tpl.data.body : REVIEW_BODY;
+    n = { id: uid(), title, body, color: PALETTE[4], icon: '', folderId, projectId: '', eventId: '', taskId: '', fav: false, reviewWeek: ymd(ws), updated: Date.now() };
+    state.notes.push(n); save();
+  }
+  openNote(n.id);
+}
+window.openCurrentWeekReview = openCurrentWeekReview;
 // reporter toutes les tâches en retard à la semaine prochaine
 function reviewRescheduleOverdue() {
   const list = overdueTasks(); if (!list.length) return;
@@ -10824,7 +10906,9 @@ function openSettings() {
   renderAccountBox();
   renderInstallBox();
   renderNotifBox();
+  renderMorningBox();
   renderStorageBox();
+  renderBackupBox();
   $('settingsOverlay').classList.add('show');
 }
 function setAccent(c) { state.accent = c; save(); render(); openSettings(); }
@@ -10893,12 +10977,17 @@ const SYNC_LOOK = {
 function renderSyncBadge() {
   const b = $('syncBadge'); if (!b) return;
   // synchro possible mais pas encore connectée → on invite à se connecter
-  const look = (cloudReady() && !auth && syncState === 'off')
+  let look = (cloudReady() && !auth && syncState === 'off')
     ? { c: 'var(--text-faint)', t: 'Non connectée' }
     : (SYNC_LOOK[syncState] || SYNC_LOOK.off);
+  // session expirée : on le dit clairement, la pastille devient un bouton « Reconnecter »
+  if (syncState === 'error' && authExpired) look = { c: '#c0564f', t: 'À reconnecter' };
+  b.classList.toggle('reconnect', syncState === 'error' || syncState === 'offline');
   b.querySelector('.sync-dot').style.background = look.c;
   b.querySelector('.sync-txt').textContent = look.t;
-  b.title = auth ? `${look.t} · ${auth.email}` : (cloudReady() ? 'Non connecté — clique pour synchroniser' : 'Synchronisation non configurée');
+  b.title = syncState === 'error'
+    ? (authExpired ? 'Session expirée — clique pour te reconnecter' : 'Synchro en échec — clique pour réessayer')
+    : (auth ? `${look.t} · ${auth.email}` : (cloudReady() ? 'Non connecté — clique pour synchroniser' : 'Synchronisation non configurée'));
 }
 // bloc « compte » des réglages : état, connexion, déconnexion
 function renderAccountBox() {
@@ -10907,8 +10996,16 @@ function renderAccountBox() {
     box.innerHTML = `<p class="hint-txt" style="margin-top:0">La synchronisation n'est pas encore configurée. Tes données restent sur cet appareil.</p>`;
     return;
   }
+  const errBanner = (auth && syncState === 'error')
+    ? `<div class="acct-err">${authExpired
+        ? 'Ta session a expiré. Reconnecte-toi pour reprendre la synchronisation.'
+        : 'La synchronisation a échoué (réseau ?). Nouvelle tentative automatique en cours…'}
+        <button class="btn-primary" style="width:100%;margin-top:8px" onclick="reconnect()">${authExpired ? 'Se reconnecter' : 'Réessayer maintenant'}</button>
+      </div>`
+    : '';
   box.innerHTML = auth
     ? `<p class="hint-txt" style="margin-top:0">Connectée en tant que <b>${esc(auth.email)}</b>. Tes données se synchronisent entre tes appareils.</p>
+       ${errBanner}
        <div class="row-2">
          <button class="btn-ghost" style="flex:1" onclick="cloudSyncNow().catch(cloudOnError)">Synchroniser maintenant</button>
          <button class="btn-ghost btn-danger" style="flex:1" onclick="cloudSignOut()">Se déconnecter</button>
@@ -11052,6 +11149,7 @@ window.doInstall = doInstall;
    que la fonction serveur (Edge Function) sait où envoyer les rappels.
    Plusieurs appareils = plusieurs abonnements dans le même tableau. */
 const VAPID_PUBLIC_KEY = 'BGkvZKLT9SEViH3PeS1g15D2f2buqNWEKX1qX3gsFStRRhujFRo74SM1t3yZZcoawWZN-t8fdJ9fEG5lTSWcrNc';
+const NOTIF_WANT_KEY = 'mon-agenda-notif-on';   // drapeau LOCAL (non synchronisé) : cet appareil veut les rappels
 // conversion base64url → Uint8Array, format attendu par pushManager.subscribe
 function urlB64ToUint8Array(base64) {
   const padding = '='.repeat((4 - base64.length % 4) % 4);
@@ -11092,11 +11190,13 @@ async function enableNotifs() {
   // un appareil = un abonnement : on remplace si cet endpoint existait déjà (renouvellement)
   state.pushSubscriptions = state.pushSubscriptions.filter(s => s.endpoint !== json.endpoint);
   state.pushSubscriptions.push({ endpoint: json.endpoint, keys: json.keys, addedAt: Date.now() });
+  try { localStorage.setItem(NOTIF_WANT_KEY, '1'); } catch (e) {}   // cet appareil VEUT les rappels
   save();
   await renderNotifBox();
 }
 window.enableNotifs = enableNotifs;
 async function disableNotifs() {
+  try { localStorage.removeItem(NOTIF_WANT_KEY); } catch (e) {}     // ne plus revalider tout seul
   const sub = await currentPushSub();
   if (sub) {
     state.pushSubscriptions = (state.pushSubscriptions || []).filter(s => s.endpoint !== sub.endpoint);
@@ -11106,6 +11206,28 @@ async function disableNotifs() {
   await renderNotifBox();
 }
 window.disableNotifs = disableNotifs;
+/* Auto-réparation : si les rappels ont été activés sur cet appareil mais que
+   l'abonnement push a été perdu ou renouvelé par le navigateur (cause fréquente
+   d'un « je ne reçois plus rien »), on le recrée en silence (la permission est déjà
+   accordée) et on le remet dans l'agenda synchronisé. Ne se déclenche JAMAIS si elle
+   a désactivé les rappels ici (drapeau local NOTIF_WANT_KEY). */
+async function revalidatePushSub() {
+  try {
+    if (localStorage.getItem(NOTIF_WANT_KEY) !== '1') return;
+    if (!notifContextOk() || Notification.permission !== 'granted') return;
+    const reg = await withTimeout(navigator.serviceWorker.ready, 4000);
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY) });
+    const json = sub.toJSON();
+    if (!state.pushSubscriptions) state.pushSubscriptions = [];
+    if (!state.pushSubscriptions.some(s => s.endpoint === json.endpoint)) {
+      state.pushSubscriptions.push({ endpoint: json.endpoint, keys: json.keys, addedAt: Date.now() });
+      save();
+      console.info('Abonnement push revalidé (recréé automatiquement).');
+    }
+  } catch (e) { /* filet silencieux : jamais bloquant */ }
+}
+window.revalidatePushSub = revalidatePushSub;
 async function renderNotifBox() {
   const box = $('notifBox'); if (!box) return;
   if (!notifSupported()) { box.innerHTML = `<p class="hint-txt" style="margin-top:0">Non pris en charge par ce navigateur.</p>`; return; }
@@ -11129,6 +11251,26 @@ async function renderNotifBox() {
   }
 }
 
+/* ---------- Résumé du matin ----------
+   Une notification quotidienne à l'heure choisie (panorama de la journée). Le réglage
+   vit dans `state.morningSummary` (donc synchronisé) ; c'est la fonction serveur qui
+   l'envoie — l'app ne fait que régler l'heure et l'activation. */
+function renderMorningBox() {
+  const box = $('morningBox'); if (!box) return;
+  if (!cloudReady()) { box.innerHTML = ''; return; }   // sans synchro, la fonction serveur ne lit rien
+  const ms = state.morningSummary || { enabled: false, time: '08:00' };
+  box.innerHTML = `<label class="health-check" style="margin-top:12px"><input type="checkbox" ${ms.enabled ? 'checked' : ''} onchange="setMorningSummary('enabled', this.checked)"> Résumé du matin</label>
+    <div class="morning-row ${ms.enabled ? '' : 'dim'}"><span>Chaque jour à</span><input type="time" value="${ms.time || '08:00'}" onchange="setMorningSummary('time', this.value)"></div>
+    <p class="hint-txt">Une notification chaque matin : tes tâches, rendez-vous et habitudes du jour. Nécessite les rappels activés ci-dessus, sur au moins un appareil.</p>`;
+}
+window.renderMorningBox = renderMorningBox;
+function setMorningSummary(field, value) {
+  if (!state.morningSummary) state.morningSummary = { enabled: false, time: '08:00' };
+  state.morningSummary[field] = value;
+  save(); renderMorningBox();
+}
+window.setMorningSummary = setMorningSummary;
+
 /* ---------- Export / Import ---------- */
 function exportData() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -11141,12 +11283,72 @@ function importData(file) {
   const reader = new FileReader();
   reader.onload = () => {
     try {
+      makeBackup('avant-import');   // filet : on garde l'état courant avant de le remplacer
       state = Object.assign(defaultState(), JSON.parse(reader.result));
       save(); closeModals(); render();
     } catch (e) { alert('Fichier invalide.'); }
   };
   reader.readAsText(file);
 }
+
+/* ---------- Sauvegarde automatique (locale) ----------
+   Un filet de sécurité indépendant du cloud : des copies horodatées de tes données,
+   restaurables en un clic. Une automatique par jour, les plus récentes conservées.
+   En cas de dépassement de quota localStorage, on retire d'abord les plus anciennes. */
+const BACKUP_KEY = 'mon-agenda-backups';
+const BACKUP_MAX = 6;
+function loadBackups() { try { return JSON.parse(localStorage.getItem(BACKUP_KEY)) || []; } catch (e) { return []; } }
+function saveBackups(list) {
+  while (list.length) {
+    try { localStorage.setItem(BACKUP_KEY, JSON.stringify(list)); return true; }
+    catch (e) { list.shift(); }   // quota atteint : on sacrifie la plus ancienne et on réessaie
+  }
+  try { localStorage.removeItem(BACKUP_KEY); } catch (e) {}
+  return false;
+}
+function makeBackup(reason) {
+  const list = loadBackups();
+  list.push({ ts: Date.now(), reason: reason || 'auto', data: JSON.parse(JSON.stringify(state)) });
+  while (list.length > BACKUP_MAX) list.shift();
+  saveBackups(list);
+}
+function maybeAutoBackup() {
+  const list = loadBackups(), last = list[list.length - 1];
+  if (!last || Date.now() - last.ts > 20 * 3600 * 1000) makeBackup('auto');   // au moins ~20h entre deux auto
+}
+function fmtBackupDate(ts) {
+  const d = new Date(ts);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function backupNow() { makeBackup('manuelle'); renderBackupBox(); showToast('Sauvegarde effectuée'); }
+window.backupNow = backupNow;
+function restoreBackup(ts) {
+  const b = loadBackups().find(x => x.ts === Number(ts));
+  if (!b) return;
+  if (!confirm(`Restaurer la sauvegarde du ${fmtBackupDate(b.ts)} ?\nTes données actuelles seront remplacées (une sauvegarde de sécurité est prise juste avant).`)) return;
+  makeBackup('avant-restauration');
+  state = Object.assign(defaultState(), b.data);
+  save(); closeModals(); render();
+  showToast('Sauvegarde restaurée');
+}
+window.restoreBackup = restoreBackup;
+function renderBackupBox() {
+  const box = $('backupBox'); if (!box) return;
+  const list = loadBackups().slice().reverse();   // plus récente en haut
+  const lbl = { auto: 'automatique', manuelle: 'manuelle', 'avant-restauration': 'avant restauration', 'avant-import': 'avant import' };
+  const rows = list.length ? list.map(b => {
+    const nt = (b.data && Array.isArray(b.data.tasks)) ? b.data.tasks.length : 0;
+    const nn = (b.data && Array.isArray(b.data.notes)) ? b.data.notes.length : 0;
+    return `<div class="bk-row">
+      <div class="bk-info"><span class="bk-date">${esc(fmtBackupDate(b.ts))}</span><span class="bk-meta">${lbl[b.reason] || b.reason} · ${nt} tâche${nt > 1 ? 's' : ''}, ${nn} note${nn > 1 ? 's' : ''}</span></div>
+      <button class="btn-ghost bk-restore" onclick="restoreBackup(${b.ts})">Restaurer</button>
+    </div>`;
+  }).join('') : `<p class="hint-txt" style="margin:0">Aucune sauvegarde pour l'instant.</p>`;
+  box.innerHTML = `<p class="hint-txt" style="margin-top:0">Copies locales de tes données (une par jour, ${BACKUP_MAX} conservées) — un filet de sécurité même sans connexion.</p>
+    <div class="bk-list">${rows}</div>
+    <button class="btn-ghost" style="width:100%;margin-top:8px" onclick="backupNow()">Sauvegarder maintenant</button>`;
+}
+window.renderBackupBox = renderBackupBox;
 
 /* ============================================================
    NAVIGATION
@@ -13361,7 +13563,11 @@ document.addEventListener('click', e => {
   if (n) { n.body = sanitizeNoteHtml(box.innerHTML); n.updated = Date.now(); save(); }
 }, true);
 // synchro : badge + fenêtre de connexion
-$('syncBadge').onclick = () => { if (auth) openSettings(); else openLogin(); };
+$('syncBadge').onclick = () => {
+  if (auth && (syncState === 'error' || syncState === 'offline')) reconnect();
+  else if (auth) openSettings();
+  else openLogin();
+};
 $('signinBtn').onclick = () => doLogin(false);
 $('signupBtn').onclick = () => doLogin(true);
 $('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(false); });
@@ -14254,6 +14460,8 @@ initCloud();            // synchro : reprend la session, va chercher les changem
 registerServiceWorker(); // app installable + fonctionnement hors ligne
 handleLaunchAction();    // raccourcis d'icône (appui long) : nouvelle tâche / note / aujourd'hui
 drainPendingHabitDone(); // habitudes cochées depuis une notification pendant que l'app était fermée
+maybeAutoBackup();       // sauvegarde locale automatique (une par jour), filet de sécurité
+setTimeout(revalidatePushSub, 3000); // recrée l'abonnement push s'il a été perdu (rappels qui ne partent plus)
 </script>
 </body>
 </html>
