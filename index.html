@@ -982,6 +982,12 @@
   .dl-review-btn svg { color: var(--accent); flex: none; }
   .da-head { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; }
   .da-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
+  .day-aside .dw-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dw-eye { border: none; background: none; color: var(--text-faint); cursor: pointer; padding: 2px; display: inline-flex; border-radius: 5px; opacity: .45; transition: opacity .12s, color .12s, background .12s; flex: none; }
+  .day-aside .dw:hover .dw-eye { opacity: 1; }
+  .dw-eye:hover { color: var(--accent); background: var(--surface-2); }
+  .da-hidden { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .da-hidden-lbl { font-size: 11px; color: var(--text-faint); }
   /* Colonne gauche de la vue Jour */
   .dl-sec-t { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   .dl-count { background: var(--accent-soft); color: var(--text); border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; }
@@ -993,9 +999,10 @@
   .dl-task-title { font-size: 13px; line-height: 1.35; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
   .dl-task.done .dl-task-title { text-decoration: line-through; color: var(--text-faint); }
   .dl-task-time { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-  .dl-late { cursor: grab; }
-  .dl-late:active { cursor: grabbing; }
-  .dl-late.dragging { opacity: .5; }
+  .dl-late, .dl-drag { cursor: grab; }
+  .dl-late:active, .dl-drag:active { cursor: grabbing; }
+  .dl-late.dragging, .dl-drag.dragging { opacity: .5; }
+  .dl-task.dl-drag .dl-task-title, .dl-late .dl-task-title { cursor: pointer; }
   .dl-late-when { font-size: 11px; color: #b4544f; margin-left: 2px; }
   .dl-pull { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-soft); cursor: pointer; font-size: 14px; line-height: 1; }
   .dl-pull:hover { border-color: var(--accent); color: var(--accent); }
@@ -4627,16 +4634,22 @@ function renderTimeGrid(nDays) {
 const DAY_ASIDE_MIN = 240, DAY_ASIDE_MAX = 620, DAY_ASIDE_DEF = 340;
 const DAY_LEFT_MIN = 220, DAY_LEFT_MAX = 460, DAY_LEFT_DEF = 300;
 // COLONNE DROITE : les mêmes widgets quotidiens que l'onglet mobile « Widgets »
+const DA_EYE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
 function dayAsideHtml() {
   const c = homeCfg();
-  const keys = c.order.filter(k => k === 'horoscope' || (typeof k === 'string' && k.startsWith('feed:')));
+  const dailyKeys = c.order.filter(k => k === 'horoscope' || (typeof k === 'string' && k.startsWith('feed:')));
+  const keys = dailyKeys.filter(k => !c.hidden.includes(k));
+  const hiddenDaily = dailyKeys.filter(k => c.hidden.includes(k));
   const today = new Date();
   const dateTxt = `${DOW_LONG[today.getDay()]} ${today.getDate()} ${MONTHS[today.getMonth()]}`;
   let inner = `<div class="da-head">${dateTxt.charAt(0).toUpperCase() + dateTxt.slice(1)}</div>`;
-  if (!keys.length) {
+  if (!keys.length && !hiddenDaily.length) {
     inner += `<div class="da-empty">Aucun widget quotidien pour l'instant.<br>Ajoute-en un ci-dessous ou depuis le tableau de bord.</div>`;
   } else {
-    inner += keys.map(k => { const w = homeW(k); if (!w) return ''; return `<section class="dw"><div class="dw-title">${esc(w.label)}</div><div class="dw-body">${w.body()}</div></section>`; }).join('');
+    inner += keys.map(k => { const w = homeW(k); if (!w) return ''; return `<section class="dw"><div class="dw-title">${esc(w.label)}<button class="dw-eye" onclick="homeHide('${k}',event)" title="Masquer ce widget">${DA_EYE}</button></div><div class="dw-body">${w.body()}</div></section>`; }).join('');
+  }
+  if (hiddenDaily.length) {
+    inner += `<div class="da-hidden"><span class="da-hidden-lbl">Masqués :</span>${hiddenDaily.map(k => `<button class="hw-chip" onclick="homeShow('${k}',event)" title="Réafficher">${esc((homeW(k) || {}).label || '')} <span>＋</span></button>`).join('')}</div>`;
   }
   inner += `<button class="hw-cta dw-add" onclick="homeAddFeedMenu(event)">＋ Widget quotidien</button>`;
   return inner;
@@ -4664,7 +4677,8 @@ function dayLeftHtml() {
     .sort((a, b) => (a.dueTime || '99:99').localeCompare(b.dueTime || '99:99'));
   const tasksHtml = tasks.length ? tasks.map(t => {
     const pc = prioCol(t.prio || 'med');
-    return `<div class="dl-task ${t.done ? 'done' : ''}">
+    // glissable sur la grille : déposer une tâche (même sans heure) sur un créneau lui donne cet horaire
+    return `<div class="dl-task dl-drag ${t.done ? 'done' : ''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${t.id}">
       <span class="task-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
       <span class="dl-task-title" onclick="openEdit('task','${t.id}',event)">${t.dueTime ? `<span class="dl-task-time">${t.dueTime}</span> ` : ''}${esc(t.title)}</span>
     </div>`;
@@ -8486,8 +8500,14 @@ const REVIEW_BODY_MONTH = `<p><strong>🌱 Ce que je retiens de ce mois</strong>
 // synthèse chiffrée de la semaine affichée
 function reviewStats(weekDays) {
   const ws = weekDays[0], we = weekDays[weekDays.length - 1], now = new Date();
-  const tasksDone = (state.tasks || []).filter(t => t.done && t.doneAt
-    && ymd(new Date(t.doneAt)) >= ws && ymd(new Date(t.doneAt)) <= we).length;
+  // date de « complétion » : la date de coche si connue, sinon on retombe sur l'échéance
+  // (les tâches cochées avant l'ajout du champ doneAt n'en ont pas — sinon elles
+  // n'apparaîtraient jamais dans le bilan des semaines passées).
+  const tasksDone = (state.tasks || []).filter(t => {
+    if (!t.done) return false;
+    const when = t.doneAt ? ymd(new Date(t.doneAt)) : t.due;
+    return when && when >= ws && when <= we;
+  }).length;
   let habDone = 0, habDue = 0;
   (state.habits || []).forEach(h => {
     if (habitIsWeekly(h)) { const t = habitWeekTargetN(h); habDone += Math.min(habitWeekDone(h, parseYmd(ws)), t); habDue += t; }
@@ -11390,7 +11410,7 @@ let pageCtx = null;       // { coll, id }
 let reopenPage = null;    // { coll, id } à rouvrir après un sous-formulaire
 
 // champ servant de titre de la page
-const TITLE_FIELD = { events:'title', tasks:'title', projects:'name', cats:'name' };
+const TITLE_FIELD = { events:'title', tasks:'title', projects:'name', cats:'name', habits:'name', health:'date', notes:'title' };
 const titleFieldOf = c => TITLE_FIELD[c] || 'title';
 
 // propriétés intégrées affichées dans la page (hors titre)
@@ -11399,6 +11419,8 @@ const PAGE_BUILTINS = {
   tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext']],
   projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color']],
   cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color']],
+  habits:   [['freq','Fréquence','hfreq'],['weekTarget','Objectif hebdo','num'],['color','Couleur','color']],
+  health:   [['date','Date','date'],['mood','Humeur','mood'],['sleepHours','Sommeil (h)','num'],['cycle','Règles','check'],['note','Note','longtext']],
 };
 const BUILTIN_ICO = { date:'--:--', time:'--:--', color:'◉', text:'Aa', longtext:'Aa', check:'✓', cat:'◉', proj:'⇄', prio:'◉', task:'⇄', people:'@' };
 /* Liste des tâches pouvant servir de parent : ni la tâche elle-même, ni ses descendantes
@@ -11422,6 +11444,9 @@ function builtinField(c, rec, f) {
   if (f.kind === 'time')  return `<input type="time" value="${v||''}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'color') return `<input type="color" value="${v||PALETTE[0]}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'check') return `<input type="checkbox" ${v?'checked':''} onchange="updDataR(${b},this.checked)">`;
+  if (f.kind === 'num')   return `<input type="number" step="any" value="${v==null?'':v}" onchange="updDataNum(${b},this.value)">`;
+  if (f.kind === 'mood')  return `<select onchange="updDataNum(${b},this.value)"><option value="">—</option>${MOOD_SCALE.map(m => `<option value="${m.v}" ${v===m.v?'selected':''}>${esc(m.label)}</option>`).join('')}</select>`;
+  if (f.kind === 'hfreq') return `<select onchange="updDataR(${b},this.value)"><option value="days" ${v!=='week'?'selected':''}>Jours fixes</option><option value="week" ${v==='week'?'selected':''}>Objectif hebdo</option></select>`;
   if (f.kind === 'cat')   return `<select onchange="updDataR(${b},this.value)">${optsCats(v)}</select>`;
   // agenda d'accueil d'une liste : uniquement des agendas de 1er niveau, jamais lui-même
   if (f.kind === 'catparent') return hasSubCats(rec.id)
@@ -11531,6 +11556,8 @@ const ICON_MODAL = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" 
 function openPage(coll, id) {
   // si on ouvre depuis le panneau base de données, on y revient en fermant la page
   if ($('dataOverlay').classList.contains('show')) reopenData = true;
+  // une note s'ouvre dans son vrai éditeur (corps riche), pas dans la page générique
+  if (coll === 'notes') { openNote(id); return; }
   pageCtx = { coll, id };
   renderPage();
   $('pageOverlay').classList.add('show');
@@ -11987,19 +12014,23 @@ window.addTaskToProject = addTaskToProject;
    ============================================================ */
 let dataTab = 'tasks';
 let reopenData = false;  // rouvrir le panneau base de données après un sous-formulaire (colonne)
-const BUILTIN_TABLES = ['events', 'tasks', 'projects', 'cats'];
+const BUILTIN_TABLES = ['events', 'tasks', 'projects', 'cats', 'habits', 'health', 'notes'];
 const isBuiltinTable = c => BUILTIN_TABLES.includes(c);
 function collArr(c) {
   if (c === 'events') return state.events;
   if (c === 'tasks') return state.tasks;
   if (c === 'projects') return state.projects;
   if (c === 'cats') return state.categories;
+  if (c === 'habits') { if (!state.habits) state.habits = []; return state.habits; }
+  if (c === 'health') { if (!state.healthLogs) state.healthLogs = []; return state.healthLogs; }
+  if (c === 'notes')  { if (!state.notes) state.notes = []; return state.notes; }
   if (!state.customRecords) state.customRecords = {};
   if (!state.customRecords[c]) state.customRecords[c] = [];
   return state.customRecords[c];  // table personnalisée
 }
 function allTables() {
-  return [['events','Événements'],['tasks','Tâches'],['projects','Projets'],['cats','Agendas']]
+  return [['events','Événements'],['tasks','Tâches'],['projects','Projets'],['cats','Agendas'],
+          ['habits','Habitudes'],['health','Suivi santé'],['notes','Notes']]
     .concat((state.customTables || []).map(t => [t.id, t.name]));
 }
 function schemaOf(c) {
@@ -12037,12 +12068,20 @@ window.updData = updData;
 // variante qui rafraîchit aussi la page ouverte (pastilles, cases à cocher…)
 function updDataR(c, id, field, value) { updData(c, id, field, value); if (pageCtx) renderPage(); }
 window.updDataR = updDataR;
+// variante numérique : « » → null, sinon nombre (humeur, sommeil, objectif hebdo…)
+function updDataNum(c, id, field, value) { updData(c, id, field, value === '' ? null : Number(value)); if (pageCtx) renderPage(); }
+window.updDataNum = updDataNum;
+// résumé lisible des jours prévus d'une habitude (« lun, mar, jeu » ou « tous les jours »)
+function habitDaysSummary(h) { const d = habitDays(h); if (d.length >= 7) return 'tous les jours'; return d.slice().sort((a, b) => a - b).map(x => DOW_SHORT[x]).join(', ') || '—'; }
 function addData(c) {
   const today = ymd(new Date());
   if (c === 'events') state.events.push({ id: uid(), title: 'Nouvel événement', date: today, start: '09:00', end: '10:00', color: state.accent, catId: '', note: '' });
   else if (c === 'tasks') state.tasks.push({ id: uid(), done: false, title: 'Nouvelle tâche', due: '', dueTime: '', prio: 'med', catId: '', projectId: '', note: '' });
   else if (c === 'projects') state.projects.push({ id: uid(), name: 'Nouveau projet', color: allColors()[Math.floor(Math.random()*PALETTE.length)] });
   else if (c === 'cats') state.categories.push({ id: uid(), name: 'Nouvel agenda', color: allColors()[Math.floor(Math.random()*PALETTE.length)] });
+  else if (c === 'habits') { if (!state.habits) state.habits = []; state.habits.push({ id: uid(), name: 'Nouvelle habitude', times: [], days: [0,1,2,3,4,5,6], freq: 'days', weekTarget: 3, color: allColors()[Math.floor(Math.random()*PALETTE.length)], icon: '' }); }
+  else if (c === 'health') { if (!state.healthLogs) state.healthLogs = []; let d = new Date(), k = ymd(d), g = 0; while (healthLogFor(k) && g < 400) { d.setDate(d.getDate() - 1); k = ymd(d); g++; } state.healthLogs.push({ id: uid(), date: k, mood: null, sleepHours: null, cycle: false, note: '' }); }
+  else if (c === 'notes') { if (!state.notes) state.notes = []; state.notes.push({ id: uid(), title: 'Nouvelle note', body: '', color: state.accent, folderId: '', projectId: '', fav: false, updated: Date.now() }); }
   else collArr(c).push({ id: uid(), title: 'Nouvel élément', props: {} });  // table personnalisée
   save(); render(); renderDataPanel();
 }
@@ -12050,6 +12089,24 @@ window.addData = addData;
 function delData(c, id) {
   if (c === 'cats') deleteCat(id);           // nettoie aussi les références (catId)
   else if (c === 'projects') deleteProject(id); // nettoie aussi les références (projectId)
+  else if (c === 'habits') {                 // on retire aussi tous ses pointages
+    state.habits = (state.habits || []).filter(x => x.id !== id);
+    Object.keys(state.habitDone || {}).forEach(k => { if (k.startsWith(id + '|')) delete state.habitDone[k]; });
+    save(); render();
+  }
+  else if (c === 'notes') {                  // cascade sous-pages + retrait du bloc-lien parent
+    const drop = new Set([id]); let grew = true;
+    while (grew) { grew = false; (state.notes || []).forEach(x => { if (x.parentId && drop.has(x.parentId) && !drop.has(x.id)) { drop.add(x.id); grew = true; } }); }
+    state.notes = (state.notes || []).filter(x => !drop.has(x.id));
+    state.notes.forEach(p => {
+      if (p.body && p.body.indexOf('data-page="' + id + '"') !== -1) {
+        const box = document.createElement('div'); box.innerHTML = p.body;
+        box.querySelectorAll('.note-page-link[data-page="' + id + '"]').forEach(el => el.remove());
+        p.body = box.innerHTML; p.updated = Date.now();
+      }
+    });
+    save(); render();
+  }
   else { const a = collArr(c); const i = a.findIndex(x => x.id === id); if (i >= 0) a.splice(i, 1); save(); render(); }
   renderDataPanel();
 }
@@ -12190,6 +12247,7 @@ const optsCats = sel => '<option value="">—</option>' + topCats().map(c =>
     `<option value="${x.id}" ${x.id===sel?'selected':''}>${x.parentId ? '　› ' : ''}${esc(x.name)}</option>`).join('')
 ).join('');
 const optsProjs = sel => '<option value="">—</option>' + state.projects.map(p => `<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.name)}</option>`).join('');
+const optsNoteFolders = sel => '<option value="">— sans dossier —</option>' + (state.noteFolders || []).map(f => `<option value="${f.id}" ${f.id===sel?'selected':''}>${esc(f.name)}</option>`).join('');
 const dTxt  = (c,id,f,v) => `<input value="${esc(v||'')}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dDate = (c,id,f,v) => `<input type="date" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dTime = (c,id,f,v) => `<input type="time" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
@@ -12443,12 +12501,15 @@ const VIEW_ICO = {
 
 /* ---- Helpers relations / rollups ---- */
 const tableLabel = c => { const t = allTables().find(x => x[0] === c); return t ? t[1] : c; };
-const recLabel = (c, r) => (r.title || r.name || r.id);
+const recLabel = (c, r) => (r.title || r.name || r.date || r.id);
 const BUILTIN_FIELDS = {
   events: [['title','Titre','text'],['date','Date','date'],['start','Début','text'],['end','Fin','text'],['note','Note','longtext']],
   tasks:  [['title','Titre','text'],['due','Échéance','date'],['dueTime','Heure','text'],['done','Faite','checkbox'],['note','Note','longtext']],
   projects: [['name','Nom','text']],
   cats:   [['name','Nom','text']],
+  habits: [['name','Nom','text'],['freq','Fréquence','select'],['weekTarget','Objectif hebdo','number'],['color','Couleur','text']],
+  health: [['date','Date','date'],['mood','Humeur','number'],['sleepHours','Sommeil (h)','number'],['cycle','Règles','checkbox'],['note','Note','longtext']],
+  notes:  [['title','Titre','text'],['fav','Favori','checkbox'],['color','Couleur','text']],
 };
 function fieldsOf(c) {
   const builtins = BUILTIN_FIELDS[c] || [['title','Nom','text']];  // table perso : propriété "Nom"
@@ -12694,6 +12755,9 @@ const BUILTIN_KIND = {
   tasks:    { title:'text', done:'checkbox', due:'date', dueTime:'text', dueEnd:'text', prio:'prio', catId:'cat', projectId:'proj', note:'text' },
   projects: { name:'text', start:'date', end:'date', color:'text', tasksCount:'number' },
   cats:     { name:'text', color:'text', parentId:'cat' },
+  habits:   { name:'text', freq:'select', weekTarget:'number', color:'text' },
+  health:   { date:'date', mood:'number', sleepHours:'number', cycle:'checkbox', note:'text' },
+  notes:    { title:'text', color:'text', fav:'checkbox', projectId:'proj' },
 };
 function kindOf(c, key) {
   const prop = schemaOf(c).find(p => p.id === key);
@@ -12893,6 +12957,31 @@ function builtinCols(c) {
         ? '<span class="cid">contient des listes</span>'
         : `<select onchange="updData('${c}','${a.id}','parentId',this.value)">${optsCatParents(a.parentId, a.id)}</select>`}</td>` },
     { key:'color', label:'Couleur',cell: a => `<td>${dColor(c,a.id,'color',a.color)}</td>` }];
+  if (c === 'habits') return [idCol,
+    { key:'name',  label:'Nom',    cell: h => `<td>${dTxt(c,h.id,'name',h.name)}</td>` },
+    { key:'freq',  label:'Fréquence', cell: h => `<td><select onchange="updDataR('${c}','${h.id}','freq',this.value)">
+        <option value="days" ${h.freq!=='week'?'selected':''}>Jours fixes</option>
+        <option value="week" ${h.freq==='week'?'selected':''}>Objectif hebdo</option></select></td>` },
+    { key:'days',  label:'Jours prévus', cell: h => `<td><span class="cid">${h.freq==='week' ? '—' : esc(habitDaysSummary(h))}</span></td>` },
+    { key:'weekTarget', label:'Objectif / sem.', cell: h => `<td>${h.freq==='week'
+        ? `<input type="number" min="1" max="7" value="${habitWeekTargetN(h)}" onchange="updDataNum('${c}','${h.id}','weekTarget',this.value)">`
+        : '<span class="cid">—</span>'}</td>` },
+    { key:'times', label:'Heures', cell: h => `<td><span class="cid">${(h.times&&h.times.length)?esc(h.times.join(', ')):'—'}</span></td>` },
+    { key:'color', label:'Couleur',cell: h => `<td>${dColor(c,h.id,'color',h.color)}</td>` }];
+  if (c === 'health') return [idCol,
+    { key:'date', label:'Date',   cell: l => `<td>${dDate(c,l.id,'date',l.date)}</td>` },
+    { key:'mood', label:'Humeur', cell: l => `<td><select onchange="updDataNum('${c}','${l.id}','mood',this.value)">
+        <option value="">—</option>${MOOD_SCALE.map(m => `<option value="${m.v}" ${l.mood===m.v?'selected':''}>${esc(m.label)}</option>`).join('')}</select></td>` },
+    { key:'sleepHours', label:'Sommeil (h)', cell: l => `<td><input type="number" step="0.5" min="0" max="24" value="${l.sleepHours==null?'':l.sleepHours}" onchange="updDataNum('${c}','${l.id}','sleepHours',this.value)"></td>` },
+    { key:'cycle', label:'Règles', cell: l => `<td style="text-align:center"><input type="checkbox" ${l.cycle?'checked':''} onchange="updData('${c}','${l.id}','cycle',this.checked)"></td>` },
+    { key:'note',  label:'Note',   cell: l => `<td>${dTxt(c,l.id,'note',l.note)}</td>` }];
+  if (c === 'notes') return [idCol,
+    { key:'title', label:'Titre',  cell: n => `<td>${dTxt(c,n.id,'title',n.title)}</td>` },
+    { key:'folderId', label:'Dossier', cell: n => `<td><select onchange="updData('${c}','${n.id}','folderId',this.value)">${optsNoteFolders(n.folderId)}</select></td>` },
+    { key:'projectId', label:'Projet', cell: n => `<td><select onchange="updData('${c}','${n.id}','projectId',this.value)">${optsProjs(n.projectId)}</select></td>` },
+    { key:'fav',   label:'Favori', cell: n => `<td style="text-align:center"><input type="checkbox" ${n.fav?'checked':''} onchange="updData('${c}','${n.id}','fav',this.checked)"></td>` },
+    { key:'color', label:'Couleur',cell: n => `<td>${dColor(c,n.id,'color',n.color)}</td>` },
+    { key:'updated', label:'Modifiée', cell: n => `<td><span class="cid">${n.updated?esc(fmtDateShort(ymd(new Date(n.updated)))):'—'}</span></td>` }];
   return [idCol,  // table personnalisée
     { key:'title', label:'Nom',    cell: r => `<td>${dTxt(c,r.id,'title',r.title)}</td>` }];
 }
@@ -13073,7 +13162,7 @@ function renderDataPanel() {
   const allRows = collArr(c);
   // les tris et filtres de la vue s'appliquent à tous les types d'affichage
   const rows = applyViewRules(c, allRows, currentView(c));
-  const labels = { events:'événement', tasks:'tâche', projects:'projet', cats:'agenda' };
+  const labels = { events:'événement', tasks:'tâche', projects:'projet', cats:'agenda', habits:'habitude', health:'entrée santé', notes:'note' };
   // colonnes visibles, dans l'ordre choisi
   const cols = orderedCols(c);
   const W = (state.colWidths && state.colWidths[c]) || {};
