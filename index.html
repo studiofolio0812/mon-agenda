@@ -527,6 +527,17 @@
   .note-page-link .npl-title { border-bottom: 1px solid var(--border-strong); }
   .note-page-link.npl-missing { opacity: .55; font-style: italic; }
   .note-page-link .npl-ico { display: inline-flex; color: var(--text-soft); flex: none; }
+  /* bloc « base de données » inséré dans une note (vue liée) */
+  .note-db { margin: 10px 0; border: 1px solid var(--border); border-radius: 12px; padding: 8px; background: var(--surface); }
+  .note-db .ndb-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 8px; }
+  .note-db .ndb-name { font-weight: 600; font-size: 13px; }
+  .note-db .ndb-filter { font-size: 11px; color: var(--text-soft); background: var(--surface-2); padding: 2px 8px; border-radius: 999px; }
+  .note-db .ndb-x { margin-left: auto; color: var(--text-soft); font-size: 13px; padding: 2px 7px; border-radius: 6px; }
+  .note-db .ndb-x:hover { color: #e74c3c; background: var(--surface-2); }
+  .note-db .ndb-add { margin-top: 6px; font-size: 12.5px; color: var(--accent); padding: 5px 9px; border-radius: 8px; }
+  .note-db .ndb-add:hover { background: var(--surface-2); }
+  .note-db .ndb-empty { color: var(--text-soft); text-align: center; padding: 14px; font-size: 13px; }
+  .note-db .ndb-missing { color: var(--text-soft); font-size: 13px; padding: 8px; }
   /* panneau des sous-pages, à droite de la feuille (mode pleine page) */
   .note-pages { display: none; }
   #noteOverlay.doc .note-pages:not(.hidden) { display: block; position: fixed; right: 14px; top: 84px; bottom: 84px;
@@ -3169,6 +3180,10 @@ const defaultState = () => ({
   views: {},
   activeView: {},
   colWidths: {},
+  // vues de base de données insérées DANS une note (bloc « /base de données »).
+  // {[blocId]: {coll, type:'table', filters:[], ownerNote}} — config propre à chaque bloc,
+  // indépendante des vues du panneau Base de données. Le bloc dans la note ne stocke que l'id.
+  noteViews: {},
 });
 
 /* ---------- Persistance ---------- */
@@ -8857,6 +8872,7 @@ function openNote(id, presetFolder) {
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   ensureNoteBlocks();
   upgradeNoteImages();
+  hydrateNoteDbBlocks();   // remplit les blocs « base de données » avec leur table (jamais persistée)
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
   noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : n.taskId ? 't:' + n.taskId : '') : '';
@@ -9156,6 +9172,7 @@ const SLASH_BLOCKS = [
   { k: 'table',   n: 'Tableau',          h: 'Tableau simple' },
   { k: 'img',     n: 'Image',            h: 'Photo depuis ton appareil' },
   { k: 'page',    n: 'Page',             h: 'Sous-page dans la note' },
+  { k: 'db',      n: 'Base de données',  h: 'Vue liée d’une table (tâches, projet…)' },
 ];
 let slashIdx = 0, slashItems = [];
 // « / » suivi éventuellement de lettres, juste avant le curseur
@@ -9272,6 +9289,8 @@ function applyBlock(kind) {
       notePageOpen(cid);   // enregistre la note courante puis ouvre la sous-page
       break;
     }
+    // vue de base de données : île non éditable qui affiche une table liée (mêmes données que la source)
+    case 'db': { insertNoteDbBlock(blk); break; }
     // tableau simple : inséré après le bloc courant (un tableau ne vit pas DANS un paragraphe)
     case 'table': {
       const tbl = nbMakeTable(3, 3);
@@ -9745,6 +9764,9 @@ function sanitizeNoteHtml(html) {
   box.querySelectorAll('.fig-h').forEach(n => n.remove());
   box.querySelectorAll('.note-fig').forEach(n => { n.classList.remove('sel', 'drop-l', 'drop-r'); n.removeAttribute('draggable'); });
   box.querySelectorAll('figcaption.note-figcap').forEach(n => { if (!(n.textContent || '').trim()) n.remove(); });
+  // bloc « base de données » : on ne persiste JAMAIS le tableau rendu, seulement le marqueur
+  // (id de config) — les données restent à leur source unique, zéro duplication dans la note.
+  box.querySelectorAll('.note-db').forEach(n => { n.innerHTML = ''; n.setAttribute('contenteditable', 'false'); });
   return box.innerHTML;
 }
 
@@ -9753,6 +9775,87 @@ function saveNote() {
   noteRecordFromForm($('noteTitle').value.trim(), sanitizeNoteHtml($('noteBody').innerHTML));
   save(); closeModals(); render();
 }
+
+/* ============================================================
+   BLOC « BASE DE DONNÉES » DANS UNE NOTE (vue liée façon Notion)
+   Le HTML de la note ne contient qu'un marqueur vide <div class="note-db"
+   data-nview="ID">. La config vit dans state.noteViews[ID]. À l'ouverture on
+   « hydrate » le marqueur avec une table rendue depuis le moteur existant ;
+   à la sauvegarde sanitizeNoteHtml re-vide le marqueur (jamais de données dans la note).
+   ============================================================ */
+// filtre par défaut : une note rattachée à un projet filtre les tables « à projet » sur ce projet
+function defaultNoteDbFilter(coll) {
+  const note = editingNote ? state.notes.find(n => n.id === editingNote) : null;
+  const pid = note && note.projectId;
+  if (pid && ['tasks', 'events', 'notes'].includes(coll)) return [{ key: 'projectId', op: 'eq', value: pid }];
+  return [];
+}
+function noteDbFilterLabel(cfg) {
+  const pf = (cfg.filters || []).find(f => f.key === 'projectId' && f.op === 'eq');
+  if (pf) { const p = state.projects.find(x => x.id === pf.value); return p ? 'Projet : ' + p.name : ''; }
+  const n = (cfg.filters || []).length;
+  return n ? n + ' filtre' + (n > 1 ? 's' : '') : '';
+}
+// insère un bloc de vue liée : on choisit d'abord la table, puis on pose le marqueur
+function insertNoteDbBlock(afterBlk) {
+  const anchor = afterBlk || $('noteBody');
+  const groups = [{ label: 'Afficher quelle table ?', items: allTables().map(([id, label]) => ({ value: id, label })) }];
+  openStyledMenu(anchor, groups, '', coll => {
+    if (!coll) return;
+    if (!editingNote) noteRecordFromForm($('noteTitle').value.trim(), sanitizeNoteHtml($('noteBody').innerHTML));
+    const blocId = 'nv_' + uid();
+    if (!state.noteViews) state.noteViews = {};
+    state.noteViews[blocId] = { coll, type: 'table', filters: defaultNoteDbFilter(coll), ownerNote: editingNote || null };
+    const d = document.createElement('div');
+    d.className = 'note-db'; d.dataset.nview = blocId; d.contentEditable = 'false';
+    if (afterBlk) { afterBlk.after(d); if (!(afterBlk.textContent || '').trim()) afterBlk.remove(); }
+    else $('noteBody').appendChild(d);
+    if (!d.nextElementSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; d.after(p); }
+    hydrateNoteDbBlock(d);
+    noteAutosave(true);
+  });
+}
+// remplit un marqueur .note-db avec la table rendue (données lues à l'instant T depuis la source)
+function hydrateNoteDbBlock(el) {
+  const id = el.dataset.nview;
+  const cfg = state.noteViews && state.noteViews[id];
+  if (!cfg || !collArr(cfg.coll)) { el.innerHTML = '<div class="ndb-missing">Base de données introuvable.</div>'; return; }
+  const rows = applyViewRules(cfg.coll, collArr(cfg.coll), { filters: cfg.filters || [], sorts: [] });
+  el.innerHTML = renderNoteDbTable(id, cfg.coll, cfg, rows);
+}
+function hydrateNoteDbBlocks() { $('noteBody').querySelectorAll('.note-db').forEach(hydrateNoteDbBlock); }
+function renderNoteDbTable(id, coll, cfg, rows) {
+  const cols = orderedCols(coll).filter(c => c.key !== 'id');
+  const head = cols.map(c => `<th>${esc(c.label)}</th>`).join('');
+  const body = rows.length
+    ? rows.map(r => `<tr>${cols.map(c => c.cell(r)).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}" class="ndb-empty">Aucune ligne${(cfg.filters || []).length ? ' pour ce filtre' : ''}.</td></tr>`;
+  const fInfo = noteDbFilterLabel(cfg);
+  return `<div class="ndb-head">
+      <span class="ndb-name">${esc(tableLabel(coll))}</span>
+      ${fInfo ? `<span class="ndb-filter">${esc(fInfo)}</span>` : ''}
+      <button class="ndb-x" title="Retirer ce bloc (la table n'est pas supprimée)" onclick="removeNoteDbBlock('${id}')">✕</button>
+    </div>
+    <div class="table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    <button class="ndb-add" onclick="noteDbAddRow('${id}')">＋ Nouveau</button>`;
+}
+function noteDbAddRow(id) {
+  const cfg = state.noteViews && state.noteViews[id]; if (!cfg) return;
+  addData(cfg.coll);
+  // si la vue est filtrée sur un projet, la nouvelle ligne le reçoit pour rester visible ici
+  const pf = (cfg.filters || []).find(f => f.key === 'projectId' && f.op === 'eq');
+  if (pf) { const arr = collArr(cfg.coll); const last = arr[arr.length - 1]; if (last) { last.projectId = pf.value; save(); } }
+  const el = $('noteBody').querySelector(`.note-db[data-nview="${id}"]`);
+  if (el) hydrateNoteDbBlock(el);
+}
+window.noteDbAddRow = noteDbAddRow;
+function removeNoteDbBlock(id) {
+  const el = $('noteBody').querySelector(`.note-db[data-nview="${id}"]`);
+  if (el) el.remove();
+  if (state.noteViews) delete state.noteViews[id];
+  noteAutosave(true);
+}
+window.removeNoteDbBlock = removeNoteDbBlock;
 
 /* ---------- Fenêtre « dossier » ---------- */
 let folderDraftColor = PALETTE[4], folderDraftProj = '', folderDraftIcon = '', editingFolder = null;
