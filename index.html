@@ -528,16 +528,36 @@
   .note-page-link.npl-missing { opacity: .55; font-style: italic; }
   .note-page-link .npl-ico { display: inline-flex; color: var(--text-soft); flex: none; }
   /* bloc « base de données » inséré dans une note (vue liée) */
-  .note-db { margin: 10px 0; border: 1px solid var(--border); border-radius: 12px; padding: 8px; background: var(--surface); }
-  .note-db .ndb-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 8px; }
+  .note-db { margin: 10px 0; border: 1px solid var(--border); border-radius: 12px; padding: 8px 6px; background: var(--surface); }
+  /* en mode « en grand », le bloc déborde un peu de la colonne de texte pour montrer plus de propriétés
+     (la feuille a 74px de marge de chaque côté : -44px reste largement dans la page) */
+  #noteOverlay.doc .note-db { margin-left: -44px; margin-right: -44px; }
+  .note-db .ndb-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 8px; flex-wrap: wrap; }
   .note-db .ndb-name { font-weight: 600; font-size: 13px; }
   .note-db .ndb-filter { font-size: 11px; color: var(--text-soft); background: var(--surface-2); padding: 2px 8px; border-radius: 999px; }
-  .note-db .ndb-x { margin-left: auto; color: var(--text-soft); font-size: 13px; padding: 2px 7px; border-radius: 6px; }
+  .note-db .ndb-views { display: inline-flex; gap: 2px; margin-left: auto; }
+  .note-db .ndb-vbtn { font-size: 11.5px; color: var(--text-soft); padding: 3px 8px; border-radius: 7px; }
+  .note-db .ndb-vbtn:hover { background: var(--surface-2); }
+  .note-db .ndb-vbtn.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
+  .note-db .ndb-x { margin-left: 4px; color: var(--text-soft); font-size: 13px; padding: 2px 7px; border-radius: 6px; }
   .note-db .ndb-x:hover { color: #e74c3c; background: var(--surface-2); }
+  .note-db .ndb-kanban { overflow-x: auto; }
   .note-db .ndb-add { margin-top: 6px; font-size: 12.5px; color: var(--accent); padding: 5px 9px; border-radius: 8px; }
   .note-db .ndb-add:hover { background: var(--surface-2); }
   .note-db .ndb-empty { color: var(--text-soft); text-align: center; padding: 14px; font-size: 13px; }
   .note-db .ndb-missing { color: var(--text-soft); font-size: 13px; padding: 8px; }
+  .note-db .ndb-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px 8px; }
+  .note-db .ndb-tool { font-size: 11.5px; color: var(--text-soft); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); }
+  .note-db .ndb-tool:hover { background: var(--surface-2); }
+  .note-db .ndb-tool.on, .note-db .ndb-tool.act { color: var(--text); border-color: var(--border-strong); }
+  .note-db .ndb-th { display: inline-flex; align-items: center; gap: 4px; }
+  .note-db .ndb-eye { opacity: 0; color: var(--text-faint); display: inline-grid; place-items: center; padding: 1px; border-radius: 4px; }
+  .note-db th:hover .ndb-eye { opacity: .65; }
+  .note-db .ndb-eye:hover { opacity: 1; background: var(--surface-2); }
+  .note-db .ndb-check-row { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+  .note-db .ndb-check { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text); cursor: pointer; }
+  .note-db .ndb-cardprop { font-size: 11.5px; color: var(--text-soft); margin-top: 3px; }
+  .note-db .ndb-cardprop-k { color: var(--text-faint); }
   /* panneau des sous-pages, à droite de la feuille (mode pleine page) */
   .note-pages { display: none; }
   #noteOverlay.doc .note-pages:not(.hidden) { display: block; position: fixed; right: 14px; top: 84px; bottom: 84px;
@@ -2092,6 +2112,7 @@
     /* feuille du mode document : marges réduites, sinon il ne reste rien pour écrire */
     #noteOverlay.doc .modal-body { padding: 12px 10px 30px; }
     #noteOverlay.doc .note-body { padding: 26px 20px; min-height: calc(100vh - 190px); border-radius: 6px; }
+    #noteOverlay.doc .note-db { margin-left: -8px; margin-right: -8px; }   /* mobile : marge de feuille plus faible */
     #noteOverlay.doc .modal-head { padding: 10px 12px; }
     /* page (fiche) en panneau : pleine largeur sur mobile */
     #pageOverlay.side .page-panel, #pageOverlay .modal { max-width: calc(100vw - 20px) !important; }
@@ -9816,28 +9837,214 @@ function insertNoteDbBlock(afterBlk) {
   });
 }
 // remplit un marqueur .note-db avec la table rendue (données lues à l'instant T depuis la source)
+let ndbSF = null;   // panneau ouvert d'un bloc : { id, which:'filter'|'sort'|'views'|'cardprops' }
+const ndbCfg = id => state.noteViews && state.noteViews[id];
+function ndbRehydrate(id) { const el = $('noteBody').querySelector(`.note-db[data-nview="${id}"]`); if (el) hydrateNoteDbBlock(el); }
 function hydrateNoteDbBlock(el) {
   const id = el.dataset.nview;
-  const cfg = state.noteViews && state.noteViews[id];
+  const cfg = ndbCfg(id);
   if (!cfg || !collArr(cfg.coll)) { el.innerHTML = '<div class="ndb-missing">Base de données introuvable.</div>'; return; }
-  const rows = applyViewRules(cfg.coll, collArr(cfg.coll), { filters: cfg.filters || [], sorts: [] });
-  el.innerHTML = renderNoteDbTable(id, cfg.coll, cfg, rows);
+  if (!cfg.enabledViews || !cfg.enabledViews.length) cfg.enabledViews = ['table', 'kanban', 'cards', 'list'];
+  const rows = applyViewRules(cfg.coll, collArr(cfg.coll), { filters: cfg.filters || [], sorts: cfg.sorts || [] });
+  el.innerHTML = renderNoteDbHead(id, cfg) + renderNoteDbTools(id, cfg) + renderNoteDbSF(id, cfg)
+    + renderNoteDbContent(id, cfg, rows)
+    + `<button class="ndb-add" onclick="noteDbAddRow('${id}')">＋ Nouveau</button>`;
+  if (cfg.type === 'kanban') wireNoteDbKanban(el, id);
 }
 function hydrateNoteDbBlocks() { $('noteBody').querySelectorAll('.note-db').forEach(hydrateNoteDbBlock); }
-function renderNoteDbTable(id, coll, cfg, rows) {
-  const cols = orderedCols(coll).filter(c => c.key !== 'id');
-  const head = cols.map(c => `<th>${esc(c.label)}</th>`).join('');
+const NDB_VIEWS = [['table', 'Tableau'], ['kanban', 'Kanban'], ['cards', 'Galerie'], ['list', 'Liste']];
+function renderNoteDbHead(id, cfg) {
+  const fInfo = noteDbFilterLabel(cfg);
+  const enabled = cfg.enabledViews || ['table', 'kanban', 'cards', 'list'];
+  const switcher = NDB_VIEWS.filter(([t]) => enabled.includes(t)).map(([t, lbl]) =>
+    `<button class="ndb-vbtn ${cfg.type === t ? 'on' : ''}" onclick="setNoteDbView('${id}','${t}')">${lbl}</button>`).join('');
+  return `<div class="ndb-head">
+      <span class="ndb-name">${esc(tableLabel(cfg.coll))}</span>
+      ${fInfo ? `<span class="ndb-filter">${esc(fInfo)}</span>` : ''}
+      <span class="ndb-views">${switcher}</span>
+      <button class="ndb-x" title="Retirer ce bloc (la table n'est pas supprimée)" onclick="removeNoteDbBlock('${id}')">✕</button>
+    </div>`;
+}
+function renderNoteDbContent(id, cfg, rows) {
+  const coll = cfg.coll;
+  const nActiveF = (cfg.filters || []).filter(f => f.key).length;
+  const emptyMsg = `<div class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</div>`;
+  if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy })}</div>`;
+  if (cfg.type === 'cards')  return rows.length ? renderNoteDbCards(coll, rows, cfg) : emptyMsg;
+  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows) : emptyMsg;
+  // table (par défaut) — colonnes masquables une à une
+  const hidden = cfg.hiddenCols || [];
+  const allC = orderedCols(coll).filter(c => c.key !== 'id');
+  const cols = allC.filter(c => !hidden.includes(c.key));
+  const head = cols.map(c => `<th><span class="ndb-th">${esc(c.label)}<button class="ndb-eye" title="Masquer cette colonne" onclick="ndbHideCol('${id}','${c.key}')">${ICON_EYE}</button></span></th>`).join('');
   const body = rows.length
     ? rows.map(r => `<tr>${cols.map(c => c.cell(r)).join('')}</tr>`).join('')
-    : `<tr><td colspan="${cols.length}" class="ndb-empty">Aucune ligne${(cfg.filters || []).length ? ' pour ce filtre' : ''}.</td></tr>`;
-  const fInfo = noteDbFilterLabel(cfg);
-  return `<div class="ndb-head">
-      <span class="ndb-name">${esc(tableLabel(coll))}</span>
-      ${fInfo ? `<span class="ndb-filter">${esc(fInfo)}</span>` : ''}
-      <button class="ndb-x" title="Retirer ce bloc (la table n'est pas supprimée)" onclick="removeNoteDbBlock('${id}')">✕</button>
-    </div>
-    <div class="table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
-    <button class="ndb-add" onclick="noteDbAddRow('${id}')">＋ Nouveau</button>`;
+    : `<tr><td colspan="${cols.length}" class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</td></tr>`;
+  const chips = hidden.length ? `<div class="hidden-cols"><span class="lbl">Colonnes masquées :</span>${hidden.map(k => { const col = allC.find(x => x.key === k); return col ? `<button class="hidden-chip" onclick="ndbShowCol('${id}','${k}')">${ICON_EYE_OFF} ${esc(col.label)}</button>` : ''; }).join('')}</div>` : '';
+  return `<div class="table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${chips}`;
+}
+// galerie : titre + les propriétés que l'utilisatrice a choisi d'afficher sur les cartes
+function noteDbCellText(coll, r, key) {
+  const kind = kindOf(coll, key);
+  const v = cellValue(coll, r, key);
+  if (v == null || v === '' || (Array.isArray(v) && !v.length)) return '';
+  if (kind === 'checkbox') return v ? '✓' : '';
+  if (kind === 'proj') { const p = projById(v); return p ? p.name : ''; }
+  if (kind === 'cat')  { const c = state.categories.find(x => x.id === v); return c ? c.name : ''; }
+  if (kind === 'prio') return { low: 'Basse', med: 'Moyenne', high: 'Haute' }[v] || '';
+  if (kind === 'select') { const p = schemaOf(coll).find(x => x.id === key); const o = (p && p.options || []).find(o => o.id === v); return o ? o.label : ''; }
+  if (kind === 'date') return fmtDateShort(v);
+  return String(v);
+}
+function renderNoteDbCards(coll, rows, cfg) {
+  const keys = cfg.cardProps || [];
+  const labels = Object.fromEntries(ruleFields(coll));
+  return `<div class="cards-view">${rows.map(r => {
+    const color = r.color || ''; const dot = color ? dotOf(color) : '';
+    const props = keys.map(k => {
+      const label = labels[k]; if (!label) return '';
+      const v = noteDbCellText(coll, r, k);
+      return v ? `<div class="ndb-cardprop"><span class="ndb-cardprop-k">${esc(label)}</span> ${esc(v)}</div>` : '';
+    }).join('');
+    return `<div class="card-item" ${dot ? `style="border-top:3px solid ${dot}"` : ''}>
+      <div class="card-title">${esc(recLabel(coll, r))}</div>
+      ${keys.length ? props : `<div class="card-meta">${lineMeta(coll, r)}</div>`}
+    </div>`;
+  }).join('')}</div>`;
+}
+// pour le Kanban : de quoi grouper par défaut (priorité pour les tâches, sinon 1re colonne « Sélection »)
+function defaultGroupBy(coll) {
+  if (coll === 'tasks') return 'prio';
+  const sel = schemaOf(coll).find(p => p.type === 'select');
+  return sel ? sel.id : null;
+}
+function setNoteDbView(id, type) {
+  const cfg = state.noteViews && state.noteViews[id]; if (!cfg) return;
+  cfg.type = type;
+  if (type === 'kanban' && !cfg.groupBy) cfg.groupBy = defaultGroupBy(cfg.coll);
+  save();
+  const el = $('noteBody').querySelector(`.note-db[data-nview="${id}"]`);
+  if (el) hydrateNoteDbBlock(el);
+  noteAutosave(true);
+}
+window.setNoteDbView = setNoteDbView;
+
+/* ---- Barre d'outils du bloc : Filtrer / Trier / Vues / (galerie) Propriétés ---- */
+function renderNoteDbTools(id, cfg) {
+  const nF = (cfg.filters || []).filter(f => f.key).length;
+  const nS = (cfg.sorts || []).filter(s => s.key).length;
+  const open = w => ndbSF && ndbSF.id === id && ndbSF.which === w;
+  const cardsBtn = cfg.type === 'cards'
+    ? `<button class="ndb-tool ${open('cardprops') ? 'on' : ''}" onclick="ndbToggleSF('${id}','cardprops')">Propriétés des cartes</button>` : '';
+  return `<div class="ndb-tools">
+    <button class="ndb-tool ${open('filter') ? 'on' : ''} ${nF ? 'act' : ''}" onclick="ndbToggleSF('${id}','filter')">Filtrer${nF ? ' · ' + nF : ''}</button>
+    <button class="ndb-tool ${open('sort') ? 'on' : ''} ${nS ? 'act' : ''}" onclick="ndbToggleSF('${id}','sort')">Trier${nS ? ' · ' + nS : ''}</button>
+    <button class="ndb-tool ${open('views') ? 'on' : ''}" onclick="ndbToggleSF('${id}','views')">Vues</button>
+    ${cardsBtn}
+  </div>`;
+}
+// champ « valeur » d'un filtre, adapté au type de propriété (branché sur le bloc)
+function ndbFilterValueInput(coll, f, id, i) {
+  if (['is_true', 'is_false', 'empty', 'notempty'].includes(f.op)) return '';
+  const kind = kindOf(coll, f.key);
+  const on = `onchange="ndbUpdFilter('${id}',${i},'value',this.value)"`;
+  if (kind === 'date')   return `<input type="date" value="${f.value || ''}" ${on}>`;
+  if (kind === 'number') return `<input type="number" value="${f.value ?? ''}" ${on}>`;
+  if (kind === 'cat')    return `<select ${on}>${optsCats(f.value)}</select>`;
+  if (kind === 'proj')   return `<select ${on}>${optsProjs(f.value)}</select>`;
+  if (kind === 'prio')   return `<select ${on}>
+      <option value="low"  ${f.value === 'low' ? 'selected' : ''}>Basse</option>
+      <option value="med"  ${f.value === 'med' ? 'selected' : ''}>Moyenne</option>
+      <option value="high" ${f.value === 'high' ? 'selected' : ''}>Haute</option></select>`;
+  if (kind === 'select' || kind === 'multi') {
+    const prop = schemaOf(coll).find(p => p.id === f.key);
+    return `<select ${on}><option value="">—</option>${(prop && prop.options || []).map(o =>
+      `<option value="${o.id}" ${o.id === f.value ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+  }
+  return `<input value="${esc(f.value || '')}" placeholder="valeur" ${on}>`;
+}
+function renderNoteDbSF(id, cfg) {
+  if (!ndbSF || ndbSF.id !== id) return '';
+  const coll = cfg.coll;
+  if (ndbSF.which === 'filter') {
+    const filters = cfg.filters || [];
+    return `<div class="sf-panel">
+      ${filters.length ? filters.map((f, i) => `<div class="sf-row">
+        <span class="sf-pre">${i === 0 ? 'Où' : 'et'}</span>
+        <select onchange="ndbUpdFilter('${id}',${i},'key',this.value)">${fieldOptions(coll, f.key)}</select>
+        <select onchange="ndbUpdFilter('${id}',${i},'op',this.value)">${opsFor(kindOf(coll, f.key)).map(([o, l]) => `<option value="${o}" ${o === f.op ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${ndbFilterValueInput(coll, f, id, i)}
+        <button class="sf-del" onclick="ndbDelFilter('${id}',${i})" title="Retirer">✕</button>
+      </div>`).join('') : `<div class="sf-empty">Aucun filtre. Toutes les lignes s'affichent.</div>`}
+      <button class="sf-add" onclick="ndbAddFilter('${id}')">＋ Ajouter un filtre</button>
+    </div>`;
+  }
+  if (ndbSF.which === 'sort') {
+    const sorts = cfg.sorts || [];
+    return `<div class="sf-panel">
+      ${sorts.length ? sorts.map((s, i) => `<div class="sf-row">
+        <span class="sf-pre">${i === 0 ? 'Trier par' : 'puis par'}</span>
+        <select onchange="ndbUpdSort('${id}',${i},'key',this.value)">${fieldOptions(coll, s.key)}</select>
+        <select onchange="ndbUpdSort('${id}',${i},'dir',this.value)"><option value="asc" ${s.dir === 'asc' ? 'selected' : ''}>Croissant</option><option value="desc" ${s.dir === 'desc' ? 'selected' : ''}>Décroissant</option></select>
+        <button class="sf-del" onclick="ndbDelSort('${id}',${i})" title="Retirer">✕</button>
+      </div>`).join('') : `<div class="sf-empty">Aucun tri. Les lignes gardent leur ordre.</div>`}
+      <button class="sf-add" onclick="ndbAddSort('${id}')">＋ Ajouter un tri</button>
+    </div>`;
+  }
+  if (ndbSF.which === 'views') {
+    return `<div class="sf-panel"><div class="ndb-check-row">${NDB_VIEWS.map(([t, lbl]) =>
+      `<label class="ndb-check"><input type="checkbox" ${(cfg.enabledViews || []).includes(t) ? 'checked' : ''} onchange="ndbToggleEnabledView('${id}','${t}')"> ${lbl}</label>`).join('')}
+      </div><div class="sf-empty" style="padding-top:6px">Décoche les vues que tu ne veux pas proposer sur ce bloc.</div></div>`;
+  }
+  if (ndbSF.which === 'cardprops') {
+    const chosen = cfg.cardProps || [];
+    return `<div class="sf-panel"><div class="ndb-check-row">${ruleFields(coll).filter(([k]) => !['title', 'name', 'icon', 'color'].includes(k)).map(([k, l]) =>
+      `<label class="ndb-check"><input type="checkbox" ${chosen.includes(k) ? 'checked' : ''} onchange="ndbToggleCardProp('${id}','${k}')"> ${esc(l)}</label>`).join('')}
+      </div><div class="sf-empty" style="padding-top:6px">Choisis les propriétés affichées sur les cartes de la galerie.</div></div>`;
+  }
+  return '';
+}
+function ndbToggleSF(id, which) { ndbSF = (ndbSF && ndbSF.id === id && ndbSF.which === which) ? null : { id, which }; ndbRehydrate(id); }
+function ndbAddFilter(id) { const c = ndbCfg(id); (c.filters = c.filters || []).push({ key: '', op: 'contains', value: '' }); save(); ndbRehydrate(id); }
+function ndbDelFilter(id, i) { const c = ndbCfg(id); c.filters.splice(i, 1); save(); ndbRehydrate(id); }
+function ndbUpdFilter(id, i, field, val) { const c = ndbCfg(id); const f = c.filters[i]; if (!f) return; f[field] = val; if (field === 'key') { f.op = opsFor(kindOf(c.coll, val))[0][0]; f.value = ''; } save(); ndbRehydrate(id); }
+function ndbAddSort(id) { const c = ndbCfg(id); (c.sorts = c.sorts || []).push({ key: '', dir: 'asc' }); save(); ndbRehydrate(id); }
+function ndbDelSort(id, i) { const c = ndbCfg(id); c.sorts.splice(i, 1); save(); ndbRehydrate(id); }
+function ndbUpdSort(id, i, field, val) { const c = ndbCfg(id); const s = c.sorts[i]; if (!s) return; s[field] = val; save(); ndbRehydrate(id); }
+function ndbToggleEnabledView(id, t) {
+  const c = ndbCfg(id); let e = c.enabledViews || ['table', 'kanban', 'cards', 'list'];
+  if (e.includes(t)) { if (e.length <= 1) return; e = e.filter(x => x !== t); } else e = e.concat([t]);
+  c.enabledViews = e; if (!e.includes(c.type)) c.type = e[0]; save(); ndbRehydrate(id);
+}
+function ndbToggleCardProp(id, key) { const c = ndbCfg(id); const a = c.cardProps || []; c.cardProps = a.includes(key) ? a.filter(x => x !== key) : a.concat([key]); save(); ndbRehydrate(id); }
+function ndbHideCol(id, key) { const c = ndbCfg(id); (c.hiddenCols = c.hiddenCols || []).push(key); save(); ndbRehydrate(id); }
+function ndbShowCol(id, key) { const c = ndbCfg(id); c.hiddenCols = (c.hiddenCols || []).filter(k => k !== key); save(); ndbRehydrate(id); }
+window.ndbToggleSF = ndbToggleSF; window.ndbAddFilter = ndbAddFilter; window.ndbDelFilter = ndbDelFilter; window.ndbUpdFilter = ndbUpdFilter;
+window.ndbAddSort = ndbAddSort; window.ndbDelSort = ndbDelSort; window.ndbUpdSort = ndbUpdSort;
+window.ndbToggleEnabledView = ndbToggleEnabledView; window.ndbToggleCardProp = ndbToggleCardProp;
+window.ndbHideCol = ndbHideCol; window.ndbShowCol = ndbShowCol;
+
+// glisser-déposer du Kanban DANS la note : déplace la carte puis re-hydrate le bloc
+// (wiring dédié — on n'appelle JAMAIS wireKanbanDrag, câblé en dur sur renderDataPanel)
+function wireNoteDbKanban(container, id) {
+  const cfg = state.noteViews && state.noteViews[id]; if (!cfg) return;
+  let drag = null;
+  container.querySelectorAll('.kb-card').forEach(card => {
+    card.addEventListener('dragstart', e => { drag = card.dataset.rec; card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    card.addEventListener('dragend', () => { card.classList.remove('dragging'); drag = null; });
+  });
+  container.querySelectorAll('.kb-col').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('kb-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('kb-over'));
+    col.addEventListener('drop', e => {
+      e.preventDefault(); col.classList.remove('kb-over');
+      if (!drag) return;
+      if (cfg.groupBy === 'prio' && cfg.coll === 'tasks') updData(cfg.coll, drag, 'prio', col.dataset.opt);
+      else if (cfg.groupBy) updProp(cfg.coll, drag, cfg.groupBy, col.dataset.opt || '');
+      const el = $('noteBody').querySelector(`.note-db[data-nview="${id}"]`);
+      if (el) hydrateNoteDbBlock(el);
+    });
+  });
 }
 function noteDbAddRow(id) {
   const cfg = state.noteViews && state.noteViews[id]; if (!cfg) return;
