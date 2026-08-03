@@ -249,6 +249,10 @@
   .proj-row:hover .edit { opacity: 1; }
   .proj-row .proj-ring { flex-shrink: 0; display: inline-flex; }
   .proj-row .ring { display: block; }
+  .proj-row .proj-eye { display: grid; place-items: center; color: var(--text-faint); flex-shrink: 0; padding: 2px; border-radius: 5px; opacity: 0; }
+  .proj-row:hover .proj-eye, .proj-row .proj-eye.off { opacity: 1; }
+  .proj-row .proj-eye.off { color: var(--text-soft); }
+  .proj-row.mo-hidden .proj-name { opacity: .5; }
   .proj-bar { height: 5px; border-radius: 4px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
   .proj-row.active .proj-bar { background: rgba(0,0,0,.08); }
   .proj-bar > div { height: 100%; border-radius: 4px; transition: width .25s; }
@@ -3112,6 +3116,8 @@ const defaultState = () => ({
   navOpen: { tasks: true, projects: false, cats: false, habits: false },
   // agendas masqués du calendrier (ids) — l'œil de la barre latérale les bascule
   hiddenCats: [],
+  // projets masqués UNIQUEMENT de la vue mois (ids) — l'œil de la barre latérale les bascule
+  monthHiddenProjects: [],
   // agendas dont les listes sont repliées dans la barre latérale (ids)
   catCollapsed: [],
   // affichage d'une page : 'modal' (fenêtre) ou 'side' (panneau latéral)
@@ -3761,6 +3767,8 @@ const untimedTasksOn = d => tasksOn(d).filter(t => !t.dueTime);
 const projStart = p => p.start || '';
 const projEnd = p => p.end || p.start || '';
 const projScheduled = p => !!p.start;
+// un projet est-il visible dans la vue MOIS (l'œil de la barre latérale ne masque que là)
+const projMonthVisible = id => !(state.monthHiddenProjects || []).includes(id);
 // projets dont la période couvre ce jour (vue mois)
 function projectsOn(d) {
   const k = ymd(d);
@@ -3958,7 +3966,7 @@ function dayDots(d) {
   const cols = [];
   eventsOn(d).forEach(e => cols.push(eventLook(e).dot));
   tasksOn(d).forEach(t => cols.push(taskStripe(t)));
-  projectsOn(d).forEach(p => cols.push(dotOf(p.color)));
+  projectsOn(d).filter(p => projMonthVisible(p.id)).forEach(p => cols.push(dotOf(p.color)));
   if (!cols.length) return '';
   return [...new Set(cols)].slice(0, 4)
     .map(c => `<span class="mm-dot" style="background:${c}"></span>`).join('');
@@ -4287,7 +4295,7 @@ function renderMonth() {
 
     /* --- ce qui s'étale : projets planifiés et événements de plusieurs jours --- */
     const barres = [];
-    state.projects.filter(p => projScheduled(p) && projStart(p) <= fin && projEnd(p) >= debut)
+    state.projects.filter(p => projMonthVisible(p.id) && projScheduled(p) && projStart(p) <= fin && projEnd(p) >= debut)
       .sort((a, b) => projStart(a).localeCompare(projStart(b)))
       .forEach(p => {
         const s = projStart(p) < debut ? 0 : idxOf(projStart(p));
@@ -9873,12 +9881,14 @@ function renderProjects() {
   box.innerHTML = visible.map(p => {
     const pr = projProgress(p.id);
     const active = projectFilter === p.id;
-    return `<div class="proj-row ${active?'active':''}" onclick="openProjectDetail('${p.id}')" title="Ouvrir ce projet et ses tâches">
+    const moOff = !projMonthVisible(p.id);
+    return `<div class="proj-row ${active?'active':''} ${moOff?'mo-hidden':''}" onclick="openProjectDetail('${p.id}')" title="Ouvrir ce projet et ses tâches">
       <div class="proj-line">
         <span class="swatch" style="background:${dotOf(p.color)}"></span>
         <span class="proj-name">${esc(p.name)}</span>
         <span class="proj-count">${pr.done}/${pr.total}</span>
         <span class="proj-ring" title="${pr.pct}% terminé">${progressRing(pr.pct, dotOf(p.color), 22)}</span>
+        <button class="proj-eye ${moOff?'off':''}" onclick="toggleProjMonthVisible('${p.id}',event)" title="${moOff ? 'Réafficher dans la vue mois' : 'Masquer de la vue mois'}">${moOff ? ICON_EYE_OFF : ICON_EYE}</button>
         <button class="edit" onclick="editProject('${p.id}',event)" title="Renommer / changer la couleur">✎</button>
       </div>
     </div>`;
@@ -9886,6 +9896,15 @@ function renderProjects() {
 }
 function toggleSidebarProjFinished() { state.sidebarHideFinishedProj = !state.sidebarHideFinishedProj; save(); renderProjects(); }
 window.toggleSidebarProjFinished = toggleSidebarProjFinished;
+// masque / réaffiche un projet UNIQUEMENT dans la vue mois (les autres vues ne changent pas)
+function toggleProjMonthVisible(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!state.monthHiddenProjects) state.monthHiddenProjects = [];
+  const i = state.monthHiddenProjects.indexOf(id);
+  if (i >= 0) state.monthHiddenProjects.splice(i, 1); else state.monthHiddenProjects.push(id);
+  save(); render();
+}
+window.toggleProjMonthVisible = toggleProjMonthVisible;
 function selectProject(id) {
   projectFilter = (id && projectFilter !== id) ? id : null;
   render();
