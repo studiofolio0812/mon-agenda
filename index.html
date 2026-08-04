@@ -603,7 +603,15 @@
   .ndb-set.act { color: var(--text); }
   .ndb-badge { min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--accent);
     color: #fff; font-size: 10px; line-height: 15px; text-align: center; }
-  .data-toolbar .ndb-set { margin-left: auto; }
+  .data-toolbar .data-add-mini { margin-left: auto; }
+  .data-add-mini { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+    color: var(--text-soft); font-size: 18px; line-height: 1; border: 1px solid var(--border); }
+  .data-add-mini:hover { background: var(--surface-2); color: var(--accent); }
+  /* cellules « sélection » : une pastille colore le nom (au lieu d'un fond plein) */
+  .sel-cell { position: relative; display: block; }
+  .sel-cell .sel-dot { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px;
+    border-radius: 50%; pointer-events: none; z-index: 1; }
+  .sel-cell.has-dot select { padding-left: 23px; }
   /* le panneau de réglages du grand panneau réutilise les styles .note-db sans le cadre de bloc */
   .ndb-panelwrap { margin: 0; border: none; padding: 0; background: none; }
   /* sélecteur de date / heure maison */
@@ -1930,6 +1938,16 @@
   table.data-table input:focus, table.data-table select:focus { border-color: var(--accent); background: var(--surface); }
   table.data-table input[type="color"] { width: 34px; height: 26px; min-width: 34px; padding: 1px; cursor: pointer; }
   table.data-table input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; cursor: pointer; }
+  /* champs couleur : coins arrondis (DA de l'app) */
+  input[type="color"] { border-radius: 7px; overflow: hidden; }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 6px; }
+  /* on masque le petit calendrier natif du navigateur : le sélecteur maison prend le relais (fini le doublon) */
+  /* règles SÉPARÉES : un sélecteur invalide n'annule pas l'autre */
+  input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+  input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
+  input[type="date"]::-webkit-inner-spin-button { display: none; }
+  input[type="time"]::-webkit-inner-spin-button { display: none; }
   table.data-table td.col-del { text-align: center; }
   .row-del { color: var(--text-soft); font-size: 15px; padding: 4px 6px; border-radius: 6px; display: inline-grid; place-items: center; }
   .row-del:hover { color: #e74c3c; background: var(--surface-2); }
@@ -13143,10 +13161,13 @@ const dTxt  = (c,id,f,v) => `<input value="${esc(v||'')}" onchange="updData('${c
 const dDate = (c,id,f,v) => `<input type="date" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dTime = (c,id,f,v) => `<input type="time" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dColor= (c,id,f,v) => `<input type="color" value="${v||PALETTE[0]}" onchange="updData('${c}','${id}','${f}',this.value)">`;
-// selects « pilule » colorés dans les cellules : reprennent la couleur choisie de l'agenda/projet/dossier
+// selects colorés dans les cellules : une petite pastille reprend la couleur (agenda/projet/dossier), fond normal
+function dotSelectWrap(color, value, selectHtml) {
+  const dot = (color && value) ? `<span class="sel-dot" style="background:${dotOf(color)}"></span>` : '';
+  return `<span class="sel-cell ${dot ? 'has-dot' : ''}">${dot}${selectHtml}</span>`;
+}
 function tintSelectCell(c, id, field, value, optsHtml, color) {
-  const style = color ? `background:${color};color:${inkOn(color)}` : '';
-  return `<select class="pill-select" style="${style}" onchange="updData('${c}','${id}','${field}',this.value)">${optsHtml}</select>`;
+  return dotSelectWrap(color, value, `<select onchange="updData('${c}','${id}','${field}',this.value)">${optsHtml}</select>`);
 }
 const catCell    = (c, id, v) => { const x = state.categories.find(k => k.id === v); return tintSelectCell(c, id, 'catId', v, optsCats(v), x ? catColor(x) : ''); };
 const projCell   = (c, id, v) => { const x = state.projects.find(k => k.id === v); return tintSelectCell(c, id, 'projectId', v, optsProjs(v), x ? x.color : ''); };
@@ -13193,11 +13214,8 @@ function customField(c, rec, prop) {
   if (prop.type === 'select') {
     const opts = prop.options || [];
     const cur = opts.find(o => o.id === v);
-    const style = cur ? `background:${cur.color};color:${inkOn(cur.color)}` : '';
-    return `<select class="pill-select" style="${style}" onchange="updPropR(${base},this.value)">
-      <option value="">—</option>
-      ${opts.map(o => `<option value="${o.id}" ${o.id===v?'selected':''}>${esc(o.label)}</option>`).join('')}
-    </select>`;
+    const sel = `<select onchange="updPropR(${base},this.value)"><option value="">—</option>${opts.map(o => `<option value="${o.id}" ${o.id===v?'selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
+    return dotSelectWrap(cur ? cur.color : '', v, sel);
   }
   if (prop.type === 'multi') {
     const opts = prop.options || [];
@@ -14320,7 +14338,7 @@ function renderDataPanel() {
   if (!rows.length) {
     content = allRows.length
       ? `<div class="data-empty">Aucune ligne ne correspond au filtre.<br>Modifie ou retire le filtre pour revoir les ${allRows.length} lignes.</div>`
-      : `<div class="data-empty">Aucun ${labels[c] || 'enregistrement'} pour l'instant. Clique sur « ＋ Ajouter une ligne » pour commencer.</div>`;
+      : `<div class="data-empty">Aucun ${labels[c] || 'enregistrement'} pour l'instant. Clique sur ＋ en haut à droite pour commencer.</div>`;
   } else if (view.type === 'kanban') {
     content = renderKanban(c, rows, { ...view, cardProps: dpOrderedCardProps(c, view) });
   } else if (view.type === 'list') {
@@ -14342,9 +14360,8 @@ function renderDataPanel() {
   $('dataBody').innerHTML = `
     ${viewBar}
     <div class="data-toolbar">
-      <button class="data-add" onclick="addData('${c}')">＋ Ajouter une ligne</button>
-      <span class="count">${rows.length} ligne${rows.length>1?'s':''}${hidden>0?` · ${hidden} masquée${hidden>1?'s':''} par le filtre`:''} · table « ${esc(tableLabel(c))} »</span>
       ${tableTools}
+      <button class="data-add-mini" onclick="addData('${c}')" title="Ajouter une ligne">＋</button>
       <button class="ndb-set ${sfOpen?'on':''} ${nSet?'act':''}" title="Réglages de la vue (disposition, propriétés, filtres, tri, groupe)" onclick="dpToggleSettings()">${NDB_ICON_SETTINGS}${nSet?`<span class="ndb-badge">${nSet}</span>`:''}</button>
     </div>
     ${renderDPSettings(c, view)}
