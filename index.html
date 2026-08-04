@@ -607,11 +607,28 @@
   .data-add-mini { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
     color: var(--text-soft); font-size: 18px; line-height: 1; border: 1px solid var(--border); }
   .data-add-mini:hover { background: var(--surface-2); color: var(--accent); }
-  /* cellules « sélection » : une pastille colore le nom (au lieu d'un fond plein) */
-  .sel-cell { position: relative; display: block; }
-  .sel-cell .sel-dot { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px;
-    border-radius: 50%; pointer-events: none; z-index: 1; }
-  .sel-cell.has-dot select { padding-left: 23px; }
+  /* cellules « sélection » : bouton pastille + nom, ouvrant un menu maison arrondi */
+  .dm-cell { display: inline-flex; align-items: center; gap: 7px; width: 100%; min-width: 0; padding: 5px 8px;
+    border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: 13px; color: var(--text);
+    cursor: pointer; text-align: left; }
+  .dm-cell:hover { border-color: var(--border); background: var(--surface); }
+  .dm-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dm-lbl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dm-caret { color: var(--text-faint); font-size: 10px; flex: none; }
+  /* bouton de choix d'icône dans la modale de vue */
+  .view-icon-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--surface); font-size: 13px; color: var(--text-soft); cursor: pointer; }
+  .view-icon-btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .view-icon-btn .vi-plus { font-size: 15px; }
+  /* éditeur d'apparence des statuts projet */
+  .ps-editor { display: flex; flex-direction: column; gap: 6px; }
+  .ps-row { display: flex; align-items: center; gap: 8px; }
+  .ps-row input[type="color"] { width: 30px; height: 28px; min-width: 30px; padding: 1px; cursor: pointer; flex: none; }
+  .ps-row .ps-name { flex: 1; min-width: 0; padding: 6px 9px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); font-size: 13px; color: var(--text); }
+  .ps-row .ps-name:focus { border-color: var(--accent); outline: none; }
+  .ps-reset { flex: none; color: var(--text-faint); font-size: 15px; padding: 4px 7px; border-radius: 7px; }
+  .ps-reset:hover { background: var(--surface-2); color: var(--text); }
   /* le panneau de réglages du grand panneau réutilise les styles .note-db sans le cadre de bloc */
   .ndb-panelwrap { margin: 0; border: none; padding: 0; background: none; }
   /* sélecteur de date / heure maison */
@@ -3032,6 +3049,8 @@
     <div class="modal-body">
       <label>Nom de la vue</label>
       <input id="viewName" placeholder="Ex : Par statut, Ma checklist…" autocomplete="off">
+      <label>Icône (optionnel)</label>
+      <button type="button" id="viewIconBtn" class="view-icon-btn" onclick="openViewIconPicker()"></button>
       <label>Type d'affichage</label>
       <select id="viewType">
         <option value="table"> Tableau</option>
@@ -5798,21 +5817,10 @@ function renderTasksSpace() {
     <div class="space-bar">
       <span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span>
       <span style="flex:1"></span>
-      ${tab('layout:list', 'Liste', cfg.layout !== 'kanban')}
-      ${tab('layout:kanban', 'Kanban', cfg.layout === 'kanban')}
-      <span class="space-sep">·</span>
-      <span class="space-tab" onclick="kbGroupMenu(event)">Grouper : ${esc(kbGroupLabel(cfg.groupBy))}</span>
-      <span class="space-sep">·</span>
-      <span class="space-tab ${taskFilterOpen ? 'on' : ''}" onclick="toggleTaskFilter(event)">Filtrer${nFilters ? ` <span class="flt-badge">${nFilters}</span>` : ''}</span>
-      <span class="space-sep">·</span>
-      <span class="space-tab ${kbPropsOpen ? 'on' : ''}" onclick="kbToggleProps(event)">Propriétés</span>
-      <span class="space-sep">·</span>
-      <span class="space-tab ${svOpenTasks ? 'on' : ''}" onclick="svToggle('tasks',event)">Vues</span>
+      <button class="ndb-set ${tsSec ? 'on' : ''} ${nFilters ? 'act' : ''}" title="Réglages : disposition, propriétés, filtres, groupe, vues" onclick="tsToggleSettings(event)">${NDB_ICON_SETTINGS}${nFilters ? `<span class="ndb-badge">${nFilters}</span>` : ''}</button>
     </div>
     ${fltQuickChipsHtml('tasks')}
-    ${kbPropsOpen ? kbPropsMenuHtml() : ''}
-    ${taskFilterOpen ? fltMenuHtml('tasks') : ''}
-    ${svOpenTasks ? svMenuHtml('tasks') : ''}`;
+    ${renderTsSettings()}`;
 
   if (!groups.length) {
     html += `<div class="space-empty">Rien ici pour l'instant.<br>Clique sur « Ajouter une tâche » pour commencer.</div></div>`;
@@ -6018,6 +6026,28 @@ function setTasksSpace(spec) {
   save(); render();
 }
 window.setTasksSpace = setTasksSpace;
+/* ---- Réglages « Mes tâches » : même UX que les bases de données (bouton unique + panneau sectionné) ---- */
+let tsSec = null, tsLast = 'group';   // section active du panneau, et dernière ouverte
+function tsToggleSettings(e) { if (e) e.stopPropagation(); tsSec = tsSec ? null : (tsLast || 'group'); renderTasksSpace(); }
+function tsSetSection(sec, e) { if (e) e.stopPropagation(); tsLast = sec; tsSec = sec; renderTasksSpace(); }
+function tsSetGroup(v) { tasksSpaceCfg().groupBy = v; save(); renderTasksSpace(); }
+window.tsToggleSettings = tsToggleSettings; window.tsSetSection = tsSetSection; window.tsSetGroup = tsSetGroup;
+function renderTsSettings() {
+  if (!tsSec) return '';
+  const cfg = tasksSpaceCfg();
+  const secs = [['layout', 'Disposition'], ['props', 'Propriétés'], ['filter', 'Filtrer'], ['group', 'Grouper'], ['views', 'Vues']];
+  const tabs = secs.map(([k, l]) => `<button class="ndb-seg ${tsSec === k ? 'on' : ''}" onclick="tsSetSection('${k}',event)">${l}</button>`).join('');
+  let body = '';
+  if (tsSec === 'layout') {
+    const b = (v, l, on) => `<button class="ndb-lay ${on ? 'on' : ''}" onclick="setTasksSpace('layout:${v}')">${l}</button>`;
+    body = `<div class="ndb-lay-row">${b('list', 'Liste', cfg.layout !== 'kanban')}${b('kanban', 'Kanban', cfg.layout === 'kanban')}</div><div class="ndb-sec-hint">Affichage de la liste des tâches.</div>`;
+  } else if (tsSec === 'props') body = kbPropsMenuHtml();
+  else if (tsSec === 'filter') body = fltMenuHtml('tasks');
+  else if (tsSec === 'group') {
+    body = `<div class="ndb-radio-list">${kbGroupChoices().map(c => `<label class="ndb-radio"><input type="radio" name="tsgrp" ${cfg.groupBy === c.value ? 'checked' : ''} onclick="tsSetGroup('${c.value}')"> ${esc(c.label)}</label>`).join('')}</div><div class="ndb-sec-hint">Regroupe les tâches (colonnes du kanban, sections de la liste).</div>`;
+  } else if (tsSec === 'views') body = svMenuHtml('tasks');
+  return `<div class="note-db ndb-panelwrap"><div class="ndb-settings" onclick="event.stopPropagation()"><div class="ndb-seg-row">${tabs}</div><div class="ndb-sec-body">${body}</div></div></div>`;
+}
 // replie/déplie le groupe « Terminées » de l'espace Mes tâches (valable pour les 3 regroupements)
 function toggleTasksDone() { state.tasksDoneCollapsed = !state.tasksDoneCollapsed; save(); renderTasksSpace(); }
 window.toggleTasksDone = toggleTasksDone;
@@ -6253,7 +6283,7 @@ function fltFields(kind) {
     return f;
   }
   const f = [
-    { key: 'statut', label: 'Statut', type: 'select', options: PROJ_STATUTS.map(([k, l]) => ({ v: k, label: l })) },
+    { key: 'statut', label: 'Statut', type: 'select', options: projStatuts().map(([k, l]) => ({ v: k, label: l })) },
     { key: 'name', label: 'Nom', type: 'text' },
     { key: 'start', label: 'Début', type: 'date' },
     { key: 'end', label: 'Échéance', type: 'date' },
@@ -6551,6 +6581,36 @@ function projSortMenuHtml() {
       ${dirRow('asc', 'Croissant')}${dirRow('desc', 'Décroissant')}
     </div>`;
 }
+/* ---- Réglages « Projets » : même UX que les bases de données (bouton unique + panneau sectionné) ---- */
+let prSec = null, prLast = 'sort';
+function prToggleSettings(e) { if (e) e.stopPropagation(); prSec = prSec ? null : (prLast || 'sort'); renderProjectsSpace(); }
+function prSetSection(sec, e) { if (e) e.stopPropagation(); prLast = sec; prSec = sec; renderProjectsSpace(); }
+window.prToggleSettings = prToggleSettings; window.prSetSection = prSetSection;
+function renderPrSettings() {
+  if (!prSec) return '';
+  const cfg = projSpaceCfg();
+  const secs = [['layout', 'Disposition'], ['props', 'Propriétés'], ['filter', 'Filtrer'], ['sort', 'Trier'], ['status', 'Statut'], ['views', 'Vues']];
+  const tabs = secs.map(([k, l]) => `<button class="ndb-seg ${prSec === k ? 'on' : ''}" onclick="prSetSection('${k}',event)">${l}</button>`).join('');
+  let body = '';
+  if (prSec === 'layout') {
+    const b = (m, l) => `<button class="ndb-lay ${cfg.mode === m ? 'on' : ''}" onclick="setProjSpace('${m}')">${l}</button>`;
+    body = `<div class="ndb-lay-row">${b('cards', 'Cartes')}${b('table', 'Tableau')}${b('timeline', 'Chronologie')}</div><div class="ndb-sec-hint">Mode d'affichage des projets.</div>`;
+  } else if (prSec === 'props') body = projPropsMenuHtml();
+  else if (prSec === 'filter') body = fltMenuHtml('projects');
+  else if (prSec === 'sort') body = projSortMenuHtml();
+  else if (prSec === 'status') body = prSecStatus();
+  else if (prSec === 'views') body = svMenuHtml('projects');
+  return `<div class="note-db ndb-panelwrap"><div class="ndb-settings" onclick="event.stopPropagation()"><div class="ndb-seg-row">${tabs}</div><div class="ndb-sec-body">${body}</div></div></div>`;
+}
+// éditeur d'apparence des statuts projet (intitulé + couleur). La valeur reste calculée.
+function prSecStatus() {
+  const rows = projStatuts().map(([k, label, color]) => `<div class="ps-row">
+      <input type="color" value="${color}" onchange="setProjStatutColor('${k}',this.value)" title="Couleur">
+      <input type="text" class="ps-name" value="${esc(label)}" onchange="setProjStatutLabel('${k}',this.value)">
+      <button class="ps-reset" onclick="resetProjStatut('${k}')" title="Réinitialiser">↺</button>
+    </div>`).join('');
+  return `<div class="ps-editor">${rows}</div><div class="ndb-sec-hint">Tu personnalises l'intitulé et la couleur. La valeur, elle, reste calculée automatiquement (dates + avancement).</div>`;
+}
 
 /* Statut d'un projet — DÉDUIT de ce qu'on sait déjà (dates + avancement) plutôt
    que saisi à la main : un champ de plus serait un champ de plus à tenir à jour. */
@@ -6561,6 +6621,19 @@ const PROJ_STATUTS = [
   ['fini',    'Terminés',   '#d3e8cf'],
   ['sansdate','Sans dates', '#eae8e4'],
 ];
+/* Le statut projet est CALCULÉ (valeur non modifiable), mais son APPARENCE (intitulé + couleur)
+   est personnalisable : overrides stockés dans state.projStatutStyle[cle] = { label?, color? }. */
+function projStatutStyle() { return state.projStatutStyle || (state.projStatutStyle = {}); }
+function projStatutMeta(key) {
+  const def = PROJ_STATUTS.find(([k]) => k === key) || [key, key, '#eae8e4'];
+  const ov = projStatutStyle()[key] || {};
+  return { key, label: ov.label || def[1], color: ov.color || def[2] };
+}
+function projStatuts() { return PROJ_STATUTS.map(([k]) => { const m = projStatutMeta(k); return [k, m.label, m.color]; }); }
+function setProjStatutColor(k, v) { (projStatutStyle()[k] = projStatutStyle()[k] || {}).color = v; save(); renderProjectsSpace(); }
+function setProjStatutLabel(k, v) { const o = (projStatutStyle()[k] = projStatutStyle()[k] || {}); v = (v || '').trim(); if (v) o.label = v; else delete o.label; save(); renderProjectsSpace(); }
+function resetProjStatut(k) { delete projStatutStyle()[k]; save(); renderProjectsSpace(); }
+window.setProjStatutColor = setProjStatutColor; window.setProjStatutLabel = setProjStatutLabel; window.resetProjStatut = resetProjStatut;
 function projStatut(p) {
   const st = projStats(p);
   const today = ymd(new Date());
@@ -6671,7 +6744,7 @@ function projTableHtml(list) {
 
   const rows = list.map(p => {
     const st = projStats(p);
-    const [, stLabel, stColor] = PROJ_STATUTS.find(([k]) => k === projStatut(p));
+    const [, stLabel, stColor] = projStatuts().find(([k]) => k === projStatut(p));
     const taches = topLevelTasks(state.tasks.filter(t => t.projectId === p.id))
       .sort((a, b) => (taskFrom(a) || '9999').localeCompare(taskFrom(b) || '9999'));
     const plie = projCollapsed(p.id);
@@ -6704,26 +6777,16 @@ function renderProjectsSpace() {
     <div class="space-head">
       <span class="space-title">Projets</span>
       <span class="space-count">${filtered.length} projet${filtered.length > 1 ? 's' : ''}</span>
-      <span class="space-tabs">${tab('cards', 'Cartes')}${tab('table', 'Tableau')}${tab('timeline', 'Chronologie')}</span>
     </div>
     ${filtered.length ? projKpisHtml(filtered) : ''}
     <div class="space-bar">
       <span class="space-add" onclick="openProjModal()">${ICON_PLUS} Ajouter un projet</span>
       <span style="flex:1"></span>
-      ${cfg.mode === 'timeline' ? `<span class="space-sort-lbl">· Maj + molette</span>${Math.abs(tlPan) > 0.5 ? `<span class="space-tab on" onclick="resetTlPan()">Recentrer</span>` : ''}` : ''}
-      <span class="space-tab ${projSortOpen ? 'on' : ''}" onclick="projToggleSort(event)">Trier : ${PROJ_SORT_LABEL[cfg.sort]} ${cfg.sortDir === 'desc' ? '↓' : '↑'}</span>
-      <span class="space-sep">·</span>
-      <span class="space-tab ${projFilterOpen ? 'on' : ''}" onclick="toggleProjFilter(event)">Filtrer${nFilters ? ` <span class="flt-badge">${nFilters}</span>` : ''}</span>
-      <span class="space-sep">·</span>
-      <span class="space-tab ${projPropsOpen ? 'on' : ''}" onclick="projToggleProps(event)">Propriétés</span>
-      <span class="space-sep">·</span>
-      <span class="space-tab ${svOpenProjects ? 'on' : ''}" onclick="svToggle('projects',event)">Vues</span>
+      ${cfg.mode === 'timeline' ? `<span class="space-sort-lbl">Maj + molette</span>${Math.abs(tlPan) > 0.5 ? `<span class="space-tab on" onclick="resetTlPan()">Recentrer</span>` : ''}<span class="space-sep">·</span>` : ''}
+      <button class="ndb-set ${prSec ? 'on' : ''} ${nFilters ? 'act' : ''}" title="Réglages : disposition, propriétés, filtres, tri, vues" onclick="prToggleSettings(event)">${NDB_ICON_SETTINGS}${nFilters ? `<span class="ndb-badge">${nFilters}</span>` : ''}</button>
     </div>
     ${fltQuickChipsHtml('projects')}
-    ${projSortOpen ? projSortMenuHtml() : ''}
-    ${projPropsOpen ? projPropsMenuHtml() : ''}
-    ${projFilterOpen ? fltMenuHtml('projects') : ''}
-    ${svOpenProjects ? svMenuHtml('projects') : ''}`;
+    ${renderPrSettings()}`;
 
   if (!all.length) {
     canvas.innerHTML = html + `<div class="space-empty">Aucun projet pour l'instant.<br>Clique sur « Ajouter un projet » pour en créer un.</div></div>`;
@@ -6761,7 +6824,7 @@ function thinTimelineLabels() {
 /* Découpe une liste déjà triée en groupes de statut (uniquement quand on trie par statut). */
 function parStatut(list, grouper) {
   if (!grouper) return [{ items: list }];
-  return PROJ_STATUTS.map(([k, label, couleur]) => ({
+  return projStatuts().map(([k, label, couleur]) => ({
     label, couleur, items: list.filter(p => projStatut(p) === k),
   })).filter(g => g.items.length);
 }
@@ -12803,6 +12866,7 @@ function openIconPicker(coll, id) {
   // « habitDraft » / « catDraft » : on édite un brouillon, pas un enregistrement stocké
   const cur = coll === 'habitDraft' ? habitDraft.icon
             : coll === 'catDraft'   ? catDraft.icon
+            : coll === 'viewDraft'  ? viewDraftIcon
             : (collArr(coll).find(x => x.id === id) || {}).icon;
   $('iconGrid').innerHTML = ICON_NAMES.map(n =>
     `<button type="button" class="${n === cur ? 'sel' : ''}" title="${n}" onclick="pickIcon('${n}')">${iconSvg(n, 20)}</button>`).join('');
@@ -12822,6 +12886,12 @@ function pickIcon(name) {
     catDraft.icon = name;
     $('iconOverlay').classList.remove('show');
     syncCatIcon();
+    return;
+  }
+  if (iconCtx.coll === 'viewDraft') {   // brouillon de vue : la modale de vue reste ouverte dessous
+    viewDraftIcon = name;
+    $('iconOverlay').classList.remove('show');
+    syncViewIcon();
     return;
   }
   const rec = collArr(iconCtx.coll).find(x => x.id === iconCtx.id);
@@ -13161,17 +13231,55 @@ const dTxt  = (c,id,f,v) => `<input value="${esc(v||'')}" onchange="updData('${c
 const dDate = (c,id,f,v) => `<input type="date" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dTime = (c,id,f,v) => `<input type="time" value="${v||''}" onchange="updData('${c}','${id}','${f}',this.value)">`;
 const dColor= (c,id,f,v) => `<input type="color" value="${v||PALETTE[0]}" onchange="updData('${c}','${id}','${f}',this.value)">`;
-// selects colorés dans les cellules : une petite pastille reprend la couleur (agenda/projet/dossier), fond normal
-function dotSelectWrap(color, value, selectHtml) {
-  const dot = (color && value) ? `<span class="sel-dot" style="background:${dotOf(color)}"></span>` : '';
-  return `<span class="sel-cell ${dot ? 'has-dot' : ''}">${dot}${selectHtml}</span>`;
+// cellules « sélection » : bouton pastille + nom qui ouvre un MENU MAISON (arrondi, une pastille par option)
+function dotMenuCell(color, label, onclickExpr) {
+  const dot = `<span class="dm-dot" style="background:${color ? dotOf(color) : 'transparent'}${color ? '' : ';box-shadow:inset 0 0 0 1.5px var(--border-strong)'}"></span>`;
+  return `<button type="button" class="dm-cell" onclick="${onclickExpr}">${dot}<span class="dm-lbl">${esc(label || '—')}</span><span class="dm-caret">▾</span></button>`;
 }
-function tintSelectCell(c, id, field, value, optsHtml, color) {
-  return dotSelectWrap(color, value, `<select onchange="updData('${c}','${id}','${field}',this.value)">${optsHtml}</select>`);
+function tintSelectCell(c, id, field, color, label) {
+  return dotMenuCell(color, label, `openFieldMenu(event,'${c}','${id}','${field}')`);
 }
-const catCell    = (c, id, v) => { const x = state.categories.find(k => k.id === v); return tintSelectCell(c, id, 'catId', v, optsCats(v), x ? catColor(x) : ''); };
-const projCell   = (c, id, v) => { const x = state.projects.find(k => k.id === v); return tintSelectCell(c, id, 'projectId', v, optsProjs(v), x ? x.color : ''); };
-const folderCell = (c, id, v) => { const x = (state.noteFolders || []).find(k => k.id === v); return tintSelectCell(c, id, 'folderId', v, optsNoteFolders(v), x ? x.color : ''); };
+const catCell    = (c, id, v) => { const x = state.categories.find(k => k.id === v); return tintSelectCell(c, id, 'catId', x ? catColor(x) : '', x ? x.name : ''); };
+const projCell   = (c, id, v) => { const x = state.projects.find(k => k.id === v); return tintSelectCell(c, id, 'projectId', x ? x.color : '', x ? x.name : ''); };
+const folderCell = (c, id, v) => { const x = (state.noteFolders || []).find(k => k.id === v); return tintSelectCell(c, id, 'folderId', x ? x.color : '', x ? x.name : ''); };
+// rafraîchit le contexte visible (panneau Data et/ou blocs de note) après un choix
+function refreshDataContext() {
+  if ($('dataOverlay') && $('dataOverlay').classList.contains('show')) renderDataPanel();
+  if ($('noteOverlay') && $('noteOverlay').classList.contains('show')) hydrateNoteDbBlocks();
+}
+// données du menu d'un champ intégré : items {value,label,dot}, valeur courante, et le setter
+function fieldMenuData(c, id, field) {
+  const rec = collArr(c).find(r => r.id === id) || {};
+  if (field === 'catId') {
+    const items = [{ value: '', label: '—', dot: '' }].concat(state.categories.map(x => ({ value: x.id, label: (typeof catPath === 'function' ? catPath(x) : x.name), dot: dotOf(catColor(x)) })));
+    return { items, cur: rec.catId || '', set: v => updData(c, id, 'catId', v) };
+  }
+  if (field === 'projectId') {
+    const items = [{ value: '', label: 'Aucun projet', dot: '' }].concat(state.projects.map(p => ({ value: p.id, label: p.name, dot: dotOf(p.color) })));
+    return { items, cur: rec.projectId || '', set: v => updData(c, id, 'projectId', v) };
+  }
+  if (field === 'folderId') {
+    const items = [{ value: '', label: 'Sans dossier', dot: '' }].concat((state.noteFolders || []).map(f => ({ value: f.id, label: f.name, dot: dotOf(f.color) })));
+    return { items, cur: rec.folderId || '', set: v => updData(c, id, 'folderId', v) };
+  }
+  return { items: [{ value: '', label: '—', dot: '' }], cur: '', set: () => {} };
+}
+function openFieldMenu(e, c, id, field) {
+  e.stopPropagation();
+  const d = fieldMenuData(c, id, field);
+  openStyledMenu(e.currentTarget, [{ items: d.items }], d.cur, v => { d.set(v); refreshDataContext(); });
+}
+window.openFieldMenu = openFieldMenu;
+// menu d'une propriété « sélection » personnalisée
+function openPropMenu(e, c, id, propId) {
+  e.stopPropagation();
+  const prop = schemaOf(c).find(p => p.id === propId); if (!prop) return;
+  const items = [{ value: '', label: '—', dot: '' }].concat((prop.options || []).map(o => ({ value: o.id, label: o.label, dot: dotOf(o.color) })));
+  const rec = collArr(c).find(r => r.id === id) || {};
+  const cur = (rec.props || {})[propId] || '';
+  openStyledMenu(e.currentTarget, [{ items }], cur, v => { updProp(c, id, propId, v); refreshDataContext(); });
+}
+window.openPropMenu = openPropMenu;
 
 // édite une propriété personnalisée
 function updProp(c, id, pid, value) {
@@ -13212,10 +13320,8 @@ function customField(c, rec, prop) {
   if (prop.type === 'date')
     return `<input type="date" value="${v||''}" onchange="updProp(${base},this.value)">`;
   if (prop.type === 'select') {
-    const opts = prop.options || [];
-    const cur = opts.find(o => o.id === v);
-    const sel = `<select onchange="updPropR(${base},this.value)"><option value="">—</option>${opts.map(o => `<option value="${o.id}" ${o.id===v?'selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
-    return dotSelectWrap(cur ? cur.color : '', v, sel);
+    const cur = (prop.options || []).find(o => o.id === v);
+    return dotMenuCell(cur ? cur.color : '', cur ? cur.label : '—', `openPropMenu(event,'${c}','${rec.id}','${prop.id}')`);
   }
   if (prop.type === 'multi') {
     const opts = prop.options || [];
@@ -14328,7 +14434,7 @@ function renderDataPanel() {
   // barre des vues
   const view = currentView(c);
   const viewBar = `<div class="view-bar">
-    ${viewsOf(c).map(v => `<button class="view-chip ${v.id===view.id?'active':''}" onclick="setView('${c}','${v.id}')">${VIEW_ICO[v.type]||VIEW_ICO.table} ${esc(v.name)}</button>`).join('')}
+    ${viewsOf(c).map(v => `<button class="view-chip ${v.id===view.id?'active':''}" onclick="setView('${c}','${v.id}')">${(v.icon && ICON_LIB[v.icon]) ? iconSvg(v.icon, 14) : (VIEW_ICO[v.type]||VIEW_ICO.table)} ${esc(v.name)}</button>`).join('')}
     <button class="view-chip add" onclick="openViewModal('${c}')" title="Ajouter une vue">${ICON_PLUS} vue</button>
     <button class="view-chip cog" onclick="openViewModal('${c}','${view.id}')" title="Modifier cette vue">${ICON_GEAR}</button>
   </div>`;
@@ -14651,13 +14757,21 @@ function openViewModal(coll, id) {
   if (isEdit) {
     const v = viewsOf(coll).find(x => x.id === id);
     $('viewName').value = v.name; $('viewType').value = v.type;
-    viewGroupDraft = v.groupBy || '';
-  } else { $('viewName').value = ''; $('viewType').value = 'table'; viewGroupDraft = ''; }
-  syncViewFields();
+    viewGroupDraft = v.groupBy || ''; viewDraftIcon = v.icon || '';
+  } else { $('viewName').value = ''; $('viewType').value = 'table'; viewGroupDraft = ''; viewDraftIcon = ''; }
+  syncViewFields(); syncViewIcon();
   $('viewOverlay').classList.add('show');
   setTimeout(() => $('viewName').focus(), 50);
 }
 window.openViewModal = openViewModal;
+let viewDraftIcon = '';
+function syncViewIcon() {
+  $('viewIconBtn').innerHTML = viewDraftIcon && ICON_LIB[viewDraftIcon]
+    ? `${iconSvg(viewDraftIcon, 18)}<span>Changer l'icône</span>`
+    : `<span class="vi-plus">＋</span><span>Choisir une icône</span>`;
+}
+function openViewIconPicker() { openIconPicker('viewDraft', null); }
+window.openViewIconPicker = openViewIconPicker;
 let viewGroupDraft = '';
 function groupByChoices(c) {
   const list = schemaOf(c).filter(p => p.type === 'select').map(p => [p.id, p.name]);
@@ -14679,7 +14793,7 @@ function saveView() {
   const name = $('viewName').value.trim();
   if (!name) { $('viewName').focus(); return; }
   const type = $('viewType').value;
-  const def = { name, type };
+  const def = { name, type, icon: viewDraftIcon || '' };
   if (type === 'kanban') def.groupBy = $('viewGroupBy').value;
   const list = viewsOf(viewCtx.coll);
   if (viewCtx.id) {
@@ -14844,6 +14958,7 @@ $('iconClearBtn').onclick = () => {
   if (!iconCtx) return;
   if (iconCtx.coll === 'habitDraft') { habitDraft.icon = ''; $('iconOverlay').classList.remove('show'); syncHabitIcon(); return; }
   if (iconCtx.coll === 'catDraft')   { catDraft.icon = '';   $('iconOverlay').classList.remove('show'); syncCatIcon();   return; }
+  if (iconCtx.coll === 'viewDraft')  { viewDraftIcon = '';   $('iconOverlay').classList.remove('show'); syncViewIcon();  return; }
   const rec = collArr(iconCtx.coll).find(x => x.id === iconCtx.id);
   if (rec) { delete rec.icon; save(); render(); }
   closeModals();
