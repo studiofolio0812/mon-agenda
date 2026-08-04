@@ -536,7 +536,9 @@
   .note-db .ndb-name { font-weight: 600; font-size: 13px; }
   .note-db .ndb-filter { font-size: 11px; color: var(--text-soft); background: var(--surface-2); padding: 2px 8px; border-radius: 999px; }
   .note-db .ndb-views { display: inline-flex; gap: 2px; margin-left: auto; }
-  .note-db .ndb-head .ndb-set { margin-left: auto; }
+  .note-db .ndb-addrow { margin-left: auto; display: inline-grid; place-items: center; width: 26px; height: 26px;
+    border-radius: 7px; color: var(--text-soft); font-size: 17px; line-height: 1; }
+  .note-db .ndb-addrow:hover { background: var(--surface-2); color: var(--accent); }
   .note-db .ndb-vbtn { font-size: 11.5px; color: var(--text-soft); padding: 3px 8px; border-radius: 7px; }
   .note-db .ndb-vbtn:hover { background: var(--surface-2); }
   .note-db .ndb-vbtn.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
@@ -609,9 +611,15 @@
   .note-db .ndb-sec-body { padding: 2px; }
   .note-db .ndb-sec-hint { font-size: 11px; color: var(--text-faint); margin-top: 8px; }
   .note-db .ndb-prop-list { display: flex; flex-direction: column; }
-  .note-db .ndb-prop { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 6px; border-radius: 7px; }
+  .note-db .ndb-prop { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 7px; }
   .note-db .ndb-prop:hover { background: var(--surface-2); }
-  .note-db .ndb-prop-l { font-size: 12.5px; color: var(--text); }
+  .note-db .ndb-prop.pd-dragging { opacity: .4; }
+  .note-db .ndb-prop.pd-over { box-shadow: inset 0 2px 0 var(--accent); }
+  .note-db .ndb-prop-grip { display: inline-grid; place-items: center; color: var(--text-faint); cursor: grab; flex: none; }
+  .note-db .ndb-prop-grip:active { cursor: grabbing; }
+  .note-db .ndb-prop-l { font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note-db .ndb-prop-del { display: inline-grid; place-items: center; width: 24px; height: 22px; border-radius: 6px; color: var(--text-faint); flex: none; }
+  .note-db .ndb-prop-del:hover { color: #e74c3c; background: var(--surface); }
   .note-db .ndb-prop-eye { display: inline-grid; place-items: center; width: 26px; height: 22px; border-radius: 6px; color: var(--text-faint); }
   .note-db .ndb-prop-eye:hover { background: var(--surface); color: var(--text); }
   .note-db .ndb-prop-eye.on { color: var(--accent); }
@@ -622,6 +630,10 @@
   .note-db .ndb-radio-list { display: flex; flex-direction: column; gap: 2px; }
   .note-db .ndb-radio { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text); padding: 4px 6px; border-radius: 7px; cursor: pointer; }
   .note-db .ndb-radio:hover { background: var(--surface-2); }
+  /* garde-fous : le panneau hérite sinon d'un texte en capitales et d'inputs en pleine largeur */
+  .note-db .ndb-settings, .note-db .ndb-settings label, .note-db .ndb-settings button { text-transform: none; letter-spacing: normal; }
+  .note-db .ndb-settings input[type="radio"], .note-db .ndb-settings input[type="checkbox"] {
+    width: auto; min-width: 0; flex: none; margin: 0; }
   /* largeur des colonnes réellement respectée + poignée de redimensionnement dans la note */
   .note-db table.data-table { table-layout: fixed; }
   .note-db table.data-table th, .note-db table.data-table td { overflow: hidden; }
@@ -9942,10 +9954,15 @@ function hydrateNoteDbBlock(el) {
   if (cfg.type === 'kanban' && !cfg.groupBy) cfg.groupBy = defaultGroupBy(cfg.coll);
   const rows = applyViewRules(cfg.coll, collArr(cfg.coll), { filters: cfg.filters || [], sorts: cfg.sorts || [] });
   el.innerHTML = renderNoteDbHead(id, cfg) + renderNoteDbSF(id, cfg)
-    + renderNoteDbContent(id, cfg, rows)
-    + `<button class="ndb-add" onclick="noteDbAddRow('${id}')">＋ Nouveau</button>`;
+    + renderNoteDbContent(id, cfg, rows);
   if (cfg.type === 'kanban') wireNoteDbKanban(el, id);
   if (cfg.type === 'table') wireNoteDbColResize(el, id);
+  // panneau réglages ouvert sur « Propriétés » : activer le glisser-réordonner
+  if (ndbSF && ndbSF.id === id) {
+    const hasGroup = groupByChoices(cfg.coll).length > 0;
+    const secNow = (ndbSection === 'group' && !hasGroup) ? 'props' : ndbSection;
+    if (secNow === 'props') wireNoteDbPropDrag(el, id);
+  }
 }
 // redimensionnement des colonnes DANS la note (largeur mémorisée par bloc)
 function wireNoteDbColResize(el, id) {
@@ -9978,10 +9995,12 @@ function renderNoteDbHead(id, cfg) {
   // le type de vue vit désormais dans « Paramètres › Disposition » : le bouton réglages remplace les onglets
   const n = (cfg.filters || []).filter(f => f.key).length + (cfg.sorts || []).filter(s => s.key).length;
   const isOpen = !!(ndbSF && ndbSF.id === id);
-  const setBtn = `<button class="ndb-set ${isOpen ? 'on' : ''} ${n ? 'act' : ''}" title="Réglages de la base (disposition, propriétés, filtres, tri, groupe)" onclick="ndbToggleSettings('${id}')">${NDB_ICON_SETTINGS}<span>Paramètres</span>${n ? `<span class="ndb-badge">${n}</span>` : ''}</button>`;
+  const setBtn = `<button class="ndb-set ${isOpen ? 'on' : ''} ${n ? 'act' : ''}" title="Réglages de la base (disposition, propriétés, filtres, tri, groupe)" onclick="ndbToggleSettings('${id}')">${NDB_ICON_SETTINGS}${n ? `<span class="ndb-badge">${n}</span>` : ''}</button>`;
+  const addBtn = `<button class="ndb-addrow" title="Ajouter une ligne" onclick="noteDbAddRow('${id}')">＋</button>`;
   return `<div class="ndb-head">
       ${name}
       ${fInfo ? `<span class="ndb-filter">${esc(fInfo)}</span>` : ''}
+      ${addBtn}
       ${setBtn}
       <button class="ndb-x" title="Retirer ce bloc (la table n'est pas supprimée)" onclick="removeNoteDbBlock('${id}')">✕</button>
     </div>`;
@@ -9990,13 +10009,20 @@ function renderNoteDbContent(id, cfg, rows) {
   const coll = cfg.coll;
   const nActiveF = (cfg.filters || []).filter(f => f.key).length;
   const emptyMsg = `<div class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</div>`;
-  if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy, cardProps: cfg.cardProps })}</div>`;
-  if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cfg.cardProps) : emptyMsg;
-  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cfg.cardProps) : emptyMsg;
-  // table (par défaut) — masquage des colonnes via le panneau « Paramètres › Propriétés »,
+  const cp = ndbOrderedCardProps(cfg);   // propriétés de carte dans l'ordre choisi
+  if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy, cardProps: cp })}</div>`;
+  if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cp) : emptyMsg;
+  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cp) : emptyMsg;
+  // table (par défaut) — masquage + ORDRE des colonnes via le panneau « Paramètres › Propriétés »,
   // largeur ajustable en glissant le bord d'un en-tête (mémorisée par bloc dans cfg.colWidths)
   const hidden = cfg.hiddenCols || [];
-  const cols = orderedCols(coll).filter(c => c.key !== 'id' && !hidden.includes(c.key));
+  const titleKey = titleFieldOf(coll);
+  const nonTitle = orderedCols(coll).filter(c => c.key !== 'id' && c.key !== titleKey);
+  const byK = Object.fromEntries(nonTitle.map(c => [c.key, c]));
+  const ord = (cfg.colOrder || []).filter(k => byK[k]);
+  const orderedNonTitle = ord.concat(nonTitle.map(c => c.key).filter(k => !ord.includes(k))).map(k => byK[k]);
+  const titleCol = orderedCols(coll).find(c => c.key === titleKey);
+  const cols = (titleCol ? [titleCol] : []).concat(orderedNonTitle).filter(c => c.key !== 'id' && !hidden.includes(c.key));
   const W = cfg.colWidths || {};
   const colgroup = `<colgroup>${cols.map(c => `<col data-key="${c.key}" style="width:${W[c.key] || 150}px">`).join('')}<col style="width:34px"></colgroup>`;
   const head = cols.map(c => `<th><span class="ndb-th">${esc(c.label)}</span><span class="ndb-colresize" data-col="${c.key}" title="Ajuster la largeur"></span></th>`).join('') + '<th></th>';
@@ -10060,6 +10086,8 @@ const NDB_ICON_FILTER = '<svg viewBox="0 0 24 24" width="15" height="15" fill="n
 const NDB_ICON_SORT = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 4l-3 3M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3"/></svg>';
 // icône « réglages » façon Notion : deux curseurs horizontaux avec une pastille
 const NDB_ICON_SETTINGS = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h10M18 8h2"/><circle cx="16" cy="8" r="2.2"/><path d="M4 16h4M12 16h8"/><circle cx="10" cy="16" r="2.2"/></svg>';
+// poignée « 6 points » pour glisser-réordonner les propriétés
+const NDB_ICON_GRIP = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>';
 // sections rangées derrière le bouton « Paramètres » (rien ne traîne plus autour de la base)
 const NDB_SECTIONS = [['layout', 'Disposition'], ['props', 'Propriétés'], ['filter', 'Filtrer'], ['sort', 'Trier'], ['group', 'Grouper']];
 let ndbSection = 'props';   // section active dans le panneau de réglages
@@ -10106,24 +10134,91 @@ function ndbSecLayout(id, cfg) {
   const checks = NDB_VIEWS.map(([t, lbl]) => `<label class="ndb-check"><input type="checkbox" ${enabled.includes(t) ? 'checked' : ''} onchange="ndbToggleEnabledView('${id}','${t}')"> ${lbl}</label>`).join('');
   return `<div class="ndb-lay-row">${btns}</div><div class="ndb-sec-hint">Vues proposées sur ce bloc :</div><div class="ndb-check-row">${checks}</div>`;
 }
-// -- Propriétés : liste avec un œil par propriété (masquer / afficher). Selon la vue :
+// -- Propriétés : liste avec poignée (réordonner) + œil (masquer/afficher) + corbeille (bases LOCALES).
 //    tableau -> colonnes (cfg.hiddenCols) ; carte/kanban/liste -> propriétés des cartes (cfg.cardProps)
-function ndbSecProps(id, cfg) {
+// univers des propriétés listables selon la vue (le titre est géré à part, toujours visible)
+function ndbPropUniverse(cfg) {
   const coll = cfg.coll;
-  const eyeRow = (key, label, on, handler) =>
-    `<div class="ndb-prop"><span class="ndb-prop-l">${esc(label)}</span><button class="ndb-prop-eye ${on ? 'on' : ''}" onclick="${handler}" title="${on ? 'Masquer' : 'Afficher'}">${on ? ICON_EYE : ICON_EYE_OFF}</button></div>`;
   if (cfg.type === 'table') {
     const titleKey = titleFieldOf(coll);
-    const universe = orderedCols(coll).filter(c => c.key !== 'id' && c.key !== titleKey);
-    const hidden = cfg.hiddenCols || [];
-    const rows = universe.map(c => eyeRow(c.key, c.label, !hidden.includes(c.key), `ndbTogglePropTable('${id}','${c.key}')`)).join('');
-    return `<div class="ndb-prop-list">${rows}</div><div class="ndb-sec-hint">Le titre reste toujours visible.</div>`;
+    return orderedCols(coll).filter(c => c.key !== 'id' && c.key !== titleKey).map(c => [c.key, c.label]);
   }
-  const chosen = cfg.cardProps || [];
-  const rows = ruleFields(coll).filter(([k]) => !['title', 'name', 'icon', 'color'].includes(k))
-    .map(([k, l]) => eyeRow(k, l, chosen.includes(k), `ndbToggleCardProp('${id}','${k}')`)).join('');
-  return `<div class="ndb-prop-list">${rows}</div><div class="ndb-sec-hint">Propriétés affichées sur ${cfg.type === 'list' ? 'chaque ligne' : 'chaque carte'} (le titre est toujours là).</div>`;
+  return ruleFields(coll).filter(([k]) => !['title', 'name', 'icon', 'color'].includes(k));
 }
+// applique l'ordre choisi (cfg.colOrder) à un ensemble de paires [clé,libellé]
+function ndbOrderPairs(cfg, pairs) {
+  const keys = pairs.map(p => p[0]);
+  const ord = (cfg.colOrder || []).filter(k => keys.includes(k));
+  const orderedKeys = ord.concat(keys.filter(k => !ord.includes(k)));
+  const byKey = Object.fromEntries(pairs);
+  return orderedKeys.map(k => [k, byKey[k]]);
+}
+// propriétés de carte, dans l'ordre choisi (pour galerie / kanban / liste)
+function ndbOrderedCardProps(cfg) {
+  const chosen = cfg.cardProps || [];
+  const inOrder = (cfg.colOrder || []).filter(k => chosen.includes(k));
+  return inOrder.concat(chosen.filter(k => !inOrder.includes(k)));
+}
+function ndbSecProps(id, cfg) {
+  const coll = cfg.coll;
+  const isTable = cfg.type === 'table';
+  const isLocal = (state.customTables || []).some(t => t.id === coll && t.ownerNoteId);
+  const customIds = new Set(schemaOf(coll).map(p => p.id));   // propriétés créées par l'utilisatrice
+  const hidden = cfg.hiddenCols || [], chosen = cfg.cardProps || [];
+  const pairs = ndbOrderPairs(cfg, ndbPropUniverse(cfg));
+  const rows = pairs.map(([k, l]) => {
+    const on = isTable ? !hidden.includes(k) : chosen.includes(k);
+    const toggle = isTable ? `ndbTogglePropTable('${id}','${k}')` : `ndbToggleCardProp('${id}','${k}')`;
+    const del = (isLocal && customIds.has(k)) ? `<button class="ndb-prop-del" onclick="ndbDeleteLocalProp('${id}','${k}')" title="Supprimer cette propriété (base locale)">${ICON_TRASH}</button>` : '';
+    return `<div class="ndb-prop" draggable="true" data-key="${k}">
+      <span class="ndb-prop-grip" title="Glisser pour réordonner">${NDB_ICON_GRIP}</span>
+      <span class="ndb-prop-l">${esc(l)}</span>
+      ${del}
+      <button class="ndb-prop-eye ${on ? 'on' : ''}" onclick="${toggle}" title="${on ? 'Masquer' : 'Afficher'}">${on ? ICON_EYE : ICON_EYE_OFF}</button>
+    </div>`;
+  }).join('');
+  const hint = isTable
+    ? 'Glisse les poignées pour réordonner les colonnes. Le titre reste toujours en tête.'
+    : `Glisse pour réordonner. Propriétés affichées sur ${cfg.type === 'list' ? 'chaque ligne' : 'chaque carte'} (le titre est toujours là).`;
+  return `<div class="ndb-prop-list">${rows}</div><div class="ndb-sec-hint">${hint}</div>`;
+}
+// réordonner : place `key` juste avant `beforeKey` (ou en fin) dans cfg.colOrder
+function ndbMoveProp(id, key, beforeKey) {
+  const c = ndbCfg(id); if (!c || key === beforeKey) return;
+  const cur = ndbOrderPairs(c, ndbPropUniverse(c)).map(p => p[0]);
+  const from = cur.indexOf(key); if (from >= 0) cur.splice(from, 1);
+  const to = beforeKey ? cur.indexOf(beforeKey) : cur.length;
+  cur.splice(to < 0 ? cur.length : to, 0, key);
+  // fusionne avec l'ordre déjà mémorisé pour ne pas perdre les clés de l'autre univers (table vs cartes)
+  const merged = cur.concat((c.colOrder || []).filter(k => !cur.includes(k)));
+  c.colOrder = merged; save(); ndbRehydrate(id);
+}
+// suppression d'une propriété — UNIQUEMENT sur une base LOCALE, et seulement une propriété personnalisée
+function ndbDeleteLocalProp(id, propId) {
+  const c = ndbCfg(id); if (!c) return;
+  const isLocal = (state.customTables || []).some(t => t.id === c.coll && t.ownerNoteId);
+  if (!isLocal) return;
+  const prop = schemaOf(c.coll).find(p => p.id === propId); if (!prop) return;
+  if (!confirm(`Supprimer la propriété « ${prop.name} » et toutes ses valeurs ?\nCette action est définitive.`)) return;
+  const list = schemaOf(c.coll); const i = list.findIndex(x => x.id === propId); if (i >= 0) list.splice(i, 1);
+  collArr(c.coll).forEach(r => { if (r.props) delete r.props[propId]; });   // nettoie les valeurs
+  if (c.colOrder) c.colOrder = c.colOrder.filter(k => k !== propId);
+  if (c.cardProps) c.cardProps = c.cardProps.filter(k => k !== propId);
+  if (c.hiddenCols) c.hiddenCols = c.hiddenCols.filter(k => k !== propId);
+  save(); ndbRehydrate(id); noteAutosave(true);
+}
+// glisser-déposer des lignes de propriétés dans le panneau
+let ndbPropDragKey = null;
+function wireNoteDbPropDrag(el, id) {
+  el.querySelectorAll('.ndb-prop[draggable="true"]').forEach(row => {
+    row.addEventListener('dragstart', e => { ndbPropDragKey = row.dataset.key; row.classList.add('pd-dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ndbPropDragKey); });
+    row.addEventListener('dragend', () => { row.classList.remove('pd-dragging'); ndbPropDragKey = null; el.querySelectorAll('.ndb-prop').forEach(x => x.classList.remove('pd-over')); });
+    row.addEventListener('dragover', e => { e.preventDefault(); if (ndbPropDragKey && ndbPropDragKey !== row.dataset.key) row.classList.add('pd-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('pd-over'));
+    row.addEventListener('drop', e => { e.preventDefault(); row.classList.remove('pd-over'); if (ndbPropDragKey) ndbMoveProp(id, ndbPropDragKey, row.dataset.key); });
+  });
+}
+window.ndbDeleteLocalProp = ndbDeleteLocalProp;
 // -- Filtrer : les pilules compactes (avec le point orange) qu'elle aime
 function ndbSecFilter(id, cfg) {
   const coll = cfg.coll;
