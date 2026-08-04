@@ -595,13 +595,47 @@
   .note-db .ndb-cardprop { font-size: 11.5px; color: var(--text-soft); margin-top: 3px; }
   .note-db .ndb-cardprop-k { color: var(--text-faint); }
   /* bouton unique « Paramètres » + panneau de réglages sectionné (façon Notion : tout est rangé dedans) */
-  .note-db .ndb-set { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft);
-    padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); position: relative; }
-  .note-db .ndb-set:hover { background: var(--surface-2); }
-  .note-db .ndb-set.on { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
-  .note-db .ndb-set.act { color: var(--text); }
-  .note-db .ndb-badge { min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--accent);
+  /* (classes globales : réutilisées dans les blocs de note ET dans le grand panneau « Base de données ») */
+  .ndb-set { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft);
+    padding: 4px 9px; border-radius: 8px; border: 1px solid var(--border); position: relative; }
+  .ndb-set:hover { background: var(--surface-2); }
+  .ndb-set.on { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+  .ndb-set.act { color: var(--text); }
+  .ndb-badge { min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--accent);
     color: #fff; font-size: 10px; line-height: 15px; text-align: center; }
+  .data-toolbar .ndb-set { margin-left: auto; }
+  /* le panneau de réglages du grand panneau réutilise les styles .note-db sans le cadre de bloc */
+  .ndb-panelwrap { margin: 0; border: none; padding: 0; background: none; }
+  /* sélecteur de date / heure maison */
+  .dtp { position: fixed; z-index: 200; width: 264px; padding: 10px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 14px 34px rgba(0,0,0,.16); font-size: 13px; }
+  .dtp.hidden { display: none; }
+  .dtp.dtp-timepop { width: 152px; }
+  .dtp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .dtp-title { flex: 1; text-align: center; font-weight: 600; color: var(--text); text-transform: capitalize; font-size: 13px; }
+  .dtp-nav { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: var(--text-soft); }
+  .dtp-nav:hover { background: var(--surface-2); color: var(--text); }
+  .dtp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .dtp-dow { text-align: center; font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .03em; padding-bottom: 4px; }
+  .dtp-day { height: 32px; border-radius: 9px; color: var(--text); font-size: 12.5px; display: grid; place-items: center; }
+  .dtp-day:hover { background: var(--surface-2); }
+  .dtp-day.oth { color: var(--text-faint); }
+  .dtp-day.today { box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+  .dtp-day.sel, .dtp-day.sel:hover { background: var(--accent); color: #fff; }
+  .dtp-day.dis { color: var(--text-faint); opacity: .4; cursor: default; }
+  .dtp-day.dis:hover { background: none; }
+  .dtp-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .dtp-foot-btn { font-size: 12px; color: var(--text-soft); padding: 5px 10px; border-radius: 8px; }
+  .dtp-foot-btn:hover { background: var(--surface-2); }
+  .dtp-foot-btn.accent { color: var(--accent); font-weight: 600; }
+  .dtp-time-top { margin-bottom: 6px; }
+  .dtp-time-input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; font-size: 14px;
+    text-align: center; background: var(--surface); color: var(--text); }
+  .dtp-time-input:focus { border-color: var(--accent); outline: none; }
+  .dtp-time-list { max-height: 216px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .dtp-time-opt { text-align: center; padding: 7px; border-radius: 8px; color: var(--text); font-size: 13px; }
+  .dtp-time-opt:hover { background: var(--surface-2); }
+  .dtp-time-opt.sel { background: var(--accent); color: #fff; }
   .note-db .ndb-settings { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 8px;
     margin: 0 4px 10px; }
   .note-db .ndb-seg-row { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
@@ -1984,10 +2018,18 @@
 
   /* ---- vue cartes ---- */
   .cards-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-  .card-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; box-shadow: var(--shadow); }
+  .card-item { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; box-shadow: var(--shadow); }
   .card-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
   .card-prog { margin-bottom: 9px; }
   .card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-soft); }
+  /* image de couverture des cartes (galerie + kanban) */
+  .card-cover { margin: -13px -14px 11px; height: 134px; background: var(--surface-2); }
+  .card-cover img, .kb-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-cover-btn { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center;
+    border-radius: 7px; background: rgba(0,0,0,.42); color: #fff; opacity: 0; transition: opacity .12s; z-index: 2; }
+  .card-item:hover .card-cover-btn { opacity: 1; }
+  .card-cover-btn:hover { background: rgba(0,0,0,.62); }
+  .kb-cover { margin: -10px -11px 8px; height: 96px; background: var(--surface-2); }
 
   /* ---- vue kanban ---- */
   .kanban { display: flex; gap: 12px; align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
@@ -1999,7 +2041,7 @@
   .kb-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
   .kb-count { font-size: 11px; color: var(--text-soft); font-weight: 600; }
   .kb-cards { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
-  .kb-card { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 10px 11px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .kb-card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 10px 11px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
   .kb-card:hover { border-color: var(--accent); }
   .kb-card.dragging { opacity: .4; }
   .kb-card-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
@@ -7448,6 +7490,134 @@ function openStyledMenu(anchor, groups, current, onPick) {
 }
 function closeStyledMenu() { $('styledMenu').classList.add('hidden'); styledMenuCb = null; styledMenuAnchor = null; }
 
+/* ---------- Sélecteur de date / heure maison (remplace le calendrier natif « vieillot » du navigateur) ----------
+   Principe : on intercepte le clic sur tout <input type="date"|"time"> pour ouvrir un popover arrondi, thémé.
+   Au choix, on écrit input.value + on émet input/change → tout le code existant (onchange) fonctionne sans être touché.
+   Pour garder le picker natif sur un champ précis : lui mettre data-native="1". */
+const DTP_CHEV_L = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
+const DTP_CHEV_R = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+let dtpEl = null, dtpInput = null, dtpView = null, dtpKind = 'date';
+const dtpIsHidden = () => !dtpEl || dtpEl.classList.contains('hidden');
+function dtpEnsure() {
+  if (dtpEl) return dtpEl;
+  dtpEl = document.createElement('div');
+  dtpEl.id = 'dtpPop'; dtpEl.className = 'dtp hidden';
+  document.body.appendChild(dtpEl);
+  dtpEl.addEventListener('click', dtpOnClick);
+  dtpEl.addEventListener('change', e => { if (e.target.classList.contains('dtp-time-input')) { const v = dtpNormTime(e.target.value); if (v) dtpSetValue(v); } });
+  dtpEl.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { dtpClose(); return; }
+    if (e.target.classList.contains('dtp-time-input') && e.key === 'Enter') { e.preventDefault(); const v = dtpNormTime(e.target.value); if (v) dtpSetValue(v); }
+  });
+  return dtpEl;
+}
+function dtpClose() { if (dtpEl) dtpEl.classList.add('hidden'); dtpInput = null; }
+function dtpPosition(anchor) {
+  const r = anchor.getBoundingClientRect();
+  dtpEl.classList.remove('hidden');
+  dtpEl.style.left = r.left + 'px';
+  dtpEl.style.top = (r.bottom + 6) + 'px';
+  requestAnimationFrame(() => {
+    const m = dtpEl.getBoundingClientRect();
+    if (m.bottom > innerHeight - 8) dtpEl.style.top = Math.max(8, r.top - m.height - 6) + 'px';
+    if (m.right > innerWidth - 8) dtpEl.style.left = Math.max(8, innerWidth - m.width - 8) + 'px';
+    if (m.left < 8) dtpEl.style.left = '8px';
+  });
+}
+function dtpSetValue(v) {
+  if (!dtpInput) return;
+  dtpInput.value = v;
+  dtpInput.dispatchEvent(new Event('input', { bubbles: true }));
+  dtpInput.dispatchEvent(new Event('change', { bubbles: true }));
+  dtpClose();
+}
+// --- Date ---
+function dtpOpen(input) {
+  dtpEnsure(); dtpInput = input; dtpKind = 'date';
+  dtpEl.classList.remove('dtp-timepop');
+  const val = /^\d{4}-\d{2}-\d{2}$/.test(input.value) ? parseYmd(input.value) : new Date();
+  dtpView = new Date(val.getFullYear(), val.getMonth(), 1);
+  dtpRenderDate();
+  dtpPosition(input);
+}
+function dtpRenderDate() {
+  const sel = dtpInput && /^\d{4}-\d{2}-\d{2}$/.test(dtpInput.value) ? parseYmd(dtpInput.value) : null;
+  const today = new Date();
+  const min = dtpInput && dtpInput.min, max = dtpInput && dtpInput.max;
+  const start = startOfWeek(new Date(dtpView));
+  const dows = []; for (let i = 0; i < 7; i++) dows.push(DOW_SHORT[(state.weekStart + i) % 7]);
+  let cells = '';
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i); const s = ymd(d);
+    const other = d.getMonth() !== dtpView.getMonth();
+    const dis = (min && s < min) || (max && s > max);
+    cells += `<button type="button" class="dtp-day ${other ? 'oth' : ''} ${sel && sameDay(d, sel) ? 'sel' : ''} ${sameDay(d, today) ? 'today' : ''} ${dis ? 'dis' : ''}" ${dis ? 'disabled' : ''} data-d="${s}">${d.getDate()}</button>`;
+  }
+  dtpEl.innerHTML = `
+    <div class="dtp-head">
+      <button type="button" class="dtp-nav" data-act="prev" title="Mois précédent">${DTP_CHEV_L}</button>
+      <span class="dtp-title">${MONTHS[dtpView.getMonth()]} ${dtpView.getFullYear()}</span>
+      <button type="button" class="dtp-nav" data-act="next" title="Mois suivant">${DTP_CHEV_R}</button>
+    </div>
+    <div class="dtp-grid">${dows.map(d => `<span class="dtp-dow">${d}</span>`).join('')}${cells}</div>
+    <div class="dtp-foot">
+      <button type="button" class="dtp-foot-btn" data-act="clear">Effacer</button>
+      <button type="button" class="dtp-foot-btn accent" data-act="today">Aujourd'hui</button>
+    </div>`;
+}
+// --- Heure ---
+function dtpOpenTime(input) {
+  dtpEnsure(); dtpInput = input; dtpKind = 'time';
+  dtpEl.classList.add('dtp-timepop');
+  dtpRenderTime();
+  dtpPosition(input);
+  requestAnimationFrame(() => { const s = dtpEl.querySelector('.dtp-time-opt.sel'); if (s) s.scrollIntoView({ block: 'center' }); });
+}
+function dtpRenderTime() {
+  const cur = dtpInput ? dtpInput.value : '';
+  let opts = '';
+  for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m += 30) {
+    const t = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    opts += `<button type="button" class="dtp-time-opt ${t === cur ? 'sel' : ''}" data-t="${t}">${t}</button>`;
+  }
+  dtpEl.innerHTML = `
+    <div class="dtp-time-top"><input type="text" class="dtp-time-input" value="${esc(cur)}" placeholder="hh:mm" maxlength="5" inputmode="numeric"></div>
+    <div class="dtp-time-list">${opts}</div>
+    <div class="dtp-foot"><button type="button" class="dtp-foot-btn" data-act="clear">Effacer</button></div>`;
+}
+function dtpNormTime(v) {
+  v = (v || '').trim();
+  let m = v.match(/^(\d{1,2})\s*[:hH.]\s*(\d{1,2})$/);
+  if (m) { const h = +m[1], mi = +m[2]; if (h < 24 && mi < 60) return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0'); }
+  m = v.match(/^(\d{1,2})$/); if (m) { const h = +m[1]; if (h < 24) return String(h).padStart(2, '0') + ':00'; }
+  m = v.match(/^(\d{2})(\d{2})$/); if (m) { const h = +m[1], mi = +m[2]; if (h < 24 && mi < 60) return m[1] + ':' + m[2]; }
+  return null;
+}
+function dtpOnClick(e) {
+  const day = e.target.closest('.dtp-day'); if (day) { if (!day.disabled) dtpSetValue(day.dataset.d); return; }
+  const opt = e.target.closest('.dtp-time-opt'); if (opt) { dtpSetValue(opt.dataset.t); return; }
+  const nav = e.target.closest('[data-act]'); if (!nav) return;
+  const act = nav.dataset.act;
+  if (act === 'prev') { dtpView.setMonth(dtpView.getMonth() - 1); dtpRenderDate(); }
+  else if (act === 'next') { dtpView.setMonth(dtpView.getMonth() + 1); dtpRenderDate(); }
+  else if (act === 'today') { const t = new Date(); dtpView = new Date(t.getFullYear(), t.getMonth(), 1); dtpSetValue(ymd(t)); }
+  else if (act === 'clear') { dtpSetValue(''); }
+}
+// interception globale : ouvre le popover au lieu du calendrier natif
+document.addEventListener('mousedown', e => {
+  if (!dtpIsHidden() && dtpEl.contains(e.target)) return;   // clic dans le popover : géré par ses propres handlers
+  const inp = (e.button === 0 && e.target.closest) ? e.target.closest('input[type="date"], input[type="time"]') : null;
+  if (inp && !inp.readOnly && !inp.disabled && inp.dataset.native !== '1') {
+    e.preventDefault();   // empêche le focus + le picker natif
+    if (dtpInput === inp && !dtpIsHidden()) { dtpClose(); return; }
+    if (inp.type === 'date') dtpOpen(inp); else dtpOpenTime(inp);
+    return;
+  }
+  if (!dtpIsHidden()) dtpClose();   // clic ailleurs → fermer
+}, true);
+window.addEventListener('scroll', () => { if (!dtpIsHidden()) dtpClose(); }, true);
+window.addEventListener('resize', () => { if (!dtpIsHidden()) dtpClose(); });
+
 /* ---------- Dossiers de notes ---------- */
 const folderById = id => (state.noteFolders || []).find(f => f.id === id);
 /* Icône « dossier » remplie de la couleur du dossier (corps clair + languette et
@@ -10094,6 +10264,7 @@ let ndbSection = 'props';   // section active dans le panneau de réglages
 // champ « valeur » d'un filtre, adapté au type de propriété (branché sur le bloc)
 function ndbFilterValueInput(coll, f, id, i) {
   if (['is_true', 'is_false', 'empty', 'notempty'].includes(f.op)) return '';
+  if (f.op === 'inperiod') return relSelects(f, `onchange="ndbUpdFilterRel('${id}',${i},'dir',this.value)"`, `onchange="ndbUpdFilterRel('${id}',${i},'unit',this.value)"`);
   const kind = kindOf(coll, f.key);
   const on = `onchange="ndbUpdFilter('${id}',${i},'value',this.value)"`;
   if (kind === 'date')   return `<input type="date" value="${f.value || ''}" ${on}>`;
@@ -10287,6 +10458,7 @@ function ndbFilterPillText(coll, f) {
   const label = fld ? fld[1] : (f.key || '—');
   const opLabel = (opsFor(kindOf(coll, f.key)).find(([o]) => o === f.op) || [])[1] || '';
   if (['empty', 'notempty', 'is_true', 'is_false'].includes(f.op)) return `${label} · ${opLabel}`;
+  if (f.op === 'inperiod') return `${label} · ${relLabel(f.value)}`;
   let v = f.value; const kind = kindOf(coll, f.key);
   if (kind === 'proj') { const p = projById(v); v = p ? p.name : ''; }
   else if (kind === 'cat') { const c = state.categories.find(x => x.id === v); v = c ? c.name : ''; }
@@ -10320,7 +10492,9 @@ window.ndbEditPill = ndbEditPill; window.ndbCloseEdit = ndbCloseEdit;
 window.ndbPickFilterField = ndbPickFilterField; window.ndbPickSortField = ndbPickSortField;
 function ndbAddFilter(id) { const c = ndbCfg(id); (c.filters = c.filters || []).push({ key: '', op: 'contains', value: '' }); save(); ndbRehydrate(id); }
 function ndbDelFilter(id, i) { const c = ndbCfg(id); c.filters.splice(i, 1); save(); ndbRehydrate(id); }
-function ndbUpdFilter(id, i, field, val) { const c = ndbCfg(id); const f = c.filters[i]; if (!f) return; f[field] = val; if (field === 'key') { f.op = opsFor(kindOf(c.coll, val))[0][0]; f.value = ''; } save(); ndbRehydrate(id); }
+function ndbUpdFilter(id, i, field, val) { const c = ndbCfg(id); const f = c.filters[i]; if (!f) return; f[field] = val; if (field === 'key') { f.op = opsFor(kindOf(c.coll, val))[0][0]; f.value = ''; } if (field === 'op') { if (val === 'inperiod' && !/^(this|last|next):/.test(f.value || '')) f.value = 'this:week'; else if (val !== 'inperiod' && /^(this|last|next):/.test(f.value || '')) f.value = ''; } save(); ndbRehydrate(id); }
+function ndbUpdFilterRel(id, i, part, val) { const c = ndbCfg(id); const f = c.filters[i]; if (!f) return; let [dir, unit] = (f.value || 'this:week').split(':'); if (part === 'dir') dir = val; else unit = val; f.value = dir + ':' + unit; save(); ndbRehydrate(id); }
+window.ndbUpdFilterRel = ndbUpdFilterRel;
 function ndbAddSort(id) { const c = ndbCfg(id); (c.sorts = c.sorts || []).push({ key: '', dir: 'asc' }); save(); ndbRehydrate(id); }
 function ndbDelSort(id, i) { const c = ndbCfg(id); c.sorts.splice(i, 1); save(); ndbRehydrate(id); }
 function ndbUpdSort(id, i, field, val) { const c = ndbCfg(id); const s = c.sorts[i]; if (!s) return; s[field] = val; save(); ndbRehydrate(id); }
@@ -13500,12 +13674,41 @@ function cellValue(c, rec, key) {
 function opsFor(kind) {
   if (kind === 'checkbox') return [['is_true','est coché'], ['is_false',"n'est pas coché"]];
   if (kind === 'number')   return [['eq','='], ['ne','≠'], ['gt','>'], ['lt','<'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
-  if (kind === 'date')     return [['eq','est le'], ['before','avant le'], ['after','après le'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
+  if (kind === 'date')     return [['eq','est le'], ['before','avant le'], ['after','après le'], ['inperiod','est dans la période'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
   if (['select','cat','proj','prio'].includes(kind)) return [['eq','est'], ['ne',"n'est pas"], ['empty','est vide'], ['notempty',"n'est pas vide"]];
   if (['multi','relation'].includes(kind)) return [['has','contient'], ['hasnot','ne contient pas'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
   return [['contains','contient'], ['notcontains','ne contient pas'], ['eq','est'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
 }
 const isEmptyVal = v => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
+// filtres de date relatifs : direction (ce/dernier/prochain) × unité (jour/semaine/mois/année)
+const REL_DIRS = [['this', 'Ce / cette'], ['last', 'Dernier(s)'], ['next', 'Prochain(s)']];
+const REL_UNITS = [['day', 'jour'], ['week', 'semaine'], ['month', 'mois'], ['year', 'année']];
+// plage [start,end] (YYYY-MM-DD, incluses) d'une période relative à aujourd'hui
+function dateRangeFor(dir, unit) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const mult = dir === 'last' ? -1 : dir === 'next' ? 1 : 0;
+  if (unit === 'day') { const d = addDays(today, mult); return { start: ymd(d), end: ymd(d) }; }
+  if (unit === 'week') { const base = addDays(startOfWeek(today), mult * 7); return { start: ymd(base), end: ymd(addDays(base, 6)) }; }
+  if (unit === 'month') { const s = new Date(today.getFullYear(), today.getMonth() + mult, 1); const e = new Date(today.getFullYear(), today.getMonth() + mult + 1, 0); return { start: ymd(s), end: ymd(e) }; }
+  if (unit === 'year') { const y = today.getFullYear() + mult; return { start: `${y}-01-01`, end: `${y}-12-31` }; }
+  return null;
+}
+// libellé lisible d'une période relative (pour la pilule)
+function relLabel(value) {
+  const [dir, unit] = (value || 'this:week').split(':');
+  const T = {
+    this: { day: "aujourd'hui", week: 'cette semaine', month: 'ce mois', year: 'cette année' },
+    last: { day: 'hier', week: 'la semaine dernière', month: 'le mois dernier', year: "l'année dernière" },
+    next: { day: 'demain', week: 'la semaine prochaine', month: 'le mois prochain', year: "l'année prochaine" },
+  };
+  return (T[dir] && T[dir][unit]) || 'cette période';
+}
+// deux menus (direction + unité) pour saisir une période relative
+function relSelects(f, onDir, onUnit) {
+  const [dir, unit] = (f.value || 'this:week').split(':');
+  return `<select ${onDir}>${REL_DIRS.map(([v, l]) => `<option value="${v}" ${v === dir ? 'selected' : ''}>${l}</option>`).join('')}</select>` +
+    `<select ${onUnit}>${REL_UNITS.map(([v, l]) => `<option value="${v}" ${v === unit ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+}
 function matchFilter(c, rec, f) {
   const kind = kindOf(c, f.key);
   const v = cellValue(c, rec, f.key);
@@ -13515,6 +13718,13 @@ function matchFilter(c, rec, f) {
   if (f.op === 'is_false') return !v;
   if (f.op === 'has')      return Array.isArray(v) && v.includes(f.value);
   if (f.op === 'hasnot')   return !(Array.isArray(v) && v.includes(f.value));
+  if (f.op === 'inperiod') {
+    if (isEmptyVal(v)) return false;
+    const [dir, unit] = String(f.value || 'this:week').split(':');
+    const range = dateRangeFor(dir, unit); if (!range) return false;
+    const d = String(v).slice(0, 10);
+    return d >= range.start && d <= range.end;
+  }
   if (kind === 'number') {
     const a = Number(v), b = Number(f.value);
     if (f.op === 'eq') return a === b;
@@ -13583,12 +13793,21 @@ function updFilter(i, field, val) {
   f[field] = val;
   // changer de propriété remet un opérateur cohérent avec son type
   if (field === 'key') { f.op = opsFor(kindOf(dataTab, val))[0][0]; f.value = ''; }
+  if (field === 'op') { if (val === 'inperiod' && !/^(this|last|next):/.test(f.value || '')) f.value = 'this:week'; else if (val !== 'inperiod' && /^(this|last|next):/.test(f.value || '')) f.value = ''; }
   save(); renderDataPanel();
 }
-window.addFilter = addFilter; window.delFilter = delFilter; window.updFilter = updFilter;
+// met à jour une moitié (direction ou unité) d'un filtre de période relative
+function updFilterRel(i, part, val) {
+  const v = curView(); const f = v.filters[i]; if (!f) return;
+  let [dir, unit] = (f.value || 'this:week').split(':');
+  if (part === 'dir') dir = val; else unit = val;
+  f.value = dir + ':' + unit; save(); renderDataPanel();
+}
+window.addFilter = addFilter; window.delFilter = delFilter; window.updFilter = updFilter; window.updFilterRel = updFilterRel;
 // champ de saisie de la valeur, adapté au type de la propriété
 function filterValueInput(c, f, i) {
   if (['is_true','is_false','empty','notempty'].includes(f.op)) return '';
+  if (f.op === 'inperiod') return relSelects(f, `onchange="updFilterRel(${i},'dir',this.value)"`, `onchange="updFilterRel(${i},'unit',this.value)"`);
   const kind = kindOf(c, f.key);
   const on = `onchange="updFilter(${i},'value',this.value)"`;
   if (kind === 'date')   return `<input type="date" value="${f.value||''}" ${on}>`;
@@ -13895,6 +14114,155 @@ window.automAdd = automAdd; window.automDelete = automDelete; window.automToggle
 window.automSetOn = automSetOn; window.automSetIfProp = automSetIfProp; window.automSetIfCond = automSetIfCond;
 window.automSetThenProp = automSetThenProp; window.automSetVal = automSetVal;
 
+/* ---------- Réglages homogènes du grand panneau (même UX que les blocs de note) ---------- */
+let dpLastSection = 'props';
+let dpEdit = null;   // pilule en cours d'édition : { which:'filter'|'sort', i }
+function dpToggleSettings() { sfOpen = sfOpen ? null : (dpLastSection || 'props'); dpEdit = null; renderDataPanel(); }
+function dpSetSection(sec) { dpLastSection = sec; sfOpen = sec; dpEdit = null; renderDataPanel(); }
+window.dpToggleSettings = dpToggleSettings; window.dpSetSection = dpSetSection;
+function renderDPSettings(c, view) {
+  if (!sfOpen) return '';
+  const hasGroup = groupByChoices(c).length > 0;
+  let sec = sfOpen; if (sec === 'group' && !hasGroup) sec = 'props';
+  if (!['layout', 'props', 'filter', 'sort', 'group'].includes(sec)) sec = 'props';
+  const tabs = NDB_SECTIONS.filter(([k]) => k !== 'group' || hasGroup).map(([k, lbl]) =>
+    `<button class="ndb-seg ${sec === k ? 'on' : ''}" onclick="dpSetSection('${k}')">${lbl}</button>`).join('');
+  let body;
+  if (sec === 'layout') body = dpSecLayout(c, view);
+  else if (sec === 'filter') body = dpSecFilter(c, view);
+  else if (sec === 'sort') body = dpSecSort(c, view);
+  else if (sec === 'group') body = dpSecGroup(c, view);
+  else body = dpSecProps(c, view);
+  return `<div class="note-db ndb-panelwrap"><div class="ndb-settings"><div class="ndb-seg-row">${tabs}</div><div class="ndb-sec-body">${body}</div></div></div>`;
+}
+// Disposition : type d'affichage de la vue active (les vues nommées multiples restent gérées par la barre de vues)
+function dpSecLayout(c, view) {
+  const btns = NDB_VIEWS.map(([t, lbl]) => `<button class="ndb-lay ${view.type === t ? 'on' : ''}" onclick="dpSetType('${t}')">${lbl}</button>`).join('');
+  return `<div class="ndb-lay-row">${btns}</div><div class="ndb-sec-hint">Type d'affichage de la vue « ${esc(view.name)} ».</div>`;
+}
+function dpSetType(t) { const v = curView(); v.type = t; if (t === 'kanban' && !v.groupBy) v.groupBy = defaultGroupBy(dataTab); save(); renderDataPanel(); }
+window.dpSetType = dpSetType;
+// univers table : toutes les colonnes (y compris masquées), dans l'ordre mémorisé, sauf l'ID
+function dpTableUniverse(c) {
+  const byKey = Object.fromEntries(allCols(c).map(col => [col.key, col.label]));
+  return orderedColKeysAll(c).filter(k => k !== 'id').map(k => [k, byKey[k]]);
+}
+// Propriétés : poignée (réordonner via moveCol) + œil (masquer) + corbeille (propriétés personnalisées)
+function dpSecProps(c, view) {
+  const isTable = view.type === 'table';
+  const customIds = new Set(schemaOf(c).map(p => p.id));
+  const hidden = colHiddenOf(c), chosen = view.cardProps || [];
+  const pairs = isTable ? dpTableUniverse(c) : ruleFields(c).filter(([k]) => !['title', 'name', 'icon', 'color'].includes(k));
+  const rows = pairs.map(([k, l]) => {
+    const on = isTable ? !hidden.includes(k) : chosen.includes(k);
+    const toggle = isTable ? `dpToggleCol('${k}')` : `toggleViewProp('${k}')`;
+    const del = customIds.has(k) ? `<button class="ndb-prop-del" onclick="dpDeleteProp('${k}')" title="Supprimer cette propriété">${ICON_TRASH}</button>` : '';
+    return `<div class="ndb-prop" draggable="true" data-key="${k}">
+      <span class="ndb-prop-grip" title="Glisser pour réordonner">${NDB_ICON_GRIP}</span>
+      <span class="ndb-prop-l">${esc(l)}</span>${del}
+      <button class="ndb-prop-eye ${on ? 'on' : ''}" onclick="${toggle}" title="${on ? 'Masquer' : 'Afficher'}">${on ? ICON_EYE : ICON_EYE_OFF}</button>
+    </div>`;
+  }).join('');
+  const hint = isTable ? 'Glisse les poignées pour réordonner les colonnes.' : `Glisse pour réordonner. Propriétés affichées sur ${view.type === 'list' ? 'chaque ligne' : 'chaque carte'}.`;
+  return `<div class="ndb-prop-list">${rows}</div><div class="ndb-sec-hint">${hint}</div>`;
+}
+function dpToggleCol(key) { const h = colHiddenOf(dataTab); h.includes(key) ? showCol(dataTab, key) : hideCol(dataTab, key); }
+window.dpToggleCol = dpToggleCol;
+function dpDeleteProp(propId) {
+  const c = dataTab; const prop = schemaOf(c).find(p => p.id === propId); if (!prop) return;
+  if (!confirm(`Supprimer la propriété « ${prop.name} » et toutes ses valeurs ?\nCette action est définitive.`)) return;
+  const list = schemaOf(c); const i = list.findIndex(x => x.id === propId); if (i >= 0) list.splice(i, 1);
+  collArr(c).forEach(r => { if (r.props) delete r.props[propId]; });
+  save(); renderDataPanel();
+}
+window.dpDeleteProp = dpDeleteProp;
+function dpOrderedCardProps(c, view) {
+  const chosen = view.cardProps || []; const order = (state.colOrder && state.colOrder[c]) || [];
+  const inOrder = order.filter(k => chosen.includes(k));
+  return inOrder.concat(chosen.filter(k => !inOrder.includes(k)));
+}
+function wireDPPropDrag(c) {
+  let key = null;
+  $$('#dataBody .ndb-prop[draggable="true"]').forEach(row => {
+    row.addEventListener('dragstart', e => { key = row.dataset.key; row.classList.add('pd-dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', key); });
+    row.addEventListener('dragend', () => { row.classList.remove('pd-dragging'); key = null; $$('#dataBody .ndb-prop').forEach(x => x.classList.remove('pd-over')); });
+    row.addEventListener('dragover', e => { e.preventDefault(); if (key && key !== row.dataset.key) row.classList.add('pd-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('pd-over'));
+    row.addEventListener('drop', e => { e.preventDefault(); row.classList.remove('pd-over'); if (key) moveCol(c, key, row.dataset.key); });
+  });
+}
+// Filtrer / Trier : pilules compactes (avec le point orange), comme dans les notes
+function dpSecFilter(c, view) {
+  const filters = view.filters || [];
+  const pills = filters.map((f, i) => {
+    if (dpEdit && dpEdit.which === 'filter' && dpEdit.i === i) {
+      return `<span class="ndb-pill editing">
+        <select onchange="updFilter(${i},'op',this.value)">${opsFor(kindOf(c, f.key)).map(([o, l]) => `<option value="${o}" ${o === f.op ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        ${filterValueInput(c, f, i)}
+        <button class="ndb-pill-done" onclick="dpCloseEdit()" title="OK">✓</button>
+        <button class="ndb-pill-x" onclick="delFilter(${i})" title="Retirer">✕</button>
+      </span>`;
+    }
+    return `<span class="ndb-pill" onclick="dpEditPill('filter',${i})"><span class="ndb-pill-dot"></span>${esc(dpFilterPillText(c, f))}<button class="ndb-pill-x" onclick="event.stopPropagation();delFilter(${i})" title="Retirer">✕</button></span>`;
+  }).join('');
+  return `<div class="ndb-pillbar">${pills}<button class="ndb-addpill" onclick="dpPickFilterField(this)">＋ Filtrer</button></div>`;
+}
+function dpSecSort(c, view) {
+  const sorts = view.sorts || [];
+  const pills = sorts.map((s, i) => {
+    const fld = ruleFields(c).find(([k]) => k === s.key); const label = fld ? fld[1] : (s.key || '—');
+    if (dpEdit && dpEdit.which === 'sort' && dpEdit.i === i) {
+      return `<span class="ndb-pill editing">${esc(label)}
+        <select onchange="updSort(${i},'dir',this.value)"><option value="asc" ${s.dir === 'asc' ? 'selected' : ''}>Croissant</option><option value="desc" ${s.dir === 'desc' ? 'selected' : ''}>Décroissant</option></select>
+        <button class="ndb-pill-done" onclick="dpCloseEdit()" title="OK">✓</button>
+        <button class="ndb-pill-x" onclick="delSort(${i})" title="Retirer">✕</button>
+      </span>`;
+    }
+    return `<span class="ndb-pill" onclick="dpEditPill('sort',${i})"><span class="ndb-pill-dot"></span>${esc(label)} ${s.dir === 'desc' ? '↓' : '↑'}<button class="ndb-pill-x" onclick="event.stopPropagation();delSort(${i})" title="Retirer">✕</button></span>`;
+  }).join('');
+  return `<div class="ndb-pillbar">${pills}<button class="ndb-addpill" onclick="dpPickSortField(this)">＋ Trier</button></div>`;
+}
+function dpFilterPillText(c, f) {
+  const fld = ruleFields(c).find(([k]) => k === f.key); const label = fld ? fld[1] : (f.key || '—');
+  const opLabel = (opsFor(kindOf(c, f.key)).find(([o]) => o === f.op) || [])[1] || '';
+  if (['empty', 'notempty', 'is_true', 'is_false'].includes(f.op)) return `${label} · ${opLabel}`;
+  if (f.op === 'inperiod') return `${label} · ${relLabel(f.value)}`;
+  let v = f.value; const kind = kindOf(c, f.key);
+  if (kind === 'proj') { const p = projById(v); v = p ? p.name : ''; }
+  else if (kind === 'cat') { const x = state.categories.find(y => y.id === v); v = x ? x.name : ''; }
+  else if (kind === 'prio') v = { low: 'Basse', med: 'Moyenne', high: 'Haute' }[v] || v;
+  else if (kind === 'select') { const p = schemaOf(c).find(x => x.id === f.key); const o = (p && p.options || []).find(o => o.id === v); v = o ? o.label : ''; }
+  else if (kind === 'date') v = v ? fmtDateShort(v) : '';
+  return v ? `${label} · ${v}` : label;
+}
+function dpEditPill(which, i) { dpEdit = { which, i }; renderDataPanel(); }
+function dpCloseEdit() { dpEdit = null; renderDataPanel(); }
+window.dpEditPill = dpEditPill; window.dpCloseEdit = dpCloseEdit;
+function dpPickFilterField(anchor) {
+  const c = dataTab;
+  openStyledMenu(anchor, [{ label: 'Filtrer par', items: ruleFields(c).map(([k, l]) => ({ value: k, label: l })) }], '', key => {
+    if (!key) return; const v = curView(); (v.filters = v.filters || []).push({ key, op: opsFor(kindOf(c, key))[0][0], value: '' });
+    dpEdit = { which: 'filter', i: v.filters.length - 1 }; save(); renderDataPanel();
+  });
+}
+function dpPickSortField(anchor) {
+  const c = dataTab;
+  openStyledMenu(anchor, [{ label: 'Trier par', items: ruleFields(c).map(([k, l]) => ({ value: k, label: l })) }], '', key => {
+    if (!key) return; const v = curView(); (v.sorts = v.sorts || []).push({ key, dir: 'asc' });
+    dpEdit = { which: 'sort', i: v.sorts.length - 1 }; save(); renderDataPanel();
+  });
+}
+window.dpPickFilterField = dpPickFilterField; window.dpPickSortField = dpPickSortField;
+function dpSecGroup(c, view) {
+  const choices = groupByChoices(c);
+  if (!choices.length) return `<div class="ndb-sec-hint">Ajoute une colonne de type « Sélection » pour pouvoir grouper.</div>`;
+  const cur = view.groupBy || defaultGroupBy(c) || '';
+  const rows = choices.map(([k, l]) => `<label class="ndb-radio"><input type="radio" name="dpgrp" ${cur === k ? 'checked' : ''} onchange="dpSetGroupBy('${k}')"> ${esc(l)}</label>`).join('');
+  return `<div class="ndb-radio-list">${rows}</div><div class="ndb-sec-hint">Groupe les colonnes de la vue Kanban.</div>`;
+}
+function dpSetGroupBy(k) { const v = curView(); v.groupBy = k; save(); renderDataPanel(); }
+window.dpSetGroupBy = dpSetGroupBy;
+
 function renderDataPanel() {
   if (!collArr(dataTab) || (!isBuiltinTable(dataTab) && !(state.customTables||[]).some(t => t.id === dataTab))) dataTab = 'tasks';
   renderDataTabs();
@@ -13954,11 +14322,11 @@ function renderDataPanel() {
       ? `<div class="data-empty">Aucune ligne ne correspond au filtre.<br>Modifie ou retire le filtre pour revoir les ${allRows.length} lignes.</div>`
       : `<div class="data-empty">Aucun ${labels[c] || 'enregistrement'} pour l'instant. Clique sur « ＋ Ajouter une ligne » pour commencer.</div>`;
   } else if (view.type === 'kanban') {
-    content = renderKanban(c, rows, view);
+    content = renderKanban(c, rows, { ...view, cardProps: dpOrderedCardProps(c, view) });
   } else if (view.type === 'list') {
-    content = renderListView(c, rows, view.cardProps);
+    content = renderListView(c, rows, dpOrderedCardProps(c, view));
   } else if (view.type === 'cards') {
-    content = renderCardsView(c, rows, view.cardProps);
+    content = renderCardsView(c, rows, dpOrderedCardProps(c, view));
   } else {
     content = `<div class="table-wrap"><table class="data-table">${colgroup}
       <thead><tr>${headHtml}</tr></thead>
@@ -13970,22 +14338,21 @@ function renderDataPanel() {
   const nFilt = (view.filters || []).filter(f => f.key).length;
   const hidden = allRows.length - rows.length;
 
+  const nSet = nSort + nFilt;
   $('dataBody').innerHTML = `
     ${viewBar}
     <div class="data-toolbar">
       <button class="data-add" onclick="addData('${c}')">＋ Ajouter une ligne</button>
-      <button class="sf-btn ${sfOpen==='sort'?'on':''} ${nSort?'active':''}" onclick="toggleSF('sort')">Trier${nSort?` <span class="sf-badge">${nSort}</span>`:''}</button>
-      <button class="sf-btn ${sfOpen==='filter'?'on':''} ${nFilt?'active':''}" onclick="toggleSF('filter')">Filtrer${nFilt?` <span class="sf-badge">${nFilt}</span>`:''}</button>
-      ${['kanban','cards','list'].includes(view.type) ? `<button class="sf-btn ${sfOpen==='props'?'on':''} ${(view.cardProps||[]).length?'active':''}" onclick="toggleSF('props')">Propriétés${(view.cardProps||[]).length?` <span class="sf-badge">${view.cardProps.length}</span>`:''}</button>` : ''}
       <span class="count">${rows.length} ligne${rows.length>1?'s':''}${hidden>0?` · ${hidden} masquée${hidden>1?'s':''} par le filtre`:''} · table « ${esc(tableLabel(c))} »</span>
       ${tableTools}
-      ${view.type === 'table' ? hiddenHtml : ''}
+      <button class="ndb-set ${sfOpen?'on':''} ${nSet?'act':''}" title="Réglages de la vue (disposition, propriétés, filtres, tri, groupe)" onclick="dpToggleSettings()">${NDB_ICON_SETTINGS}${nSet?`<span class="ndb-badge">${nSet}</span>`:''}</button>
     </div>
-    ${renderSFPanel(c, view)}
+    ${renderDPSettings(c, view)}
     ${content}`;
 
   if (view.type === 'table') { wireColResize(c); wireColDrag(c); }
   if (view.type === 'kanban') wireKanbanDrag(c, view);
+  if (sfOpen) { const hasG = groupByChoices(c).length > 0; const secNow = (sfOpen === 'group' && !hasG) ? 'props' : sfOpen; if (secNow === 'props') wireDPPropDrag(c); }
 }
 
 /* ---------- Vue LISTE (cases à cocher) ---------- */
@@ -14044,12 +14411,30 @@ function lineMeta(c, r) {
 }
 
 /* ---------- Vue CARTES ---------- */
+// image de couverture d'un enregistrement = 1re image de sa fiche (rec.images[0])
+const ICON_IMAGE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
+const recCover = rec => (rec && Array.isArray(rec.images) && rec.images.length) ? rec.images[0] : '';
+// ajoute/complète l'image d'un enregistrement depuis une carte, puis rafraîchit le contexte visible
+function addRecCover(c, id, ev) {
+  if (ev) ev.stopPropagation();
+  pickImages(srcs => {
+    const rec = collArr(c).find(r => r.id === id); if (!rec) return;
+    rec.images = (rec.images || []).concat(srcs); save();
+    if ($('dataOverlay') && $('dataOverlay').classList.contains('show')) renderDataPanel();
+    if ($('noteOverlay') && $('noteOverlay').classList.contains('show')) hydrateNoteDbBlocks();
+  });
+}
+window.addRecCover = addRecCover;
 function renderCardsView(c, rows, keys) {
   return `<div class="cards-view">${rows.map(r => {
     const pr = (c === 'projects') ? projProgress(r.id) : null;
     const color = r.color || '';
     const dot = color ? dotOf(color) : '';
-    return `<div class="card-item" onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche" ${dot?`style="border-top:3px solid ${dot}"`:''}>
+    const cover = recCover(r);
+    const style = (!cover && dot) ? ` style="border-top:3px solid ${dot}"` : '';
+    return `<div class="card-item ${cover ? 'has-cover' : ''}"${style} onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche">
+      ${cover ? `<div class="card-cover"><img src="${cover}" alt="" loading="lazy"></div>` : ''}
+      <button class="card-cover-btn" onclick="addRecCover('${c}','${r.id}',event)" title="${cover ? "Ajouter une image" : "Ajouter une image de couverture"}">${ICON_IMAGE}</button>
       <div class="card-title">${esc(recLabel(c, r))}</div>
       ${pr ? `<div class="card-prog"><div class="pd-progress-line"><span>${pr.done}/${pr.total} tâches</span><span>${pr.pct}%</span></div>
         <div class="proj-bar" style="margin-top:5px"><div style="width:${pr.pct}%;background:${dot||'var(--accent)'}"></div></div></div>` : ''}
@@ -14080,10 +14465,11 @@ function renderKanban(c, rows, view) {
     const items = rows.filter(r => (spec.get(r) || '') === o.id);
     return `<div class="kb-col" data-opt="${o.id}">
       <div class="kb-head"><span class="mpill" style="background:${o.color};color:${inkOn(o.color)}"><span class="pill-dot" style="background:${dotOf(o.color)}"></span>${esc(o.label)}</span><span class="kb-count">${items.length}</span></div>
-      <div class="kb-cards">${items.map(r => `<div class="kb-card" draggable="true" data-rec="${r.id}" onclick="openPage('${c}','${r.id}')">
+      <div class="kb-cards">${items.map(r => { const cover = recCover(r); return `<div class="kb-card ${cover ? 'has-cover' : ''}" draggable="true" data-rec="${r.id}" onclick="openPage('${c}','${r.id}')">
+        ${cover ? `<div class="kb-cover"><img src="${cover}" alt="" loading="lazy"></div>` : ''}
         <div class="kb-card-title">${esc(recLabel(c, r))}</div>
         <div class="card-meta">${(view.cardProps && view.cardProps.length) ? viewPropsInline(c, r, view.cardProps) : lineMeta(c, r)}</div>
-      </div>`).join('')}</div>
+      </div>`; }).join('')}</div>
     </div>`;
   }).join('')}</div>`;
 }
