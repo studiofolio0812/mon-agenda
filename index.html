@@ -571,6 +571,18 @@
   .note-db .ndb-addcol:hover { background: var(--surface-2); color: var(--accent); }
   .note-db button.ndb-name-edit { border: none; background: none; cursor: pointer; }
   .note-db button.ndb-name-edit:hover { text-decoration: underline; }
+  .note-db .ndb-open { color: var(--text-faint); padding: 3px 5px; border-radius: 6px; display: inline-grid; place-items: center; }
+  .note-db .ndb-open:hover { color: var(--accent); background: var(--surface-2); }
+  .note-db td.ndb-opencell { text-align: center; width: 34px; }
+  /* propriétés choisies affichées sur les cartes / lignes (kanban, galerie, liste) + choix */
+  .vp-checks { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+  .vp-checks label { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; cursor: pointer; }
+  .vp-chip { display: inline-flex; align-items: baseline; gap: 4px; font-size: 11.5px; color: var(--text-soft); margin-right: 8px; }
+  .vp-chip .vp-k { color: var(--text-faint); }
+  .lv-name { cursor: pointer; }
+  .lv-name:hover { text-decoration: underline; }
+  .cards-view .card-item { cursor: pointer; }
+  .kanban .kb-card { cursor: pointer; }
   .note-db .ndb-th { display: inline-flex; align-items: center; gap: 4px; }
   .note-db .ndb-eye { opacity: 0; color: var(--text-faint); display: inline-grid; place-items: center; padding: 1px; border-radius: 4px; }
   .note-db th:hover .ndb-eye { opacity: .65; }
@@ -1128,6 +1140,8 @@
   #iconOverlay { z-index: 60; }        /* le sélecteur d'icône s'ouvre PAR-DESSUS une fenêtre déjà ouverte (habitude, fiche) */
   #noteOverlay { z-index: 56; }        /* l'éditeur de note passe au-dessus d'une page projet (ouvert depuis sa section Notes) */
   #folderOverlay { z-index: 57; }      /* la fenêtre dossier passe au-dessus de l'éditeur de note */
+  #propOverlay { z-index: 60; }        /* la fenêtre « colonne » passe au-dessus de l'éditeur de note (＋ Colonne d'une base locale) */
+  #pageOverlay.over-note { z-index: 58; }   /* fiche ouverte depuis un bloc BDD d'une note : au-dessus de la note */
   /* mode « panneau latéral » : pas de voile, l'app reste utilisable derrière */
   #pageOverlay.side { background: transparent; pointer-events: none; padding: 0; justify-content: flex-end; align-items: stretch; }
   #pageOverlay.side .page-panel {
@@ -9916,17 +9930,17 @@ function renderNoteDbContent(id, cfg, rows) {
   const coll = cfg.coll;
   const nActiveF = (cfg.filters || []).filter(f => f.key).length;
   const emptyMsg = `<div class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</div>`;
-  if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy })}</div>`;
-  if (cfg.type === 'cards')  return rows.length ? renderNoteDbCards(coll, rows, cfg) : emptyMsg;
-  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows) : emptyMsg;
-  // table (par défaut) — colonnes masquables une à une
+  if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy, cardProps: cfg.cardProps })}</div>`;
+  if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cfg.cardProps) : emptyMsg;
+  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cfg.cardProps) : emptyMsg;
+  // table (par défaut) — colonnes masquables une à une, + bouton « ouvrir la fiche » par ligne
   const hidden = cfg.hiddenCols || [];
   const allC = orderedCols(coll).filter(c => c.key !== 'id');
   const cols = allC.filter(c => !hidden.includes(c.key));
-  const head = cols.map(c => `<th><span class="ndb-th">${esc(c.label)}<button class="ndb-eye" title="Masquer cette colonne" onclick="ndbHideCol('${id}','${c.key}')">${ICON_EYE}</button></span></th>`).join('');
+  const head = cols.map(c => `<th><span class="ndb-th">${esc(c.label)}<button class="ndb-eye" title="Masquer cette colonne" onclick="ndbHideCol('${id}','${c.key}')">${ICON_EYE}</button></span></th>`).join('') + '<th></th>';
   const body = rows.length
-    ? rows.map(r => `<tr>${cols.map(c => c.cell(r)).join('')}</tr>`).join('')
-    : `<tr><td colspan="${cols.length}" class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</td></tr>`;
+    ? rows.map(r => `<tr>${cols.map(c => c.cell(r)).join('')}<td class="ndb-opencell"><button class="ndb-open" onclick="openPage('${coll}','${r.id}')" title="Ouvrir la fiche">${ICON_OPEN}</button></td></tr>`).join('')
+    : `<tr><td colspan="${cols.length + 1}" class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</td></tr>`;
   const chips = hidden.length ? `<div class="hidden-cols"><span class="lbl">Colonnes masquées :</span>${hidden.map(k => { const col = allC.find(x => x.key === k); return col ? `<button class="hidden-chip" onclick="ndbShowCol('${id}','${k}')">${ICON_EYE_OFF} ${esc(col.label)}</button>` : ''; }).join('')}</div>` : '';
   // une table personnalisée (dont les bases locales) peut recevoir de nouvelles colonnes ici même
   const addColBtn = !isBuiltinTable(coll) ? `<button class="ndb-addcol" onclick="ndbAddColumn('${id}')">＋ Colonne</button>` : '';
@@ -9987,7 +10001,7 @@ function renderNoteDbTools(id, cfg) {
   const nF = (cfg.filters || []).filter(f => f.key).length;
   const nS = (cfg.sorts || []).filter(s => s.key).length;
   const open = w => ndbSF && ndbSF.id === id && ndbSF.which === w;
-  const cardsBtn = cfg.type === 'cards'
+  const cardsBtn = ['cards', 'kanban', 'list'].includes(cfg.type)
     ? `<button class="ndb-tool ${open('cardprops') ? 'on' : ''}" onclick="ndbToggleSF('${id}','cardprops')">Propriétés</button>` : '';
   return `<div class="ndb-tools">
     <button class="ndb-ic ${open('filter') ? 'on' : ''} ${nF ? 'act' : ''}" title="Filtrer" onclick="ndbToggleSF('${id}','filter')">${NDB_ICON_FILTER}</button>
@@ -11869,6 +11883,8 @@ function closeModals() {
   if (reopenProjDetail) { const id = reopenProjDetail; reopenProjDetail = null; openProjectDetail(id); }
   // colonne ajoutée depuis une base LOCALE d'une note → on revient à la note, pas au panneau global
   if (ndbColReturn) { reopenData = false; const bid = ndbColReturn; ndbColReturn = null; $('noteOverlay').classList.add('show'); ndbRehydrate(bid); }
+  // fiche ouverte depuis un bloc BDD d'une note → on rouvre la note et on rafraîchit ses tableaux
+  if (reopenNoteAfterPage) { reopenNoteAfterPage = false; $('pageOverlay').classList.remove('over-note'); $('noteOverlay').classList.add('show'); hydrateNoteDbBlocks(); }
   // idem pour le panneau base de données après édition d'une colonne
   if (reopenData) { reopenData = false; $('dataOverlay').classList.add('show'); renderDataPanel(); applyDataMax(); }
   // idem pour une page d'enregistrement (ex. après avoir ajouté une tâche depuis un projet)
@@ -11881,6 +11897,7 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&l
    ============================================================ */
 let pageCtx = null;       // { coll, id }
 let reopenPage = null;    // { coll, id } à rouvrir après un sous-formulaire
+let reopenNoteAfterPage = false;   // fiche ouverte depuis un bloc BDD d'une note → rouvrir la note en la fermant
 
 // champ servant de titre de la page
 const TITLE_FIELD = { events:'title', tasks:'title', projects:'name', cats:'name', habits:'name', health:'date', notes:'title' };
@@ -12031,6 +12048,9 @@ function openPage(coll, id) {
   if ($('dataOverlay').classList.contains('show')) reopenData = true;
   // une note s'ouvre dans son vrai éditeur (corps riche), pas dans la page générique
   if (coll === 'notes') { openNote(id); return; }
+  // ouverte depuis l'éditeur de note (bloc base de données) : la fiche passe AU-DESSUS de la note, et on y revient en la fermant
+  if ($('noteOverlay').classList.contains('show')) { reopenNoteAfterPage = true; $('pageOverlay').classList.add('over-note'); }
+  else { reopenNoteAfterPage = false; $('pageOverlay').classList.remove('over-note'); }
   pageCtx = { coll, id };
   renderPage();
   $('pageOverlay').classList.add('show');
@@ -13341,6 +13361,9 @@ function applyViewRules(c, rows, view) {
 let sfOpen = null;   // 'sort' | 'filter' | null
 function toggleSF(which) { sfOpen = (sfOpen === which) ? null : which; renderDataPanel(); }
 window.toggleSF = toggleSF;
+// choisit les propriétés affichées sur les cartes/lignes d'une vue (kanban, galerie, liste)
+function toggleViewProp(key) { const v = curView(); const a = v.cardProps || []; v.cardProps = a.includes(key) ? a.filter(x => x !== key) : a.concat([key]); save(); renderDataPanel(); }
+window.toggleViewProp = toggleViewProp;
 const curView = () => currentView(dataTab);
 // liste des propriétés sur lesquelles trier/filtrer (l'ID technique n'a pas d'intérêt ici)
 function ruleFields(c) { return allCols(c).filter(col => col.key !== 'id').map(col => [col.key, col.label]); }
@@ -13404,6 +13427,12 @@ function renderSFPanel(c, view) {
       </div>`).join('') : `<div class="sf-empty">Aucun tri. Les lignes gardent leur ordre d'ajout.</div>`}
       <button class="sf-add" onclick="addSort()">＋ Ajouter un tri</button>
     </div>`;
+  }
+  if (sfOpen === 'props') {
+    const chosen = view.cardProps || [];
+    return `<div class="sf-panel"><div class="vp-checks">${ruleFields(c).filter(([k]) => !['title', 'name'].includes(k)).map(([k, l]) =>
+      `<label><input type="checkbox" ${chosen.includes(k) ? 'checked' : ''} onchange="toggleViewProp('${k}')"> ${esc(l)}</label>`).join('')}
+      </div><div class="sf-empty" style="padding-top:6px">Choisis les propriétés affichées ${view.type === 'list' ? 'sur chaque ligne' : 'sur chaque carte'} (en plus du nom).</div></div>`;
   }
   const filters = view.filters || [];
   return `<div class="sf-panel">
@@ -13726,9 +13755,9 @@ function renderDataPanel() {
   } else if (view.type === 'kanban') {
     content = renderKanban(c, rows, view);
   } else if (view.type === 'list') {
-    content = renderListView(c, rows);
+    content = renderListView(c, rows, view.cardProps);
   } else if (view.type === 'cards') {
-    content = renderCardsView(c, rows);
+    content = renderCardsView(c, rows, view.cardProps);
   } else {
     content = `<div class="table-wrap"><table class="data-table">${colgroup}
       <thead><tr>${headHtml}</tr></thead>
@@ -13746,6 +13775,7 @@ function renderDataPanel() {
       <button class="data-add" onclick="addData('${c}')">＋ Ajouter une ligne</button>
       <button class="sf-btn ${sfOpen==='sort'?'on':''} ${nSort?'active':''}" onclick="toggleSF('sort')">Trier${nSort?` <span class="sf-badge">${nSort}</span>`:''}</button>
       <button class="sf-btn ${sfOpen==='filter'?'on':''} ${nFilt?'active':''}" onclick="toggleSF('filter')">Filtrer${nFilt?` <span class="sf-badge">${nFilt}</span>`:''}</button>
+      ${['kanban','cards','list'].includes(view.type) ? `<button class="sf-btn ${sfOpen==='props'?'on':''} ${(view.cardProps||[]).length?'active':''}" onclick="toggleSF('props')">Propriétés${(view.cardProps||[]).length?` <span class="sf-badge">${view.cardProps.length}</span>`:''}</button>` : ''}
       <span class="count">${rows.length} ligne${rows.length>1?'s':''}${hidden>0?` · ${hidden} masquée${hidden>1?'s':''} par le filtre`:''} · table « ${esc(tableLabel(c))} »</span>
       ${tableTools}
       ${view.type === 'table' ? hiddenHtml : ''}
@@ -13773,7 +13803,7 @@ function toggleRow(c, id) {
   save(); render(); renderDataPanel();
 }
 window.toggleRow = toggleRow;
-function renderListView(c, rows) {
+function renderListView(c, rows, keys) {
   const hasCheck = !!checkFieldOf(c);
   return `<div class="list-view">
     ${!hasCheck ? `<div class="hint-txt" style="margin:0 0 10px">Astuce : ajoute une colonne « Case à cocher » à cette table pour pouvoir cocher les lignes ici.</div>` : ''}
@@ -13781,11 +13811,20 @@ function renderListView(c, rows) {
       const done = isChecked(c, r);
       return `<div class="lv-row ${done?'done':''}">
         ${hasCheck ? `<div class="task-check ${done?'done':''}" onclick="toggleRow('${c}','${r.id}')" title="Cocher / décocher"></div>` : '<span class="lv-dot"></span>'}
-        <span class="lv-name">${esc(recLabel(c, r))}</span>
-        <span class="lv-meta">${lineMeta(c, r)}</span>
+        <span class="lv-name" onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche">${esc(recLabel(c, r))}</span>
+        <span class="lv-meta">${keys && keys.length ? viewPropsInline(c, r, keys) : lineMeta(c, r)}</span>
       </div>`;
     }).join('')}
   </div>`;
+}
+// propriétés choisies affichées sur une carte / ligne (kanban, galerie, liste)
+function viewPropsInline(c, r, keys) {
+  const labels = Object.fromEntries(ruleFields(c));
+  return (keys || []).map(k => {
+    const l = labels[k]; if (!l) return '';
+    const v = noteDbCellText(c, r, k);
+    return v ? `<span class="vp-chip"><span class="vp-k">${esc(l)}</span> ${esc(v)}</span>` : '';
+  }).join('');
 }
 // petites infos affichées à droite d'une ligne / sur une carte
 function lineMeta(c, r) {
@@ -13804,16 +13843,16 @@ function lineMeta(c, r) {
 }
 
 /* ---------- Vue CARTES ---------- */
-function renderCardsView(c, rows) {
+function renderCardsView(c, rows, keys) {
   return `<div class="cards-view">${rows.map(r => {
     const pr = (c === 'projects') ? projProgress(r.id) : null;
     const color = r.color || '';
     const dot = color ? dotOf(color) : '';
-    return `<div class="card-item" ${dot?`style="border-top:3px solid ${dot}"`:''}>
+    return `<div class="card-item" onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche" ${dot?`style="border-top:3px solid ${dot}"`:''}>
       <div class="card-title">${esc(recLabel(c, r))}</div>
       ${pr ? `<div class="card-prog"><div class="pd-progress-line"><span>${pr.done}/${pr.total} tâches</span><span>${pr.pct}%</span></div>
         <div class="proj-bar" style="margin-top:5px"><div style="width:${pr.pct}%;background:${dot||'var(--accent)'}"></div></div></div>` : ''}
-      <div class="card-meta">${lineMeta(c, r)}</div>
+      <div class="card-meta">${keys && keys.length ? viewPropsInline(c, r, keys) : lineMeta(c, r)}</div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -13840,9 +13879,9 @@ function renderKanban(c, rows, view) {
     const items = rows.filter(r => (spec.get(r) || '') === o.id);
     return `<div class="kb-col" data-opt="${o.id}">
       <div class="kb-head"><span class="mpill" style="background:${o.color};color:${inkOn(o.color)}"><span class="pill-dot" style="background:${dotOf(o.color)}"></span>${esc(o.label)}</span><span class="kb-count">${items.length}</span></div>
-      <div class="kb-cards">${items.map(r => `<div class="kb-card" draggable="true" data-rec="${r.id}">
+      <div class="kb-cards">${items.map(r => `<div class="kb-card" draggable="true" data-rec="${r.id}" onclick="openPage('${c}','${r.id}')">
         <div class="kb-card-title">${esc(recLabel(c, r))}</div>
-        <div class="card-meta">${lineMeta(c, r)}</div>
+        <div class="card-meta">${(view.cardProps && view.cardProps.length) ? viewPropsInline(c, r, view.cardProps) : lineMeta(c, r)}</div>
       </div>`).join('')}</div>
     </div>`;
   }).join('')}</div>`;
