@@ -2527,12 +2527,6 @@
         <div id="taskList"></div>
       </div>
 
-      <!-- Matrice d'Eisenhower -->
-      <button class="nav-item" data-section="matrix">
-        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
-        <span class="nav-label">Matrice d'Eisenhower</span>
-      </button>
-
       <!-- Projets -->
       <button class="nav-item" data-section="projects">
         <span class="nav-label">Projets</span>
@@ -3881,10 +3875,11 @@ function render() {
   document.querySelector('.nav-btns').classList.toggle('hidden', inSpace);
   $('periodTitle').classList.toggle('hidden', inSpace);
 
+  // la matrice n'est plus un espace mais une disposition des tâches : on migre un ancien état sauvegardé
+  if (state.view === 'matrix') { state.view = 'tasks'; tasksSpaceCfg().layout = 'matrix'; }
   if (state.view === 'home') { isMobile() ? renderHomeMobile() : renderHomeSpace(); }
   else if (state.view === 'daily') renderDailySpace();
   else if (state.view === 'tasks') renderTasksSpace();
-  else if (state.view === 'matrix') renderMatrixSpace();
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
   else if (state.view === 'crm') renderCrmSpace();
@@ -5822,13 +5817,13 @@ function ezDrop(e, prio, el) {
   e.preventDefault(); el.classList.remove('ez-over');
   const t = state.tasks.find(x => x.id === ezDragId); ezDragId = null;
   if (!t || (t.prio || 'med') === prio) return;
-  t.prio = prio; applyAutomations('tasks', t); save(); renderMatrixSpace();
+  t.prio = prio; applyAutomations('tasks', t); save(); renderTasksSpace();
 }
 window.ezDragStart = ezDragStart; window.ezDragOver = ezDragOver; window.ezDrop = ezDrop;
-function renderMatrixSpace() {
+// grille 2×2 (disposition « Matrice » de l'espace Tâches) — opère sur la liste déjà filtrée
+function ezGridHtml(list) {
   const today = ymd(new Date());
-  const tasks = state.tasks.filter(t => !t.done);
-  const byPrio = k => tasks.filter(t => (t.prio || 'med') === k)
+  const byPrio = k => list.filter(t => (t.prio || 'med') === k)
     .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' }));
   const card = t => {
     const p = t.projectId ? projById(t.projectId) : null;
@@ -5848,11 +5843,7 @@ function renderMatrixSpace() {
       <div class="ez-cards">${items.map(card).join('') || '<div class="ez-empty">Glisse une tâche ici</div>'}</div>
     </div>`;
   };
-  canvas.innerHTML = `<div class="space wide">
-    <div class="space-head"><span class="space-title">Matrice d'Eisenhower</span><span class="space-count">${tasks.length} à faire</span></div>
-    <div class="space-bar"><span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span></div>
-    <div class="ez-grid">${EZ_QUADS.map(quad).join('')}</div>
-  </div>`;
+  return `<div class="ez-grid">${EZ_QUADS.map(quad).join('')}</div>`;
 }
 
 function renderTasksSpace() {
@@ -5890,6 +5881,12 @@ function renderTasksSpace() {
     </div>
     ${fltQuickChipsHtml('tasks')}
     ${renderTsSettings()}`;
+
+  // ---- disposition « Matrice » (Eisenhower) : 4 cadrans par priorité, glisser change la priorité ----
+  if (cfg.layout === 'matrix') {
+    canvas.innerHTML = html + ezGridHtml(list) + '</div>';
+    return;
+  }
 
   if (!groups.length) {
     html += `<div class="space-empty">Rien ici pour l'instant.<br>Clique sur « Ajouter une tâche » pour commencer.</div></div>`;
@@ -5936,12 +5933,15 @@ function renderTasksSpace() {
   /* On masque une colonne déjà portée par le regroupement courant (redondance) :
      groupé par Projet -> pas de colonne Projet, etc. */
   const lp = cfg.listProps;
-  const showProj = !!lp.project && cfg.groupBy !== 'project';
-  const showCat  = !!lp.cat && cfg.groupBy !== 'cat';
+  // « Tableau » = vue complète : on garde le regroupement (bandes) mais on affiche TOUTES les colonnes,
+  // y compris celle qui porte le regroupement (que la vue « Liste » masque par redondance).
+  const fullCols = cfg.layout === 'table';
+  const showProj = !!lp.project && (fullCols || cfg.groupBy !== 'project');
+  const showCat  = !!lp.cat && (fullCols || cfg.groupBy !== 'cat');
   const showDue  = !!lp.due;
-  const showPrio = !!lp.prio && cfg.groupBy !== 'prio';
+  const showPrio = !!lp.prio && (fullCols || cfg.groupBy !== 'prio');
   const showSub  = !!lp.sub;
-  const customCols = schemaOf('tasks').filter(p => lp['p:' + p.id] && cfg.groupBy !== 'p:' + p.id);
+  const customCols = schemaOf('tasks').filter(p => lp['p:' + p.id] && (fullCols || cfg.groupBy !== 'p:' + p.id));
   const doneCollapsed = !!state.tasksDoneCollapsed;
 
   const theadHtml = `<thead><tr>
@@ -6109,7 +6109,7 @@ function renderTsSettings() {
   let body = '';
   if (tsSec === 'layout') {
     const b = (v, l, on) => `<button class="ndb-lay ${on ? 'on' : ''}" onclick="setTasksSpace('layout:${v}')">${l}</button>`;
-    body = `<div class="ndb-lay-row">${b('list', 'Liste', cfg.layout !== 'kanban')}${b('kanban', 'Kanban', cfg.layout === 'kanban')}</div><div class="ndb-sec-hint">Affichage de la liste des tâches.</div>`;
+    body = `<div class="ndb-lay-row">${b('list', 'Liste', cfg.layout === 'list' || !cfg.layout)}${b('table', 'Tableau', cfg.layout === 'table')}${b('kanban', 'Kanban', cfg.layout === 'kanban')}${b('matrix', 'Matrice', cfg.layout === 'matrix')}</div><div class="ndb-sec-hint">Affichage de tes tâches. « Tableau » = vue à plat avec toutes les colonnes. « Matrice » range par priorité (Eisenhower) : glisse une tâche d'un cadran à l'autre pour changer sa priorité.</div>`;
   } else if (tsSec === 'props') body = kbPropsMenuHtml();
   else if (tsSec === 'filter') body = fltMenuHtml('tasks');
   else if (tsSec === 'group') {
@@ -15052,7 +15052,7 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { home: 'home', tasks: 'tasks', matrix: 'matrix', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan' };
+const SECTION_SPACE = { home: 'home', tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
