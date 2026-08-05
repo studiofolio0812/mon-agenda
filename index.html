@@ -629,6 +629,21 @@
   .ps-row .ps-name:focus { border-color: var(--accent); outline: none; }
   .ps-reset { flex: none; color: var(--text-faint); font-size: 15px; padding: 4px 7px; border-radius: 7px; }
   .ps-reset:hover { background: var(--surface-2); color: var(--text); }
+  /* matrice d'Eisenhower */
+  .ez-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-top: 4px; }
+  .ez-quad { background: var(--surface-2); border-radius: 14px; padding: 12px; min-height: 150px; transition: background .12s; }
+  .ez-quad.ez-over { background: var(--accent-soft); }
+  .ez-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .ez-roman { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; flex: none; }
+  .ez-title { font-size: 12.5px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+  .ez-n { font-size: 11px; color: var(--text-soft); font-weight: 600; flex: none; }
+  .ez-cards { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+  .ez-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .ez-card:hover { border-color: var(--accent); }
+  .ez-card-title { font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .ez-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--text-soft); }
+  .ez-empty { font-size: 12px; color: var(--text-faint); padding: 14px 6px; text-align: center; border: 1px dashed var(--border); border-radius: 9px; }
+  @media (max-width: 760px) { .ez-grid { grid-template-columns: 1fr; } }
   /* le panneau de réglages du grand panneau réutilise les styles .note-db sans le cadre de bloc */
   .ndb-panelwrap { margin: 0; border: none; padding: 0; background: none; }
   /* sélecteur de date / heure maison */
@@ -2512,6 +2527,12 @@
         <div id="taskList"></div>
       </div>
 
+      <!-- Matrice d'Eisenhower -->
+      <button class="nav-item" data-section="matrix">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>
+        <span class="nav-label">Matrice d'Eisenhower</span>
+      </button>
+
       <!-- Projets -->
       <button class="nav-item" data-section="projects">
         <span class="nav-label">Projets</span>
@@ -3863,6 +3884,7 @@ function render() {
   if (state.view === 'home') { isMobile() ? renderHomeMobile() : renderHomeSpace(); }
   else if (state.view === 'daily') renderDailySpace();
   else if (state.view === 'tasks') renderTasksSpace();
+  else if (state.view === 'matrix') renderMatrixSpace();
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
   else if (state.view === 'crm') renderCrmSpace();
@@ -5035,11 +5057,11 @@ function tasksSpaceCfg() {
   if (!state.tasksSpace.kbColWidths) state.tasksSpace.kbColWidths = {};
   return state.tasksSpace;
 }
-const PRIO_LABEL = { high: 'Haute', med: 'Moyenne', low: 'Basse' };
+const PRIO_LABEL = { high: 'Haute', med: 'Moyenne', low: 'Basse', none: 'Aucune' };
 // couleurs par défaut ; les couleurs réellement affichées passent par prioCol() ci-dessous,
 // qui respecte le choix de l'utilisatrice (state.prioColors, réglable dans les Réglages)
-const PRIO_COLOR = { low: '#7ba36f', med: '#cfa055', high: '#d98a8a' };
-const PRIO_PASTEL = { low: '#d3e8cf', med: '#f6dfb5', high: '#f2d3d0' };
+const PRIO_COLOR = { low: '#7ba36f', med: '#cfa055', high: '#d98a8a', none: '#9aa0a6' };
+const PRIO_PASTEL = { low: '#d3e8cf', med: '#f6dfb5', high: '#f2d3d0', none: '#eae8e4' };
 // couleur choisie pour un niveau (repli sur la valeur par défaut) + sa version pastel dérivée
 const prioCol = p => (state.prioColors && state.prioColors[p]) || PRIO_COLOR[p];
 const prioPastel = p => lighten(prioCol(p));
@@ -5076,7 +5098,7 @@ function groupTasks(list, mode, all) {
     state.projects.forEach(p => push(p.name, todoTop.filter(t => t.projectId === p.id), false, p.color, false, p.id));
     push('Sans projet', todoTop.filter(t => !t.projectId || !projById(t.projectId)), false, null, false, '');
   } else if (mode === 'prio') {
-    ['high', 'med', 'low'].forEach(p =>
+    ['high', 'med', 'low', 'none'].forEach(p =>
       push(PRIO_LABEL[p], todoTop.filter(t => (t.prio || 'med') === p), false, prioPastel(p), false, p));
   } else {
     push('En retard', todoTop.filter(t => t.due && t.due < today), true, null, false, 'late');
@@ -5127,7 +5149,7 @@ function tblOpenCat(id, ev) {
 function tblOpenPrio(id, ev) {
   if (ev) ev.stopPropagation();
   const t = state.tasks.find(x => x.id === id); if (!t) return;
-  const groups = [{ items: ['high', 'med', 'low'].map(p => ({ value: p, label: PRIO_LABEL[p], dot: prioCol(p) })) }];
+  const groups = [{ items: ['high', 'med', 'low', 'none'].map(p => ({ value: p, label: PRIO_LABEL[p], dot: prioCol(p) })) }];
   openStyledMenu(ev.currentTarget, groups, t.prio || 'med', v => { t.prio = v || 'med'; applyAutomations('tasks', t); save(); render(); });
 }
 function tblSetDue(id, ev) {
@@ -5784,6 +5806,53 @@ function renderDailySpace() {
   html += `<button class="hw-cta dw-add" onclick="homeAddFeedMenu(event)">＋ Widget quotidien</button>`;
   html += `</div>`;
   canvas.innerHTML = html;
+}
+
+/* ---------- Matrice d'Eisenhower : 4 cadrans = 4 niveaux de priorité, glisser change la priorité ---------- */
+const EZ_QUADS = [
+  { key: 'high', roman: 'I',   title: 'Important & urgent' },
+  { key: 'med',  roman: 'II',  title: 'Important, pas urgent' },
+  { key: 'low',  roman: 'III', title: 'Urgent, pas important' },
+  { key: 'none', roman: 'IV',  title: 'Ni urgent ni important' },
+];
+let ezDragId = null;
+function ezDragStart(e, id) { ezDragId = id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }
+function ezDragOver(e, el) { if (!ezDragId) return; e.preventDefault(); el.classList.add('ez-over'); }
+function ezDrop(e, prio, el) {
+  e.preventDefault(); el.classList.remove('ez-over');
+  const t = state.tasks.find(x => x.id === ezDragId); ezDragId = null;
+  if (!t || (t.prio || 'med') === prio) return;
+  t.prio = prio; applyAutomations('tasks', t); save(); renderMatrixSpace();
+}
+window.ezDragStart = ezDragStart; window.ezDragOver = ezDragOver; window.ezDrop = ezDrop;
+function renderMatrixSpace() {
+  const today = ymd(new Date());
+  const tasks = state.tasks.filter(t => !t.done);
+  const byPrio = k => tasks.filter(t => (t.prio || 'med') === k)
+    .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.title || '').localeCompare(b.title || '', 'fr', { sensitivity: 'base' }));
+  const card = t => {
+    const p = t.projectId ? projById(t.projectId) : null;
+    const late = t.due && t.due < today;
+    return `<div class="ez-card" draggable="true" ondragstart="ezDragStart(event,'${t.id}')">
+      <div class="ez-card-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${esc(t.title)}</div>
+      ${(p || t.due) ? `<div class="ez-card-meta">
+        ${p ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
+        ${t.due ? `<span class="t-due ${late ? 'late' : ''}">${esc(taskDueText(t))}</span>` : ''}
+      </div>` : ''}
+    </div>`;
+  };
+  const quad = q => {
+    const items = byPrio(q.key);
+    return `<div class="ez-quad ez-${q.key}" ondragover="ezDragOver(event,this)" ondragleave="this.classList.remove('ez-over')" ondrop="ezDrop(event,'${q.key}',this)">
+      <div class="ez-head"><span class="ez-roman" style="background:${prioPastel(q.key)};color:${dotOf(prioCol(q.key))}">${q.roman}</span><span class="ez-title">${q.title}</span><span class="ez-n">${items.length}</span></div>
+      <div class="ez-cards">${items.map(card).join('') || '<div class="ez-empty">Glisse une tâche ici</div>'}</div>
+    </div>`;
+  };
+  canvas.innerHTML = `<div class="space wide">
+    <div class="space-head"><span class="space-title">Matrice d'Eisenhower</span><span class="space-count">${tasks.length} à faire</span></div>
+    <div class="space-bar"><span class="space-add" onclick="openModal('task')">${ICON_PLUS} Ajouter une tâche</span></div>
+    <div class="ez-grid">${EZ_QUADS.map(quad).join('')}</div>
+  </div>`;
 }
 
 function renderTasksSpace() {
@@ -14017,9 +14086,10 @@ function builtinCols(c) {
     { key:'dueTime', label:'Heure', cell: t => `<td>${dTime(c,t.id,'dueTime',t.dueTime)}</td>` },
     { key:'dueEnd', label:'Fin',    cell: t => `<td>${dTime(c,t.id,'dueEnd',t.dueEnd)}</td>` },
     { key:'prio',  label:'Priorité', cell: t => `<td><select onchange="updData('${c}','${t.id}','prio',this.value)">
+        <option value="high" ${t.prio==='high'?'selected':''}>Haute</option>
+        <option value="med" ${(t.prio||'med')==='med'?'selected':''}>Moyenne</option>
         <option value="low" ${t.prio==='low'?'selected':''}>Basse</option>
-        <option value="med" ${t.prio==='med'?'selected':''}>Moyenne</option>
-        <option value="high" ${t.prio==='high'?'selected':''}>Haute</option></select></td>` },
+        <option value="none" ${t.prio==='none'?'selected':''}>Aucune</option></select></td>` },
     { key:'catId', label:'Agenda', cell: t => `<td>${catCell(c,t.id,t.catId)}</td>` },
     { key:'projectId', label:'Projet', cell: t => `<td>${projCell(c,t.id,t.projectId)}</td>` },
     { key:'parentId', label:'Tâche parente', cell: t => `<td><select onchange="updData('${c}','${t.id}','parentId',this.value)">${optsParent(t.parentId, t.id)}</select></td>` },
