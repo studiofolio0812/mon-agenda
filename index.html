@@ -644,6 +644,11 @@
   .ez-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--text-soft); }
   .ez-empty { font-size: 12px; color: var(--text-faint); padding: 14px 6px; text-align: center; border: 1px dashed var(--border); border-radius: 9px; }
   @media (max-width: 760px) { .ez-grid { grid-template-columns: 1fr; } }
+  /* regroupement dans les vues Liste / Galerie des bases de données */
+  .list-view .lv-group { margin-bottom: 12px; }
+  .list-view .lv-group .grp-head { margin: 6px 0 4px; }
+  .cards-group { margin-bottom: 16px; }
+  .cards-group .grp-head { margin-bottom: 8px; }
   /* le panneau de réglages du grand panneau réutilise les styles .note-db sans le cadre de bloc */
   .ndb-panelwrap { margin: 0; border: none; padding: 0; background: none; }
   /* sélecteur de date / heure maison */
@@ -10331,8 +10336,8 @@ function renderNoteDbContent(id, cfg, rows) {
   const emptyMsg = `<div class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</div>`;
   const cp = ndbOrderedCardProps(cfg);   // propriétés de carte dans l'ordre choisi
   if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy, cardProps: cp })}</div>`;
-  if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cp) : emptyMsg;
-  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cp) : emptyMsg;
+  if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cp, cfg.groupBy) : emptyMsg;
+  if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cp, cfg.groupBy) : emptyMsg;
   // table (par défaut) — masquage + ORDRE des colonnes via le panneau « Paramètres › Propriétés »,
   // largeur ajustable en glissant le bord d'un en-tête (mémorisée par bloc dans cfg.colWidths)
   const hidden = cfg.hiddenCols || [];
@@ -10346,9 +10351,11 @@ function renderNoteDbContent(id, cfg, rows) {
   const W = cfg.colWidths || {};
   const colgroup = `<colgroup>${cols.map(c => `<col data-key="${c.key}" style="width:${W[c.key] || 150}px">`).join('')}<col style="width:34px"></colgroup>`;
   const head = cols.map(c => `<th><span class="ndb-th">${esc(c.label)}</span><span class="ndb-colresize" data-col="${c.key}" title="Ajuster la largeur"></span></th>`).join('') + '<th></th>';
-  const body = rows.length
-    ? rows.map(r => `<tr>${cols.map(c => c.cell(r)).join('')}<td class="ndb-opencell"><button class="ndb-open" onclick="openPage('${coll}','${r.id}')" title="Ouvrir la fiche">${ICON_OPEN}</button></td></tr>`).join('')
-    : `<tr><td colspan="${cols.length + 1}" class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</td></tr>`;
+  const rowHtml = r => `<tr>${cols.map(c => c.cell(r)).join('')}<td class="ndb-opencell"><button class="ndb-open" onclick="openPage('${coll}','${r.id}')" title="Ouvrir la fiche">${ICON_OPEN}</button></td></tr>`;
+  let body;
+  if (!rows.length) body = `<tr><td colspan="${cols.length + 1}" class="ndb-empty">Aucune ligne${nActiveF ? ' pour ce filtre' : ''}.</td></tr>`;
+  else if (cfg.groupBy) { const gs = groupRows(coll, rows, cfg.groupBy, false); body = gs.map(g => groupBandRow(g, cols.length + 1) + g.items.map(rowHtml).join('')).join(''); }
+  else body = rows.map(rowHtml).join('');
   // une table personnalisée (dont les bases locales) peut recevoir de nouvelles colonnes ici même
   const addColBtn = !isBuiltinTable(coll) ? `<button class="ndb-addcol" onclick="ndbAddColumn('${id}')">＋ Colonne</button>` : '';
   return `<div class="table-wrap"><table class="data-table">${colgroup}<thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${addColBtn}`;
@@ -10579,10 +10586,11 @@ function ndbSecSort(id, cfg) {
 function ndbSecGroup(id, cfg) {
   const coll = cfg.coll;
   const choices = groupByChoices(coll);
-  if (!choices.length) return `<div class="ndb-sec-hint">Ajoute une colonne de type « Sélection » pour pouvoir grouper.</div>`;
-  const cur = cfg.groupBy || defaultGroupBy(coll) || '';
-  const rows = choices.map(([k, l]) => `<label class="ndb-radio"><input type="radio" name="ndbgrp_${id}" ${cur === k ? 'checked' : ''} onchange="ndbSetGroupBy('${id}','${k}')"> ${esc(l)}</label>`).join('');
-  return `<div class="ndb-radio-list">${rows}</div><div class="ndb-sec-hint">Sert à grouper les colonnes de la vue Kanban.</div>`;
+  if (!choices.length) return `<div class="ndb-sec-hint">Ajoute une propriété (sélection, date, relation, agenda, projet…) pour pouvoir grouper.</div>`;
+  const cur = cfg.groupBy || '';
+  const opt = (k, l) => `<label class="ndb-radio"><input type="radio" name="ndbgrp_${id}" ${cur === k ? 'checked' : ''} onchange="ndbSetGroupBy('${id}','${k}')"> ${esc(l)}</label>`;
+  const rows = opt('', 'Aucun') + choices.map(([k, l]) => opt(k, l)).join('');
+  return `<div class="ndb-radio-list">${rows}</div><div class="ndb-sec-hint">Regroupe les lignes/cartes (tableau, liste, galerie et kanban).</div>`;
 }
 function ndbToggleSettings(id) {
   if (ndbSF && ndbSF.id === id) ndbSF = null;
@@ -14449,10 +14457,11 @@ function dpPickSortField(anchor) {
 window.dpPickFilterField = dpPickFilterField; window.dpPickSortField = dpPickSortField;
 function dpSecGroup(c, view) {
   const choices = groupByChoices(c);
-  if (!choices.length) return `<div class="ndb-sec-hint">Ajoute une colonne de type « Sélection » pour pouvoir grouper.</div>`;
-  const cur = view.groupBy || defaultGroupBy(c) || '';
-  const rows = choices.map(([k, l]) => `<label class="ndb-radio"><input type="radio" name="dpgrp" ${cur === k ? 'checked' : ''} onchange="dpSetGroupBy('${k}')"> ${esc(l)}</label>`).join('');
-  return `<div class="ndb-radio-list">${rows}</div><div class="ndb-sec-hint">Groupe les colonnes de la vue Kanban.</div>`;
+  if (!choices.length) return `<div class="ndb-sec-hint">Ajoute une propriété (sélection, date, relation, agenda, projet…) pour pouvoir grouper.</div>`;
+  const cur = view.groupBy || '';
+  const opt = (k, l) => `<label class="ndb-radio"><input type="radio" name="dpgrp" ${cur === k ? 'checked' : ''} onchange="dpSetGroupBy('${k}')"> ${esc(l)}</label>`;
+  const rows = opt('', 'Aucun') + choices.map(([k, l]) => opt(k, l)).join('');
+  return `<div class="ndb-radio-list">${rows}</div><div class="ndb-sec-hint">Regroupe les lignes/cartes (tableau, liste, galerie et kanban).</div>`;
 }
 function dpSetGroupBy(k) { const v = curView(); v.groupBy = k; save(); renderDataPanel(); }
 window.dpSetGroupBy = dpSetGroupBy;
@@ -14485,11 +14494,17 @@ function renderDataPanel() {
     + `<th class="col-addcol"><button class="addcol-btn" onclick="openPropModal('${c}')" title="Ajouter une colonne">＋</button></th>`
     + `<th></th>`;
 
-  const bodyHtml = rows.map(r => `<tr>${cols.map(col => col.cell(r)).join('')}` +
+  const rowHtml = r => `<tr>${cols.map(col => col.cell(r)).join('')}` +
     `<td style="text-align:center;white-space:nowrap">` +
       `<button class="row-open" onclick="duplicateRecord('${c}','${r.id}')" title="Dupliquer">${ICON_DUP}</button>` +
       `<button class="row-open" onclick="openPage('${c}','${r.id}')" title="Ouvrir en page">${ICON_OPEN}</button></td>` +
-    `<td class="col-del"><button class="row-del" onclick="delData('${c}','${r.id}')" title="Supprimer la ligne">${ICON_TRASH}</button></td></tr>`).join('');
+    `<td class="col-del"><button class="row-del" onclick="delData('${c}','${r.id}')" title="Supprimer la ligne">${ICON_TRASH}</button></td></tr>`;
+  // regroupement (bandes pleine largeur) si une propriété de regroupement est choisie sur la vue
+  const gBy = currentView(c).groupBy;
+  const grp = gBy ? groupRows(c, rows, gBy, false) : null;
+  const bodyHtml = grp
+    ? grp.map(g => groupBandRow(g, cols.length + 2) + g.items.map(rowHtml).join('')).join('')
+    : rows.map(rowHtml).join('');
 
   // colonnes masquées (intégrées comme personnalisées) : chips cliquables pour les réafficher
   const hiddenKeys = colHiddenOf(c);
@@ -14518,9 +14533,9 @@ function renderDataPanel() {
   } else if (view.type === 'kanban') {
     content = renderKanban(c, rows, { ...view, cardProps: dpOrderedCardProps(c, view) });
   } else if (view.type === 'list') {
-    content = renderListView(c, rows, dpOrderedCardProps(c, view));
+    content = renderListView(c, rows, dpOrderedCardProps(c, view), view.groupBy);
   } else if (view.type === 'cards') {
-    content = renderCardsView(c, rows, dpOrderedCardProps(c, view));
+    content = renderCardsView(c, rows, dpOrderedCardProps(c, view), view.groupBy);
   } else {
     content = `<div class="table-wrap"><table class="data-table">${colgroup}
       <thead><tr>${headHtml}</tr></thead>
@@ -14564,19 +14579,22 @@ function toggleRow(c, id) {
   save(); render(); renderDataPanel();
 }
 window.toggleRow = toggleRow;
-function renderListView(c, rows, keys) {
+function renderListView(c, rows, keys, groupBy) {
   const hasCheck = !!checkFieldOf(c);
-  return `<div class="list-view">
-    ${!hasCheck ? `<div class="hint-txt" style="margin:0 0 10px">Astuce : ajoute une colonne « Case à cocher » à cette table pour pouvoir cocher les lignes ici.</div>` : ''}
-    ${rows.map(r => {
-      const done = isChecked(c, r);
-      return `<div class="lv-row ${done?'done':''}">
-        ${hasCheck ? `<div class="task-check ${done?'done':''}" onclick="toggleRow('${c}','${r.id}')" title="Cocher / décocher"></div>` : '<span class="lv-dot"></span>'}
-        <span class="lv-name" onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche">${esc(recLabel(c, r))}</span>
-        <span class="lv-meta">${keys && keys.length ? viewPropsInline(c, r, keys) : lineMeta(c, r)}</span>
-      </div>`;
-    }).join('')}
-  </div>`;
+  const rowHtml = r => {
+    const done = isChecked(c, r);
+    return `<div class="lv-row ${done ? 'done' : ''}">
+      ${hasCheck ? `<div class="task-check ${done ? 'done' : ''}" onclick="toggleRow('${c}','${r.id}')" title="Cocher / décocher"></div>` : '<span class="lv-dot"></span>'}
+      <span class="lv-name" onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche">${esc(recLabel(c, r))}</span>
+      <span class="lv-meta">${keys && keys.length ? viewPropsInline(c, r, keys) : lineMeta(c, r)}</span>
+    </div>`;
+  };
+  const hint = !hasCheck ? `<div class="hint-txt" style="margin:0 0 10px">Astuce : ajoute une colonne « Case à cocher » à cette table pour pouvoir cocher les lignes ici.</div>` : '';
+  const grp = groupBy ? groupRows(c, rows, groupBy, false) : null;
+  const body = grp
+    ? grp.map(g => `<div class="lv-group">${groupHeaderHtml(g)}${g.items.map(rowHtml).join('')}</div>`).join('')
+    : rows.map(rowHtml).join('');
+  return `<div class="list-view">${hint}${body}</div>`;
 }
 // propriétés choisies affichées sur une carte / ligne (kanban, galerie, liste)
 function viewPropsInline(c, r, keys) {
@@ -14618,8 +14636,8 @@ function addRecCover(c, id, ev) {
   });
 }
 window.addRecCover = addRecCover;
-function renderCardsView(c, rows, keys) {
-  return `<div class="cards-view">${rows.map(r => {
+function renderCardsView(c, rows, keys, groupBy) {
+  const cardHtml = r => {
     const pr = (c === 'projects') ? projProgress(r.id) : null;
     const color = r.color || '';
     const dot = color ? dotOf(color) : '';
@@ -14633,38 +14651,85 @@ function renderCardsView(c, rows, keys) {
         <div class="proj-bar" style="margin-top:5px"><div style="width:${pr.pct}%;background:${dot||'var(--accent)'}"></div></div></div>` : ''}
       <div class="card-meta">${keys && keys.length ? viewPropsInline(c, r, keys) : lineMeta(c, r)}</div>
     </div>`;
-  }).join('')}</div>`;
+  };
+  const grp = groupBy ? groupRows(c, rows, groupBy, false) : null;
+  if (grp) return grp.map(g => `<div class="cards-group">${groupHeaderHtml(g)}<div class="cards-view">${g.items.map(cardHtml).join('')}</div></div>`).join('');
+  return `<div class="cards-view">${rows.map(cardHtml).join('')}</div>`;
 }
 
 /* ---------- Vue KANBAN (groupée par une propriété "Sélection") ---------- */
-function groupSpec(c, groupBy) {
-  if (groupBy === 'prio' && c === 'tasks') return {
-    options: [{id:'low',label:'Basse',color:'#d3e8cf'},{id:'med',label:'Moyenne',color:'#f6dfb5'},{id:'high',label:'Haute',color:'#f2d3d0'}],
-    get: r => r.prio,
+/* ---------- Moteur de REGROUPEMENT générique (toutes les vues de base de données) ----------
+   Renvoie des groupes ordonnés {key,label,color,items}. keepEmpty=true garde les colonnes vides (kanban). */
+function groupRows(c, rows, key, keepEmpty) {
+  if (!key) return null;
+  const kind = kindOf(c, key);
+  let opts = null;   // valeurs prédéfinies et ordonnées, quand elles existent
+  if (kind === 'prio') opts = ['high', 'med', 'low', 'none'].map(k => ({ id: k, label: PRIO_LABEL[k], color: prioPastel(k) }));
+  else if (kind === 'select') { const p = schemaOf(c).find(x => x.id === key); opts = (p && p.options || []).map(o => ({ id: o.id, label: o.label, color: o.color })); }
+  else if (kind === 'cat') opts = state.categories.map(x => ({ id: x.id, label: (typeof catPath === 'function' ? catPath(x) : x.name), color: catColor(x) }));
+  else if (kind === 'proj') opts = state.projects.map(p => ({ id: p.id, label: p.name, color: p.color }));
+  else if (kind === 'checkbox') opts = [{ id: '1', label: 'Coché', color: '#d3e8cf' }, { id: '0', label: 'Non coché', color: '#eae8e4' }];
+  const groups = [], idx = {};
+  const push = (gk, label, color) => { if (!(gk in idx)) { idx[gk] = groups.length; groups.push({ key: gk, label, color: color || '', items: [] }); } return groups[idx[gk]]; };
+  if (opts) opts.forEach(o => push(o.id, o.label, o.color));
+  const gkeyOf = r => {
+    if (kind === 'checkbox') return cellValue(c, r, key) ? '1' : '0';
+    let v = cellValue(c, r, key);
+    if (Array.isArray(v)) v = v[0];   // relation / multi : on regroupe sur la 1re valeur
+    return v == null || v === '' ? '' : String(v);
   };
-  const p = schemaOf(c).find(x => x.id === groupBy && x.type === 'select');
-  return p ? { options: p.options || [], get: r => (r.props || {})[p.id], propId: p.id } : null;
+  rows.forEach(r => {
+    const gk = gkeyOf(r);
+    let g = (gk in idx) ? groups[idx[gk]] : null;
+    if (!g) {
+      let label = 'Vide';
+      if (gk !== '') {
+        if (kind === 'relation') { const p = schemaOf(c).find(x => x.id === key); const tgt = p && p.target; const rec = tgt && collArr(tgt).find(x => x.id === gk); label = rec ? recLabel(tgt, rec) : gk; }
+        else if (kind === 'date') label = fmtDateShort(gk);
+        else label = gk;
+      }
+      g = push(gk, label, '');
+    }
+    g.items.push(r);
+  });
+  let out = keepEmpty ? groups.slice() : groups.filter(g => g.items.length);
+  if (keepEmpty && !('' in idx)) out.push({ key: '', label: 'Vide', color: '', items: [] });
+  const emp = out.filter(g => g.key === ''), rest = out.filter(g => g.key !== '');
+  if (kind === 'date') rest.sort((a, b) => a.key.localeCompare(b.key));
+  return rest.concat(emp);
 }
-function kanbanSet(c, groupBy, recId, optId) {
-  if (groupBy === 'prio' && c === 'tasks') updData(c, recId, 'prio', optId);
-  else updProp(c, recId, groupBy, optId || '');
+// applique la valeur d'un groupe à un enregistrement (drag kanban) — champ intégré OU personnalisé
+function kanbanSet(c, groupBy, recId, gkey) {
+  const kind = kindOf(c, groupBy);
+  const custom = schemaOf(c).some(p => p.id === groupBy);
+  const val = kind === 'checkbox' ? (gkey === '1') : (gkey || '');
+  custom ? updProp(c, recId, groupBy, val) : updData(c, recId, groupBy, val);
   renderDataPanel();
 }
 function renderKanban(c, rows, view) {
-  const spec = groupSpec(c, view.groupBy);
-  if (!spec) return `<div class="data-empty">Cette vue kanban a besoin d'une colonne de type « Sélection » pour grouper les cartes.<br>Crée-en une (＋ colonne), puis choisis-la dans ⚙ de la vue.</div>`;
-  const cols = spec.options.concat([{ id: '', label: 'Sans statut', color: '#eae8e4' }]);
-  return `<div class="kanban">${cols.map(o => {
-    const items = rows.filter(r => (spec.get(r) || '') === o.id);
-    return `<div class="kb-col" data-opt="${o.id}">
-      <div class="kb-head"><span class="mpill" style="background:${o.color};color:${inkOn(o.color)}"><span class="pill-dot" style="background:${dotOf(o.color)}"></span>${esc(o.label)}</span><span class="kb-count">${items.length}</span></div>
-      <div class="kb-cards">${items.map(r => { const cover = recCover(r); return `<div class="kb-card ${cover ? 'has-cover' : ''}" draggable="true" data-rec="${r.id}" onclick="openPage('${c}','${r.id}')">
+  const groups = groupRows(c, rows, view.groupBy, true);
+  if (!groups) return `<div class="data-empty">Choisis une propriété pour grouper les cartes (bouton Réglages › Grouper).</div>`;
+  return `<div class="kanban">${groups.map(g => {
+    const col = g.color || '#eae8e4';
+    return `<div class="kb-col" data-opt="${g.key}">
+      <div class="kb-head"><span class="mpill" style="background:${col};color:${inkOn(col)}"><span class="pill-dot" style="background:${dotOf(col)}"></span>${esc(g.label)}</span><span class="kb-count">${g.items.length}</span></div>
+      <div class="kb-cards">${g.items.map(r => { const cover = recCover(r); return `<div class="kb-card ${cover ? 'has-cover' : ''}" draggable="true" data-rec="${r.id}" onclick="openPage('${c}','${r.id}')">
         ${cover ? `<div class="kb-cover"><img src="${cover}" alt="" loading="lazy"></div>` : ''}
         <div class="kb-card-title">${esc(recLabel(c, r))}</div>
         <div class="card-meta">${(view.cardProps && view.cardProps.length) ? viewPropsInline(c, r, view.cardProps) : lineMeta(c, r)}</div>
       </div>`; }).join('')}</div>
     </div>`;
   }).join('')}</div>`;
+}
+// bande de groupe pour la vue Table (ligne pleine largeur, colspan)
+function groupBandRow(g, colspan) {
+  const style = g.color ? `style="background:${tblTint(g.color, .16)};color:${dotOf(g.color)}"` : '';
+  return `<tr class="grp-band-row"><td colspan="${colspan}"><div class="grp-band" ${style}><span class="grp-head-label">${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div></td></tr>`;
+}
+// en-tête de groupe pour les vues Liste / Galerie / blocs de note
+function groupHeaderHtml(g) {
+  const col = g.color || '#eae8e4';
+  return `<div class="grp-head"><span class="grp-pill" style="background:${col};color:${inkOn(col)}"><span class="pill-dot" style="background:${dotOf(col)}"></span>${esc(g.label)}</span> <span class="grp-n">· ${g.items.length}</span></div>`;
 }
 let kbDragRec = null;
 function wireKanbanDrag(c, view) {
@@ -14843,10 +14908,11 @@ function syncViewIcon() {
 function openViewIconPicker() { openIconPicker('viewDraft', null); }
 window.openViewIconPicker = openViewIconPicker;
 let viewGroupDraft = '';
+// propriétés par lesquelles on peut regrouper une vue (toutes les vues, plus seulement le kanban) :
+// sélection, priorité, agenda, projet, relation, date, case à cocher
+const GROUPABLE_KINDS = ['select', 'prio', 'cat', 'proj', 'relation', 'date', 'checkbox'];
 function groupByChoices(c) {
-  const list = schemaOf(c).filter(p => p.type === 'select').map(p => [p.id, p.name]);
-  if (c === 'tasks') list.unshift(['prio', 'Priorité (intégrée)']);
-  return list;
+  return ruleFields(c).filter(([k]) => GROUPABLE_KINDS.includes(kindOf(c, k)));
 }
 function syncViewFields() {
   const isKanban = $('viewType').value === 'kanban';
