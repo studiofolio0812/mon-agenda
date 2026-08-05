@@ -450,6 +450,21 @@
   .folder-tile-edit { position: absolute; top: 6px; right: 6px; background: none; border: none; color: var(--text-faint); cursor: pointer; opacity: 0; display: inline-flex; }
   .folder-tile:hover .folder-tile-edit { opacity: 1; }
   .folder-tile-edit:hover { color: var(--accent); }
+  /* image de couverture d'un dossier (au lieu de l'icône) */
+  .folder-tile.has-cover { padding: 0; overflow: hidden; text-align: left; }
+  .folder-tile-cover { height: 84px; background: var(--surface); }
+  .folder-tile-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .folder-tile.has-cover .folder-tile-name { padding: 8px 10px 0; margin-top: 0; }
+  .folder-tile.has-cover .folder-tile-count { padding: 0 10px 10px; }
+  /* aperçu + choix d'image dans la modale de dossier */
+  .folder-cover-preview { width: 96px; height: 96px; border-radius: 16px; overflow: hidden; margin: 0 auto; }
+  .folder-cover-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .folder-cover-row { display: flex; gap: 8px; align-items: center; }
+  .folder-cover-row .styled-select { flex: 1; }
+  /* image de couverture d'une note (au lieu de l'aperçu du contenu) */
+  .note-card.has-cover { overflow: hidden; }
+  .note-card-cover { margin: -12px -14px 10px; height: 118px; background: var(--surface); overflow: hidden; }
+  .note-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .notes-crumb { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-soft); margin-bottom: 4px; }
   .notes-crumb .crumb-link { cursor: pointer; }
   .notes-crumb .crumb-link:hover { color: var(--accent); }
@@ -2868,6 +2883,11 @@
       </div>
       <div id="folderColorTab"><div class="color-picker" id="folderColorPicker"></div></div>
       <div id="folderIconTab" class="hidden"><div class="icon-grid folder-icon-grid" id="folderIconGrid"></div></div>
+      <label style="margin-top:14px">Image de couverture (facultative)</label>
+      <div class="folder-cover-row">
+        <button type="button" class="styled-select" id="folderCoverBtn" onclick="pickFolderCover()">Choisir une image…</button>
+        <button type="button" class="btn-ghost hidden" id="folderCoverClear" onclick="clearFolderCover()">Retirer</button>
+      </div>
       <label style="margin-top:14px">Dossier parent (facultatif)</label>
       <button type="button" class="styled-select" id="folderParentBtn"></button>
       <label style="margin-top:14px">Dépend d'un projet (facultatif)</label>
@@ -8465,21 +8485,37 @@ function renderNotes() {
     </div>`).join('');
 }
 
-// une carte de note
+// une carte de note — soit une image de couverture (n.cover), soit l'aperçu du contenu
 function noteCardHtml(n) {
   const link = noteLinkLabel(n);
   const col = dotOf(n.color || '#eae8e4');
   const ico = (n.icon && ICON_LIB[n.icon]) ? '<span class="nc-ico-svg">' + iconSvg(n.icon, 16, col) + '</span>' : '<span class="nc-ico-dot" style="background:' + col + '"></span>';
-  return `<div class="note-card" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${col}" onclick="openNote('${n.id}')">
+  const cover = n.cover ? `<div class="note-card-cover"><img src="${n.cover}" alt="" loading="lazy"></div>` : '';
+  const body = n.cover ? '' : `<div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>`;
+  return `<div class="note-card ${n.cover ? 'has-cover' : ''}" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${col}" onclick="openNote('${n.id}')">
+      ${cover}
       <div class="note-card-title"><button class="nc-icon-btn" onclick="openNoteIconMenu('${n.id}',event,this)" title="Changer l'icône">${ico}</button><span class="nct-txt">${esc(n.title || 'Sans titre')}</span></div>
-      <div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>
+      ${body}
       <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="ncf-right"><span class="note-card-date">${esc(noteDateLabel(n))}</span><span class="note-card-tools">
         <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
+        <button class="nc-btn" onclick="openNoteCoverMenu('${n.id}',event,this)" title="Image de couverture">${ICON_IMAGE}</button>
         <button class="nc-btn" onclick="openNoteSendMenu('${n.id}',event,this)" title="Envoyer vers…">${ICON_SEND}</button>
         <button class="nc-btn" onclick="toggleNoteHidden('${n.id}',event)" title="Masquer cette tuile">${ICON_EYE}</button>
       </span></span></div>
     </div>`;
 }
+// menu de l'image de couverture d'une note (choisir / changer / retirer pour revenir au contenu)
+function openNoteCoverMenu(id, e, anchor) {
+  e.stopPropagation();
+  const n = state.notes.find(x => x.id === id); if (!n) return;
+  const items = [{ value: 'pick', label: n.cover ? "Changer l'image" : 'Choisir une image de couverture' }];
+  if (n.cover) items.push({ value: 'remove', label: 'Retirer (afficher le contenu)' });
+  openStyledMenu(anchor, [{ items }], '', v => {
+    if (v === 'pick') pickImages(srcs => { n.cover = srcs[0]; n.updated = Date.now(); save(); render(); });
+    else if (v === 'remove') { n.cover = ''; n.updated = Date.now(); save(); render(); }
+  });
+}
+window.openNoteCoverMenu = openNoteCoverMenu;
 
 /* ---------- Glisser-déposer : note → dossier ----------
    Pour trier les notes sans dossier d'un geste ; déposée sur « Notes » dans le
@@ -8639,8 +8675,11 @@ function folderTileHtml(f) {
   const notes = notesInFolder(f.id).filter(x => !x.hidden).length;
   const subs = foldersInParent(f.id).length;
   const meta = subs ? (notes + ' note' + (notes > 1 ? 's' : '') + ' · ' + subs + ' dossier' + (subs > 1 ? 's' : '')) : (notes + ' note' + (notes > 1 ? 's' : ''));
-  return '<div class="folder-tile" onclick="openNotesFolder(\'' + f.id + '\')" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove(\'drop-hover\')" ondrop="noteDropOnFolder(event,\'' + f.id + '\',this)">' +
-    '<div class="folder-tile-ico">' + folderSvg(f.color, f.icon, 46) + '</div>' +
+  const face = f.cover
+    ? '<div class="folder-tile-cover"><img src="' + f.cover + '" alt="" loading="lazy"></div>'
+    : '<div class="folder-tile-ico">' + folderSvg(f.color, f.icon, 46) + '</div>';
+  return '<div class="folder-tile' + (f.cover ? ' has-cover' : '') + '" onclick="openNotesFolder(\'' + f.id + '\')" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove(\'drop-hover\')" ondrop="noteDropOnFolder(event,\'' + f.id + '\',this)">' +
+    face +
     '<div class="folder-tile-name">' + esc(f.name || 'Dossier') + '</div>' +
     '<div class="folder-tile-count">' + meta + '</div>' +
     '<div class="tile-actions">' +
@@ -10740,11 +10779,13 @@ function openFolderModal(id, presetParent) {
   folderDraftColor = f ? (f.color || PALETTE[4]) : PALETTE[4];
   folderDraftProj = f ? (f.projectId || '') : '';
   folderDraftIcon = f ? (f.icon || '') : '';
+  folderDraftCover = f ? (f.cover || '') : '';
   folderDraftParent = f ? (f.parentId || '') : (presetParent || '');
   setFolderTab('color');
   renderFolderColor();
   renderFolderIconGrid();
   renderFolderPreview();
+  updateFolderCoverBtn();
   updateFolderProjBtn();
   updateFolderParentBtn();
   // on peut ouvrir le dossier par-dessus la note (retour à la note ensuite)
@@ -10754,8 +10795,20 @@ function openFolderModal(id, presetParent) {
 }
 window.openFolderModal = openFolderModal;
 let reopenNoteAfterFolder = false;
-// aperçu du dossier (grande icône colorée, façon Google Drive)
-function renderFolderPreview() { $('folderPreview').innerHTML = folderSvg(folderDraftColor, folderDraftIcon, 96); }
+// aperçu du dossier : l'image de couverture si elle est choisie, sinon la grande icône colorée
+let folderDraftCover = '';
+function renderFolderPreview() {
+  $('folderPreview').innerHTML = folderDraftCover
+    ? `<div class="folder-cover-preview"><img src="${folderDraftCover}" alt=""></div>`
+    : folderSvg(folderDraftColor, folderDraftIcon, 96);
+}
+function updateFolderCoverBtn() {
+  $('folderCoverBtn').textContent = folderDraftCover ? "Changer l'image" : 'Choisir une image…';
+  $('folderCoverClear').classList.toggle('hidden', !folderDraftCover);
+}
+function pickFolderCover() { pickImages(srcs => { folderDraftCover = srcs[0]; renderFolderPreview(); updateFolderCoverBtn(); }); }
+function clearFolderCover() { folderDraftCover = ''; renderFolderPreview(); updateFolderCoverBtn(); }
+window.pickFolderCover = pickFolderCover; window.clearFolderCover = clearFolderCover;
 function renderFolderColor() { $('folderColorPicker').innerHTML = paletteHtml(folderDraftColor, 'pickFolderColor', 'folder'); }
 window.pickFolderColor = c => { folderDraftColor = c; rememberColor(c); renderFolderColor(); renderFolderPreview(); };
 function renderFolderIconGrid() {
@@ -10776,7 +10829,7 @@ function saveFolder() {
   if (!name) { $('folderName').focus(); return; }
   let parentId = folderDraftParent || '';
   if (editingFolder && parentId && (parentId === editingFolder || folderDescendants(editingFolder).has(parentId))) parentId = '';
-  const data = { name, color: folderDraftColor, projectId: folderDraftProj || '', icon: folderDraftIcon || '', parentId };
+  const data = { name, color: folderDraftColor, projectId: folderDraftProj || '', icon: folderDraftIcon || '', cover: folderDraftCover || '', parentId };
   let fid = editingFolder;
   if (editingFolder) Object.assign(folderById(editingFolder), data);
   else { fid = uid(); state.noteFolders.push({ id: fid, ...data }); }
@@ -12809,17 +12862,89 @@ function compressImage(file) {
     rd.readAsDataURL(file);
   });
 }
-// sélecteur de fichiers → data-URLs compressées
+/* ---------- Images dans Supabase Storage (bucket public « images ») ----------
+   Nouvelle image : compressée puis UPLOADÉE en ligne ; on ne garde qu'une URL (au lieu du
+   base64, qui gonflait le stockage local ET la synchro). Repli AUTOMATIQUE en base64 si
+   hors-ligne / pas connectée / bucket pas encore prêt → rien ne casse. */
+const IMG_BUCKET = 'images';
+const isDataUrl = s => typeof s === 'string' && s.startsWith('data:');
+function compressImageBlob(file) {
+  return new Promise((res, rej) => {
+    const rd = new FileReader();
+    rd.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        const sc = Math.min(1, MAX / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * sc));
+        c.height = Math.max(1, Math.round(img.height * sc));
+        const g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => b ? res(b) : rej(new Error('blob')), 'image/jpeg', 0.82);
+      };
+      img.onerror = rej; img.src = rd.result;
+    };
+    rd.onerror = rej; rd.readAsDataURL(file);
+  });
+}
+async function uploadImageBlob(blob) {
+  const token = auth && await ensureToken();
+  if (!token || !auth || !auth.user_id) throw new Error('non connectée');
+  const path = `${auth.user_id}/${uid()}.jpg`;
+  const r = await fetch(`${SUPA_URL}/storage/v1/object/${IMG_BUCKET}/${path}`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + token, 'Content-Type': 'image/jpeg', 'cache-control': '31536000' },
+    body: blob,
+  });
+  if (!r.ok) throw new Error('storage ' + r.status);
+  return `${SUPA_URL}/storage/v1/object/public/${IMG_BUCKET}/${path}`;
+}
+async function uploadDataUrl(dataUrl) { return uploadImageBlob(await (await fetch(dataUrl)).blob()); }
+// point d'entrée unique : compresse → tente l'upload → repli base64 si échec
+async function imageToStored(file) {
+  try { return await uploadImageBlob(await compressImageBlob(file)); }
+  catch (e) { return await compressImage(file); }
+}
+// sélecteur de fichiers → images stockées (URL Supabase, ou base64 en repli)
 function pickImages(cb) {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
   inp.onchange = async () => {
     const out = [];
-    for (const f of inp.files) { try { out.push(await compressImage(f)); } catch (e) { /* fichier illisible : on passe */ } }
+    for (const f of inp.files) { try { out.push(await imageToStored(f)); } catch (e) { /* fichier illisible : on passe */ } }
     if (out.length) cb(out);
   };
   inp.click();
 }
+// migration : envoie toutes les images base64 existantes vers Supabase, remplace par des URLs
+async function migrateImagesToStorage() {
+  if (!auth || !auth.user_id) { alert('Connecte-toi d’abord (synchro) pour envoyer tes images en ligne.'); return; }
+  if (!confirm('Envoyer toutes tes images existantes (couvertures de notes/dossiers, images des fiches, images collées dans les notes) vers Supabase, et ne garder que des liens ?\n\nÇa peut prendre un moment selon le nombre d’images. Tu peux continuer à utiliser l’app ensuite.')) return;
+  let done = 0, failed = 0;
+  const up = async d => { try { const u = await uploadDataUrl(d); done++; return u; } catch (e) { failed++; return null; } };
+  for (const n of (state.notes || [])) {
+    if (isDataUrl(n.cover)) { const u = await up(n.cover); if (u) n.cover = u; }
+    if (n.body && n.body.includes('data:image')) {
+      const box = document.createElement('div'); box.innerHTML = n.body;
+      const imgs = [...box.querySelectorAll('img')].filter(im => isDataUrl(im.getAttribute('src')));
+      for (const im of imgs) { const u = await up(im.getAttribute('src')); if (u) im.setAttribute('src', u); }
+      if (imgs.length) n.body = box.innerHTML;
+    }
+  }
+  for (const f of (state.noteFolders || [])) { if (isDataUrl(f.cover)) { const u = await up(f.cover); if (u) f.cover = u; } }
+  const colls = ['events', 'tasks', 'projects', 'cats', 'habits', 'health'].concat((state.customTables || []).map(t => t.id));
+  for (const coll of colls) {
+    for (const r of (collArr(coll) || [])) {
+      if (isDataUrl(r.cover)) { const u = await up(r.cover); if (u) r.cover = u; }
+      if (Array.isArray(r.images)) for (let i = 0; i < r.images.length; i++) { if (isDataUrl(r.images[i])) { const u = await up(r.images[i]); if (u) r.images[i] = u; } }
+    }
+  }
+  save(); render();
+  alert(`Migration terminée : ${done} image(s) envoyée(s) en ligne${failed ? ` — ${failed} n’ont pas pu l’être (gardées en local).` : '.'}`);
+}
+window.migrateImagesToStorage = migrateImagesToStorage;
 function imagesSectionHtml(coll, rec) {
   const imgs = rec.images || [];
   return `<div class="page-section-title">Images</div>`
@@ -14624,7 +14749,7 @@ function lineMeta(c, r) {
 /* ---------- Vue CARTES ---------- */
 // image de couverture d'un enregistrement = 1re image de sa fiche (rec.images[0])
 const ICON_IMAGE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
-const recCover = rec => (rec && Array.isArray(rec.images) && rec.images.length) ? rec.images[0] : '';
+const recCover = rec => (rec && (rec.cover || (Array.isArray(rec.images) && rec.images[0]))) || '';
 // ajoute/complète l'image d'un enregistrement depuis une carte, puis rafraîchit le contexte visible
 function addRecCover(c, id, ev) {
   if (ev) ev.stopPropagation();
@@ -15468,7 +15593,7 @@ $('noteBody').addEventListener('drop', e => {
 /* ---- Coller / deposer des images ---- */
 async function insertImageFilesAtCaret(files) {
   const srcs = [];
-  for (const f of files) { try { srcs.push(await compressImage(f)); } catch (err) { /* fichier illisible : ignore */ } }
+  for (const f of files) { try { srcs.push(await imageToStored(f)); } catch (err) { /* fichier illisible : ignore */ } }
   if (!srcs.length) return;
   let ref = null;
   try { ref = caretBlock(); } catch (err) {}
@@ -15606,7 +15731,9 @@ function renderStorageBox() {
   const alerte = pct >= 80;
   box.innerHTML = '<div class="store-line"><span>Espace utilisé</span><span>' + mo + ' Mo sur ~5 Mo</span></div>'
     + '<div class="store-bar"><div style="width:' + pct + '%' + (alerte ? ';background:#d98a8a' : '') + '"></div></div>'
-    + (alerte ? '<p class="hint-txt" style="margin-top:6px">Le stockage approche de sa limite : pense à retirer quelques images.</p>' : '');
+    + (alerte ? '<p class="hint-txt" style="margin-top:6px">Le stockage approche de sa limite : pense à retirer quelques images.</p>' : '')
+    + '<button class="btn-ghost" style="margin-top:10px" onclick="migrateImagesToStorage()">☁ Envoyer mes images vers Supabase</button>'
+    + '<p class="hint-txt" style="margin-top:4px">Déplace tes images en ligne (elles ne comptent alors plus dans les ~5 Mo). Les nouvelles images y vont automatiquement.</p>';
 }
 
 
