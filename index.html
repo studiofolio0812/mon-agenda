@@ -2563,6 +2563,14 @@
   .btn.ghost:hover { background: var(--bg-soft); }
   .btn.danger { background: #d98a8a; color: white; border: 1px solid #d98a8a; }
   .btn.danger:hover { filter: brightness(0.95); }
+  /* Overlay lecture d'un mail (fenêtre contextuelle) */
+  #mailOverlay .mail-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: min(880px, 94vw); height: min(88vh, 900px); margin: auto; display: flex; flex-direction: column; overflow: hidden; }
+  .mail-panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .mail-panel-title { flex: 1; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-panel-close { background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text); font-size: 15px; }
+  .mail-panel-close:hover { background: var(--bg-soft); }
+  .mail-panel-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .mail-panel-body .mail-read-body { flex: 1; height: auto; }
   /* Onglets dossiers (dynamiques, peuvent défiler horizontalement) */
   .mail-tabs { display: flex; gap: 6px; padding: 8px 12px 6px; overflow-x: auto; border-bottom: 1px solid var(--border); flex-wrap: nowrap; }
   .mail-tabs .space-tab { flex: 0 0 auto; white-space: nowrap; }
@@ -3160,6 +3168,13 @@
       <button class="btn-ghost" id="pdEditBtn">Modifier</button>
       <button class="btn-primary" id="pdAddTaskBtn">＋ Ajouter une tâche</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: LECTURE D'UN MAIL ============ -->
+<div class="overlay" id="mailOverlay">
+  <div class="mail-panel">
+    <div id="mailPanelContent"></div>
   </div>
 </div>
 
@@ -12631,6 +12646,8 @@ function closeModals() {
      l'aperçu masque le bouton « Enregistrer », rien ne doit dépendre d'un clic.
      Une note supprimée n'est pas ressuscitée : son enregistrement n'existe plus. */
   if ($('noteOverlay').classList.contains('show') && !reopenNoteAfterFolder) noteAutosave(true);
+  // si l'overlay mail était ouvert, on nettoie son état pour éviter de laisser un mail « ouvert » invisible
+  if ($('mailOverlay').classList.contains('show')) { gmailOpenedId = null; gmailOpenedBody = null; gmailMoveMenuFor = null; }
   $$('.overlay').forEach(o => o.classList.remove('show'));
   // fenêtre dossier ouverte depuis une note, puis annulée → on rouvre la note
   if (reopenNoteAfterFolder) { reopenNoteAfterFolder = false; $('noteOverlay').classList.add('show'); }
@@ -16602,7 +16619,10 @@ async function gmailFetchList() {
 }
 
 async function gmailOpenMessage(id) {
-  gmailOpenedId = id; gmailOpenedBody = null; renderMailSpace();
+  gmailOpenedId = id; gmailOpenedBody = null;
+  const ov = document.getElementById('mailOverlay');
+  if (ov) ov.classList.add('show');
+  renderMailOverlay(); // état « chargement »
   try {
     const m = await gmailApi('/messages/' + id + '?format=full');
     const b = gmailExtractBody(m.payload);
@@ -16616,8 +16636,9 @@ async function gmailOpenMessage(id) {
       });
       const local = gmailList.find(x => x.id === id);
       if (local) { local.unread = false; local.labels = local.labels.filter(l => l !== 'UNREAD'); }
+      renderMailSpace(); // la liste derrière l'overlay se met à jour aussi
     }
-    renderMailSpace();
+    renderMailOverlay();
   } catch (e) { showToast('Impossible d\'ouvrir : ' + e.message); }
 }
 
@@ -16626,7 +16647,12 @@ async function gmailTrashMessage(id) {
   try {
     await gmailApi('/messages/' + id + '/trash', { method: 'POST' });
     gmailList = gmailList.filter(x => x.id !== id);
-    if (gmailOpenedId === id) { gmailOpenedId = null; gmailOpenedBody = null; }
+    // si l'overlay affichait ce mail, on le ferme
+    if (gmailOpenedId === id) {
+      const ov = document.getElementById('mailOverlay');
+      if (ov) ov.classList.remove('show');
+      gmailOpenedId = null; gmailOpenedBody = null; gmailMoveMenuFor = null;
+    }
     renderMailSpace();
     showToast('Mail mis à la corbeille');
   } catch (e) { showToast('Erreur : ' + e.message); }
@@ -16645,11 +16671,15 @@ function gmailDisconnect() {
 function gmailBack() { gmailOpenedId = null; gmailOpenedBody = null; renderMailSpace(); }
 function gmailSetFilter(f) { if (gmailFilter === f) return; gmailFilter = f; gmailMoveMenuFor = null; gmailFetchList(); }
 
-// Ouvre / ferme le petit menu « Ranger dans... » sur un mail donné
+// Ouvre / ferme le petit menu « Ranger dans... » sur un mail donné.
+// Si l'overlay de lecture est ouvert sur ce mail, on rafraîchit l'overlay ;
+// sinon (menu depuis une ligne de la liste), on rafraîchit la liste.
 function gmailToggleMoveMenu(id, ev) {
   if (ev) ev.stopPropagation();
   gmailMoveMenuFor = (gmailMoveMenuFor === id) ? null : id;
-  renderMailSpace();
+  const inOverlay = gmailOpenedId === id && document.getElementById('mailOverlay') && document.getElementById('mailOverlay').classList.contains('show');
+  if (inOverlay) renderMailOverlay();
+  else renderMailSpace();
 }
 
 // Déplace un message vers un dossier (= ajouter le libellé + retirer INBOX)
@@ -16668,7 +16698,12 @@ async function gmailMoveTo(msgId, labelId, ev) {
       const local = gmailList.find(x => x.id === msgId);
       if (local && local.labels.indexOf(labelId) < 0) local.labels.push(labelId);
     }
-    if (gmailOpenedId === msgId) { gmailOpenedId = null; gmailOpenedBody = null; }
+    // si l'overlay affichait ce mail, on le ferme (le mail vient de quitter la vue)
+    if (gmailOpenedId === msgId) {
+      const ov = document.getElementById('mailOverlay');
+      if (ov) ov.classList.remove('show');
+      gmailOpenedId = null; gmailOpenedBody = null;
+    }
     const lab = gmailLabels.find(l => l.id === labelId);
     renderMailSpace();
     showToast('Rangé dans « ' + (lab ? lab.name : 'dossier') + ' »');
@@ -16759,6 +16794,39 @@ function gmailMoveMenuHtml(msgId) {
     + '</div>';
 }
 
+// Contenu de la fenêtre contextuelle de lecture d'un mail
+function renderMailOverlay() {
+  const box = document.getElementById('mailPanelContent');
+  if (!box) return;
+  if (!gmailOpenedId) { box.innerHTML = ''; return; }
+  if (!gmailOpenedBody) {
+    box.innerHTML = '<div class="mail-panel-head"><span class="mail-panel-title">Chargement du mail…</span><button class="mail-panel-close" data-close title="Fermer">✕</button></div>';
+    // recable le bouton de fermeture ajouté dynamiquement
+    box.querySelector('[data-close]').onclick = closeModals;
+    return;
+  }
+  const b = gmailOpenedBody;
+  const bodyHtml = b.html
+    ? '<iframe class="mail-iframe" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="' + esc(gmailSanitizeMailHtml(b.html)) + '"></iframe>'
+    : '<div class="mail-plain">' + esc(b.text || '(mail vide)').replace(/\n/g, '<br>') + '</div>';
+  const menu = gmailMoveMenuFor === gmailOpenedId ? gmailMoveMenuHtml(gmailOpenedId) : '';
+  box.innerHTML = '<div class="mail-panel-head">'
+    + '<span class="mail-panel-title" title="' + esc(b.subject || '') + '">' + esc(b.subject || '(sans objet)') + '</span>'
+    + '<span class="mail-move-wrap"><button class="btn ghost" onclick="gmailToggleMoveMenu(\'' + gmailOpenedId + '\',event)">Ranger dans…</button>' + menu + '</span>'
+    + '<button class="btn danger" onclick="gmailTrashMessage(\'' + gmailOpenedId + '\')">Corbeille</button>'
+    + '<button class="mail-panel-close" data-close title="Fermer">✕</button>'
+    + '</div>'
+    + '<div class="mail-panel-body">'
+    + '<div class="mail-read-head">'
+    + '<div class="mail-read-from">' + esc(gmailCleanFrom(b.from)) + '</div>'
+    + '<div class="mail-read-date">' + esc(gmailFmtDate(b.date)) + '</div>'
+    + '</div>'
+    + '<div class="mail-read-body">' + bodyHtml + '</div>'
+    + '</div>';
+  box.querySelector('[data-close]').onclick = closeModals;
+}
+window.renderMailOverlay = renderMailOverlay;
+
 function renderMailSpace() {
   const connectee = !!gmailAccessToken || readStoredGmailToken();
   const rechercheActive = !!(gmailSearchQuery && gmailSearchQuery.trim());
@@ -16771,28 +16839,6 @@ function renderMailSpace() {
       + '<div class="mail-connect-p">Google va te demander une seule fois l\'autorisation pour laisser Mon Agenda lire et ranger tes mails. Aucun envoi. Aucun mot de passe n\'est stocké — juste un jeton qui expire régulièrement.</div>'
       + '<button class="btn primary" onclick="gmailConnect()">Se connecter à Gmail</button>'
       + '</div></div>';
-  } else if (gmailOpenedId && gmailOpenedBody) {
-    const b = gmailOpenedBody;
-    const bodyHtml = b.html
-      ? '<iframe class="mail-iframe" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="' + esc(gmailSanitizeMailHtml(b.html)) + '"></iframe>'
-      : '<div class="mail-plain">' + esc(b.text || '(mail vide)').replace(/\n/g, '<br>') + '</div>';
-    const menu = gmailMoveMenuFor === gmailOpenedId ? gmailMoveMenuHtml(gmailOpenedId) : '';
-    html = '<div class="space wide">'
-      + '<div class="space-head">'
-      + '<button class="space-back" onclick="gmailBack()" title="Retour"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>'
-      + '<span class="space-title">' + esc(b.subject || '(sans objet)') + '</span>'
-      + '<span style="flex:1"></span>'
-      + '<span class="mail-move-wrap"><button class="btn ghost" onclick="gmailToggleMoveMenu(\'' + gmailOpenedId + '\',event)">Ranger dans…</button>' + menu + '</span>'
-      + '<button class="btn danger" onclick="gmailTrashMessage(\'' + gmailOpenedId + '\')">Corbeille</button>'
-      + '</div>'
-      + '<div class="mail-read-head">'
-      + '<div class="mail-read-from">' + esc(gmailCleanFrom(b.from)) + '</div>'
-      + '<div class="mail-read-date">' + esc(gmailFmtDate(b.date)) + '</div>'
-      + '</div>'
-      + '<div class="mail-read-body">' + bodyHtml + '</div>'
-      + '</div>';
-  } else if (gmailOpenedId && !gmailOpenedBody) {
-    html = '<div class="space wide"><div class="space-head"><button class="space-back" onclick="gmailBack()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><span class="space-title">Chargement du mail…</span></div></div>';
   } else {
     // Onglets : Boîte de réception + Étoilés + dossiers utilisateur triés
     const tabs = [
