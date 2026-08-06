@@ -2532,6 +2532,42 @@
     /* pas de survol au doigt : le ＋ « ajouter une liste » reste visible */
     .cat-add { opacity: 1; }
   }
+  /* ---------- Espace Mail (Gmail) ---------- */
+  .mail-connect { max-width: 460px; margin: 60px auto; text-align: center; padding: 24px; }
+  .mail-connect-t { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .mail-connect-p { font-size: 13px; color: var(--text-soft); margin-bottom: 20px; line-height: 1.5; }
+  .space-back { background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; margin-right: 10px; color: var(--text); }
+  .space-back:hover { background: var(--bg-soft); }
+  .mail-loading, .mail-empty { padding: 40px; text-align: center; color: var(--text-soft); font-size: 13px; }
+  .mail-row { display: grid; grid-template-columns: 24px 180px 1fr 90px 28px; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; }
+  .mail-row:hover { background: var(--bg-soft); }
+  .mail-row.unread { font-weight: 600; }
+  .mail-row.unread .mail-subj i { font-weight: 400; }
+  .mail-star { text-align: center; color: var(--border-strong); font-size: 15px; }
+  .mail-star.on { color: #e6b800; }
+  .mail-from { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-subj { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-subj b { font-weight: inherit; }
+  .mail-subj i { color: var(--text-soft); font-weight: 400; font-style: normal; margin-left: 8px; }
+  .mail-date { text-align: right; color: var(--text-soft); font-size: 12px; }
+  .mail-trash { background: transparent; border: none; color: var(--text-soft); cursor: pointer; padding: 4px; opacity: 0; transition: opacity .1s; }
+  .mail-row:hover .mail-trash { opacity: 1; }
+  .mail-trash:hover { color: #d98a8a; }
+  .mail-read-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .mail-read-from { font-weight: 600; font-size: 13px; }
+  .mail-read-date { color: var(--text-soft); font-size: 12px; }
+  .mail-read-body { padding: 0; height: calc(100vh - 260px); overflow: auto; }
+  .mail-iframe { width: 100%; height: 100%; border: 0; background: white; }
+  .mail-plain { padding: 16px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn.ghost:hover { background: var(--bg-soft); }
+  .btn.danger { background: #d98a8a; color: white; border: 1px solid #d98a8a; }
+  .btn.danger:hover { filter: brightness(0.95); }
+  @media (max-width: 640px) {
+    .mail-row { grid-template-columns: 24px 1fr 70px; }
+    .mail-row .mail-from { display: none; }
+    .mail-row .mail-trash { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -2656,6 +2692,12 @@
       <button class="nav-item" data-section="bilan">
         <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-6"/></svg>
         <span class="nav-label">Bilan</span>
+      </button>
+
+      <!-- Mail -->
+      <button class="nav-item" data-section="mail">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        <span class="nav-label">Mail</span>
       </button>
     </nav>
   </aside>
@@ -3956,6 +3998,7 @@ function render() {
   else if (state.view === 'health') renderHealthSpace();
   else if (state.view === 'habits') renderHabitsSpace();
   else if (state.view === 'bilan') renderBilanSpace();
+  else if (state.view === 'mail') { renderMailSpace(); gmailAutoLoad(); }
   else if (state.view === 'month') { isMobile() ? renderMonthMobile() : renderMonth(); }
   else if (state.view === 'agenda') renderAgenda();
   else renderTimeGrid(viewDayCount());
@@ -3971,7 +4014,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan'];
+const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan', 'mail'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -15504,7 +15547,7 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { home: 'home', tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan' };
+const SECTION_SPACE = { home: 'home', tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan', mail: 'mail' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
@@ -16333,6 +16376,322 @@ document.addEventListener('keydown', e => {
   }
 });
 
+
+/* ============================================================
+   GMAIL — lecture, corbeille, filtre étoile (pas d'envoi)
+   Auth : Google Identity Services (script GIS chargé à la volée
+   à la première ouverture de l'onglet Mail — le reste de l'app
+   reste totalement autonome et fonctionne hors ligne).
+   Token : stocké 1 h en localStorage. Renouvelé silencieusement
+   à la session Google suivante ; sinon pop-up de reconnexion.
+   Contexte OAuth : app Interne à un Workspace, pas de plafond
+   7 j et pas de vérification Google requise.
+   ============================================================ */
+const GMAIL_CLIENT_ID = '505727477208-9hjn3iv401dkvl5stbtgoooct5tn54u3.apps.googleusercontent.com';
+const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.modify';
+const GMAIL_STORAGE = 'mon-agenda-gmail-token';
+
+let gmailTokenClient = null;
+let gmailAccessToken = null;
+let gmailTokenExpires = 0;
+let gmailScriptLoaded = false;
+let gmailList = [];
+let gmailFilterStar = false;
+let gmailOpenedId = null;
+let gmailOpenedBody = null;
+let gmailLoading = false;
+
+function loadGoogleScript() {
+  if (gmailScriptLoaded) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true; s.defer = true;
+    s.onload = () => { gmailScriptLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error('Chargement Google impossible (hors ligne ?)'));
+    document.head.appendChild(s);
+  });
+}
+
+function readStoredGmailToken() {
+  try {
+    const raw = localStorage.getItem(GMAIL_STORAGE);
+    if (!raw) return false;
+    const o = JSON.parse(raw);
+    if (o.t && o.e && Date.now() < o.e) { gmailAccessToken = o.t; gmailTokenExpires = o.e; return true; }
+  } catch (e) {}
+  return false;
+}
+
+function storeGmailToken(t, expiresIn) {
+  gmailAccessToken = t;
+  // marge de 60 s pour éviter les 401 sur des requêtes lancées juste avant expiration
+  gmailTokenExpires = Date.now() + (Number(expiresIn) || 3600) * 1000 - 60000;
+  try { localStorage.setItem(GMAIL_STORAGE, JSON.stringify({ t: gmailAccessToken, e: gmailTokenExpires })); } catch (e) {}
+}
+
+function clearGmailToken() {
+  gmailAccessToken = null; gmailTokenExpires = 0;
+  try { localStorage.removeItem(GMAIL_STORAGE); } catch (e) {}
+}
+
+function ensureGmailTokenClient() {
+  if (gmailTokenClient) return;
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    throw new Error('Google Identity Services non chargé');
+  }
+  gmailTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GMAIL_CLIENT_ID,
+    scope: GMAIL_SCOPE,
+    callback: () => {} // sera écrasé à chaque appel
+  });
+}
+
+// Récupère un token utilisable. interactive=true : autorise le pop-up si besoin.
+async function ensureGmailToken(interactive) {
+  if (gmailAccessToken && Date.now() < gmailTokenExpires) return true;
+  if (readStoredGmailToken()) return true;
+  await loadGoogleScript();
+  ensureGmailTokenClient();
+  return new Promise((resolve) => {
+    gmailTokenClient.callback = (resp) => {
+      if (resp && resp.error) { resolve(false); return; }
+      if (resp && resp.access_token) { storeGmailToken(resp.access_token, resp.expires_in); resolve(true); }
+      else resolve(false);
+    };
+    try { gmailTokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' }); }
+    catch (e) { resolve(false); }
+  });
+}
+
+async function gmailApi(path, opts) {
+  opts = opts || {};
+  if (!gmailAccessToken || Date.now() >= gmailTokenExpires) {
+    const ok = await ensureGmailToken(false);
+    if (!ok) throw new Error('Session Gmail expirée — reconnecte-toi');
+  }
+  const url = 'https://gmail.googleapis.com/gmail/v1/users/me' + path;
+  const res = await fetch(url, {
+    method: opts.method || 'GET',
+    headers: Object.assign({ 'Authorization': 'Bearer ' + gmailAccessToken }, opts.headers || {}),
+    body: opts.body
+  });
+  if (res.status === 401) { clearGmailToken(); throw new Error('Session Gmail expirée — reconnecte-toi'); }
+  if (!res.ok) throw new Error('Gmail API ' + res.status);
+  return res.json();
+}
+
+function gmailHeader(msg, name) {
+  const h = (msg.payload && msg.payload.headers) || [];
+  const f = h.find(x => x.name && x.name.toLowerCase() === name.toLowerCase());
+  return f ? f.value : '';
+}
+
+function gmailB64urlDecode(str) {
+  str = String(str || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  try {
+    const bin = atob(str);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch (e) { return ''; }
+}
+
+// Extrait le premier body text/html et text/plain trouvé (multipart récursif)
+function gmailExtractBody(payload) {
+  let html = '', text = '';
+  function walk(p) {
+    if (!p) return;
+    const mt = p.mimeType || '';
+    if (mt === 'text/html' && p.body && p.body.data && !html) html = gmailB64urlDecode(p.body.data);
+    else if (mt === 'text/plain' && p.body && p.body.data && !text) text = gmailB64urlDecode(p.body.data);
+    (p.parts || []).forEach(walk);
+  }
+  walk(payload);
+  return { html, text };
+}
+
+async function gmailFetchList() {
+  gmailLoading = true; renderMailSpace();
+  try {
+    const q = gmailFilterStar ? 'is:starred' : 'in:inbox';
+    const list = await gmailApi('/messages?q=' + encodeURIComponent(q) + '&maxResults=25');
+    const msgs = list.messages || [];
+    if (!msgs.length) { gmailList = []; gmailLoading = false; renderMailSpace(); return; }
+    const details = await Promise.all(msgs.map(m =>
+      gmailApi('/messages/' + m.id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date')
+    ));
+    gmailList = details.map(m => ({
+      id: m.id,
+      snippet: m.snippet || '',
+      labels: m.labelIds || [],
+      starred: (m.labelIds || []).indexOf('STARRED') >= 0,
+      unread: (m.labelIds || []).indexOf('UNREAD') >= 0,
+      from: gmailHeader(m, 'From'),
+      subject: gmailHeader(m, 'Subject') || '(sans objet)',
+      date: gmailHeader(m, 'Date')
+    }));
+  } catch (e) {
+    showToast('Erreur Gmail : ' + e.message);
+    gmailList = [];
+  }
+  gmailLoading = false; renderMailSpace();
+}
+
+async function gmailOpenMessage(id) {
+  gmailOpenedId = id; gmailOpenedBody = null; renderMailSpace();
+  try {
+    const m = await gmailApi('/messages/' + id + '?format=full');
+    const b = gmailExtractBody(m.payload);
+    gmailOpenedBody = { html: b.html, text: b.text, from: gmailHeader(m, 'From'), subject: gmailHeader(m, 'Subject'), date: gmailHeader(m, 'Date') };
+    // marquer comme lu
+    if ((m.labelIds || []).indexOf('UNREAD') >= 0) {
+      await gmailApi('/messages/' + id + '/modify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removeLabelIds: ['UNREAD'] })
+      });
+      const local = gmailList.find(x => x.id === id);
+      if (local) { local.unread = false; local.labels = local.labels.filter(l => l !== 'UNREAD'); }
+    }
+    renderMailSpace();
+  } catch (e) { showToast('Impossible d\'ouvrir : ' + e.message); }
+}
+
+async function gmailTrashMessage(id) {
+  if (!confirm('Mettre ce mail à la corbeille ? Il restera récupérable pendant 30 jours dans Gmail.')) return;
+  try {
+    await gmailApi('/messages/' + id + '/trash', { method: 'POST' });
+    gmailList = gmailList.filter(x => x.id !== id);
+    if (gmailOpenedId === id) { gmailOpenedId = null; gmailOpenedBody = null; }
+    renderMailSpace();
+    showToast('Mail mis à la corbeille');
+  } catch (e) { showToast('Erreur : ' + e.message); }
+}
+
+async function gmailConnect() {
+  const ok = await ensureGmailToken(true);
+  if (ok) { renderMailSpace(); gmailFetchList(); }
+  else showToast('Connexion Gmail annulée');
+}
+function gmailDisconnect() {
+  clearGmailToken();
+  gmailList = []; gmailOpenedId = null; gmailOpenedBody = null;
+  renderMailSpace();
+}
+function gmailBack() { gmailOpenedId = null; gmailOpenedBody = null; renderMailSpace(); }
+function gmailSetFilter(star) { if (gmailFilterStar === star) return; gmailFilterStar = star; gmailFetchList(); }
+
+// Charge la boîte automatiquement à l'ouverture de l'onglet si on a déjà un token valide.
+function gmailAutoLoad() {
+  if ((gmailAccessToken || readStoredGmailToken()) && !gmailList.length && !gmailLoading) gmailFetchList();
+}
+
+window.gmailConnect = gmailConnect;
+window.gmailDisconnect = gmailDisconnect;
+window.gmailOpenMessage = gmailOpenMessage;
+window.gmailTrashMessage = gmailTrashMessage;
+window.gmailBack = gmailBack;
+window.gmailSetFilter = gmailSetFilter;
+window.gmailFetchList = gmailFetchList;
+
+function gmailCleanFrom(s) {
+  if (!s) return '';
+  const m = /^\s*"?([^"<]+?)"?\s*<([^>]+)>\s*$/.exec(s);
+  if (m) return m[1].trim() || m[2];
+  return s;
+}
+
+function gmailFmtDate(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  if (isNaN(d)) return s;
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  if (sameDay) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const sameYear = d.getFullYear() === now.getFullYear();
+  if (sameYear) return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
+  return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// Nettoie le HTML d'un mail avant de l'injecter dans un iframe : pas de script,
+// pas de handlers, liens en target=_blank. L'iframe est de toute façon sandboxed.
+function gmailSanitizeMailHtml(html) {
+  const box = document.createElement('div');
+  box.innerHTML = html || '';
+  box.querySelectorAll('script, iframe, object, embed, link, meta').forEach(n => n.remove());
+  box.querySelectorAll('*').forEach(el => {
+    [...el.attributes].forEach(a => {
+      if (/^on/i.test(a.name)) el.removeAttribute(a.name);
+      if ((a.name === 'href' || a.name === 'src') && /^javascript:/i.test(a.value)) el.removeAttribute(a.name);
+    });
+    if (el.tagName === 'A' && el.getAttribute('href')) {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  return box.innerHTML;
+}
+
+function renderMailSpace() {
+  const connectee = !!gmailAccessToken || readStoredGmailToken();
+  let html;
+  if (!connectee) {
+    html = '<div class="space wide">'
+      + '<div class="space-head"><span class="space-title">Mail</span></div>'
+      + '<div class="mail-connect">'
+      + '<div class="mail-connect-t">Connecte ta boîte Gmail</div>'
+      + '<div class="mail-connect-p">Google va te demander une seule fois l\'autorisation pour laisser Mon Agenda lire et ranger tes mails. Aucun envoi. Aucun mot de passe n\'est stocké — juste un jeton qui expire régulièrement.</div>'
+      + '<button class="btn primary" onclick="gmailConnect()">Se connecter à Gmail</button>'
+      + '</div></div>';
+  } else if (gmailOpenedId && gmailOpenedBody) {
+    const b = gmailOpenedBody;
+    const bodyHtml = b.html
+      ? '<iframe class="mail-iframe" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="' + esc(gmailSanitizeMailHtml(b.html)) + '"></iframe>'
+      : '<div class="mail-plain">' + esc(b.text || '(mail vide)').replace(/\n/g, '<br>') + '</div>';
+    html = '<div class="space wide">'
+      + '<div class="space-head">'
+      + '<button class="space-back" onclick="gmailBack()" title="Retour"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>'
+      + '<span class="space-title">' + esc(b.subject || '(sans objet)') + '</span>'
+      + '<span style="flex:1"></span>'
+      + '<button class="btn danger" onclick="gmailTrashMessage(\'' + gmailOpenedId + '\')">Corbeille</button>'
+      + '</div>'
+      + '<div class="mail-read-head">'
+      + '<div class="mail-read-from">' + esc(gmailCleanFrom(b.from)) + '</div>'
+      + '<div class="mail-read-date">' + esc(gmailFmtDate(b.date)) + '</div>'
+      + '</div>'
+      + '<div class="mail-read-body">' + bodyHtml + '</div>'
+      + '</div>';
+  } else if (gmailOpenedId && !gmailOpenedBody) {
+    html = '<div class="space wide"><div class="space-head"><button class="space-back" onclick="gmailBack()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><span class="space-title">Chargement du mail…</span></div></div>';
+  } else {
+    const rows = gmailList.map(m => '<div class="mail-row' + (m.unread ? ' unread' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
+      + '<span class="mail-star' + (m.starred ? ' on' : '') + '">' + (m.starred ? '★' : '☆') + '</span>'
+      + '<span class="mail-from" title="' + esc(m.from) + '">' + esc(gmailCleanFrom(m.from)) + '</span>'
+      + '<span class="mail-subj"><b>' + esc(m.subject) + '</b><i>' + esc(m.snippet) + '</i></span>'
+      + '<span class="mail-date">' + esc(gmailFmtDate(m.date)) + '</span>'
+      + '<button class="mail-trash" onclick="event.stopPropagation();gmailTrashMessage(\'' + m.id + '\')" title="Corbeille">'
+      + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>'
+      + '</button></div>').join('');
+    html = '<div class="space wide">'
+      + '<div class="space-head">'
+      + '<span class="space-title">Mail</span>'
+      + '<span class="space-tabs">'
+      + '<span class="space-tab' + (gmailFilterStar ? '' : ' on') + '" onclick="gmailSetFilter(false)">Boîte de réception</span>'
+      + '<span class="space-tab' + (gmailFilterStar ? ' on' : '') + '" onclick="gmailSetFilter(true)">Étoilés</span>'
+      + '</span>'
+      + '<span style="flex:1"></span>'
+      + '<button class="btn ghost" onclick="gmailFetchList()" title="Actualiser">↻ Actualiser</button>'
+      + '<button class="btn ghost" onclick="gmailDisconnect()" title="Déconnecter Gmail">Déconnecter</button>'
+      + '</div>'
+      + (gmailLoading ? '<div class="mail-loading">Chargement…</div>' : (rows || '<div class="mail-empty">Aucun mail à afficher.</div>'))
+      + '</div>';
+  }
+  canvas.innerHTML = html;
+}
+window.renderMailSpace = renderMailSpace;
+window.gmailAutoLoad = gmailAutoLoad;
 
 /* ---------- Go ---------- */
 const _partageSlug = new URLSearchParams(location.search).get('partage');
