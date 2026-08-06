@@ -5023,6 +5023,7 @@ function setDayIntention(k, v) {
   if (!state.dayIntention) state.dayIntention = {};
   if (v && v.trim()) state.dayIntention[k] = v; else delete state.dayIntention[k];
   save();
+  syncIntentionsInReviewNote(startOfWeek(parseYmd(k)));
 }
 window.setDayIntention = setDayIntention;
 function rescheduleTaskToDay(id, k, ev) {
@@ -9098,6 +9099,48 @@ function monthWeekReviews() {
   return (state.notes || []).filter(n => n.reviewWeek && weekBelongsToMonth(n.reviewWeek, y, mo))
     .sort((a, b) => a.reviewWeek.localeCompare(b.reviewWeek));
 }
+/* Intentions du jour recopiées en TÊTE de la note de revue hebdo.
+   Un unique bloc <div class="rev-intentions-auto"> encadre le contenu généré :
+   on le repère et on le remplace à chaque changement, sans jamais toucher
+   au reste de la note (ses 3 questions ou ce qu'elle a écrit à côté). */
+const REV_INT_MARK = 'rev-intentions-auto';
+
+function buildIntentionsBlockHtml(ws) {
+  const map = state.dayIntention || {};
+  const lignes = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(ws, i);
+    const txt = (map[ymd(d)] || '').trim();
+    if (!txt) continue;
+    const jour = DOW_LONG[d.getDay()];
+    const label = jour.charAt(0).toUpperCase() + jour.slice(1) + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
+    lignes.push('<p><strong>' + esc(label) + '</strong> : ' + esc(txt) + '</p>');
+  }
+  if (!lignes.length) return '';
+  return '<div class="' + REV_INT_MARK + '" data-auto="1">'
+    + '<p><strong>Mes intentions de la semaine</strong></p>'
+    + lignes.join('')
+    + '<p><br></p></div>';
+}
+
+function stripIntentionsBlock(html) {
+  return (html || '').replace(/<div class="rev-intentions-auto"[^>]*>[\s\S]*?<\/div>/, '');
+}
+
+// Met à jour (ou nettoie) la note de revue de la semaine ws si elle existe.
+// Ne crée jamais la note : elle apparaît quand la synchro est déclenchée
+// par l'ouverture de la revue (les intentions y sont alors injectées).
+function syncIntentionsInReviewNote(ws) {
+  const wsY = ymd(ws);
+  const n = (state.notes || []).find(x => x.reviewWeek === wsY);
+  if (!n) return;
+  const nouveau = buildIntentionsBlockHtml(ws) + stripIntentionsBlock(n.body || '');
+  if (nouveau === (n.body || '')) return;
+  n.body = nouveau;
+  n.updated = Date.now();
+  save();
+}
+
 // ouvre (ou crée) la note de revue de la période affichée (semaine ou mois), remplie depuis le modèle
 function openPeriodReview() {
   const month = bilanMode === 'month';
@@ -9113,6 +9156,7 @@ function openPeriodReview() {
     else n.reviewWeek = ymd(startOfWeek(bilanCursor));
     state.notes.push(n); save();
   }
+  if (!month) syncIntentionsInReviewNote(startOfWeek(bilanCursor));
   openNote(n.id);
 }
 window.openPeriodReview = openPeriodReview;
@@ -9129,6 +9173,7 @@ function openCurrentWeekReview() {
     n = { id: uid(), title, body, color: PALETTE[4], icon: '', folderId, projectId: '', eventId: '', taskId: '', fav: false, reviewWeek: ymd(ws), updated: Date.now() };
     state.notes.push(n); save();
   }
+  syncIntentionsInReviewNote(ws);
   openNote(n.id);
 }
 window.openCurrentWeekReview = openCurrentWeekReview;
