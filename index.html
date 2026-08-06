@@ -2586,8 +2586,30 @@
   .mail-row:hover .mail-trash { opacity: 1; }
   .mail-trash:hover { color: #d98a8a; }
   .mail-read-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .mail-read-who { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
   .mail-read-from { font-weight: 600; font-size: 13px; }
-  .mail-read-date { color: var(--text-soft); font-size: 12px; }
+  .mail-read-email { color: var(--text-soft); font-size: 12px; }
+  .mail-read-date { color: var(--text-soft); font-size: 12px; flex: 0 0 auto; }
+  /* badge de compteur dans le rail */
+  .mail-rail-count { flex: 0 0 auto; font-size: 11px; color: var(--text-soft); background: var(--bg-soft); border-radius: 10px; padding: 1px 7px; min-width: 20px; text-align: center; }
+  .mail-rail-item.on .mail-rail-count { background: var(--bg); }
+  /* fenêtre de composition */
+  #composeOverlay .compose-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: min(720px, 94vw); height: min(80vh, 760px); margin: auto; display: flex; flex-direction: column; overflow: hidden; }
+  .compose-head { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .compose-title { flex: 1; font-weight: 600; font-size: 14px; }
+  .compose-fields { padding: 4px 16px; }
+  .compose-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+  .compose-row label { flex: 0 0 44px; font-size: 12px; color: var(--text-soft); }
+  .compose-row input { flex: 1; border: none; background: transparent; color: var(--text); font-size: 13px; padding: 10px 0; font-family: var(--font-sans); }
+  .compose-row input:focus { outline: none; }
+  .compose-toolbar { display: flex; align-items: center; gap: 2px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .compose-toolbar button { width: 30px; height: 28px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--text); cursor: pointer; font-size: 13px; }
+  .compose-toolbar button:hover { background: var(--bg-soft); border-color: var(--border); }
+  .compose-tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+  .compose-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px; font-size: 14px; line-height: 1.5; color: var(--text); }
+  .compose-body:focus { outline: none; }
+  .compose-body:empty::before { content: 'Écris ton message…'; color: var(--text-soft); }
+  .compose-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
   .mail-read-body { padding: 0; height: calc(100vh - 260px); overflow: auto; }
   .mail-iframe { width: 100%; height: 100%; border: 0; background: white; }
   .mail-plain { padding: 16px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
@@ -3262,6 +3284,36 @@
 <div class="overlay" id="mailOverlay">
   <div class="mail-panel">
     <div id="mailPanelContent"></div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: COMPOSITION D'UN MAIL ============ -->
+<div class="overlay" id="composeOverlay">
+  <div class="compose-panel">
+    <div class="compose-head">
+      <span class="compose-title" id="composeTitle">Nouveau message</span>
+      <button class="mail-panel-close" data-close title="Fermer">✕</button>
+    </div>
+    <div class="compose-fields">
+      <div class="compose-row"><label>À</label><input id="composeTo" type="text" placeholder="destinataire@exemple.com" autocomplete="off"></div>
+      <div class="compose-row"><label>Objet</label><input id="composeSubject" type="text" placeholder="Objet du message" autocomplete="off"></div>
+    </div>
+    <div class="compose-toolbar" id="composeToolbar">
+      <button type="button" data-cmd="bold" title="Gras"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Italique"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Souligné"><u>U</u></button>
+      <span class="compose-tb-sep"></span>
+      <button type="button" data-cmd="insertUnorderedList" title="Liste à puces">•</button>
+      <button type="button" data-cmd="insertOrderedList" title="Liste numérotée">1.</button>
+      <span class="compose-tb-sep"></span>
+      <button type="button" data-cmd="createLink" title="Lien">🔗</button>
+      <button type="button" data-cmd="removeFormat" title="Effacer la mise en forme">⌫</button>
+    </div>
+    <div class="compose-body" id="composeBody" contenteditable="true" spellcheck="true"></div>
+    <div class="compose-foot">
+      <button class="btn-ghost" data-close>Annuler</button>
+      <button class="btn-primary" id="composeSendBtn" onclick="gmailSendCompose()">Envoyer</button>
+    </div>
   </div>
 </div>
 
@@ -17074,6 +17126,7 @@ async function gmailFetchList() {
       subject: gmailHeader(m, 'Subject') || '(sans objet)',
       date: gmailHeader(m, 'Date')
     }));
+    gmailFetchCounts().then(() => { if (state.view === 'mail') renderMailSpace(); });   // badges (non bloquant)
   } catch (e) {
     showToast('Erreur Gmail : ' + e.message);
     gmailList = [];
@@ -17089,7 +17142,8 @@ async function gmailOpenMessage(id) {
   try {
     const m = await gmailApi('/messages/' + id + '?format=full');
     const b = gmailExtractBody(m.payload);
-    gmailOpenedBody = { html: b.html, text: b.text, from: gmailHeader(m, 'From'), subject: gmailHeader(m, 'Subject'), date: gmailHeader(m, 'Date') };
+    gmailOpenedBody = { html: b.html, text: b.text, from: gmailHeader(m, 'From'), subject: gmailHeader(m, 'Subject'), date: gmailHeader(m, 'Date'),
+      threadId: m.threadId || '', messageId: gmailHeader(m, 'Message-ID') || gmailHeader(m, 'Message-Id') || '', references: gmailHeader(m, 'References') || '' };
     // marquer comme lu
     if ((m.labelIds || []).indexOf('UNREAD') >= 0) {
       await gmailApi('/messages/' + id + '/modify', {
@@ -17128,11 +17182,121 @@ async function gmailConnect() {
 }
 function gmailDisconnect() {
   clearGmailToken();
-  gmailList = []; gmailOpenedId = null; gmailOpenedBody = null;
+  gmailList = []; gmailOpenedId = null; gmailOpenedBody = null; gmailCounts = {}; gmailLabels = [];
   renderMailSpace();
 }
 function gmailBack() { gmailOpenedId = null; gmailOpenedBody = null; renderMailSpace(); }
 function gmailSetFilter(f) { if (gmailFilter === f) return; gmailFilter = f; gmailMoveMenuFor = null; gmailFetchList(); }
+
+/* ---------- Compteurs de mails par dossier ---------- */
+let gmailCounts = {}; // { INBOX: n, STARRED: n, <labelId>: n }
+async function gmailFetchCounts() {
+  const ids = ['INBOX', 'STARRED'].concat(gmailLabels.map(l => l.id));
+  await Promise.all(ids.map(async id => {
+    try { const d = await gmailApi('/labels/' + id); gmailCounts[id] = (typeof d.messagesTotal === 'number') ? d.messagesTotal : gmailCounts[id]; }
+    catch (e) {}
+  }));
+}
+function gmailCountFor(key) {
+  if (key === 'inbox') return gmailCounts['INBOX'];
+  if (key === 'starred') return gmailCounts['STARRED'];
+  if (key && key.indexOf('label:') === 0) return gmailCounts[key.slice(6)];
+  return undefined;
+}
+
+/* ---------- Composition / réponse ---------- */
+let composeReply = null;   // { threadId, inReplyTo, references } pour une réponse
+let composeWired = false;
+
+function gmailB64urlUtf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function gmailEncodeSubject(s) {
+  if (!/[^\x00-\x7F]/.test(s)) return s;   // ASCII pur : tel quel
+  const bytes = new TextEncoder().encode(s);
+  let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+  return '=?UTF-8?B?' + btoa(bin) + '?=';
+}
+function gmailWireCompose() {
+  if (composeWired) return;
+  composeWired = true;
+  $('composeToolbar').addEventListener('click', e => {
+    const b = e.target.closest('button[data-cmd]'); if (!b) return;
+    e.preventDefault();
+    $('composeBody').focus();
+    const cmd = b.dataset.cmd;
+    if (cmd === 'createLink') { const url = prompt('Adresse du lien (https://…) :'); if (url) document.execCommand('createLink', false, url); }
+    else document.execCommand(cmd, false, null);
+  });
+}
+function gmailOpenCompose(prefill) {
+  prefill = prefill || {};
+  gmailWireCompose();
+  composeReply = prefill.reply || null;
+  $('composeTitle').textContent = prefill.title || 'Nouveau message';
+  $('composeTo').value = prefill.to || '';
+  $('composeSubject').value = prefill.subject || '';
+  $('composeBody').innerHTML = prefill.body || '';
+  $('composeOverlay').classList.add('show');
+  setTimeout(() => $(prefill.to ? 'composeBody' : 'composeTo').focus(), 60);
+}
+function gmailNewMail() { gmailOpenCompose(); }
+window.gmailNewMail = gmailNewMail;
+
+function gmailReplyOpen() {
+  const b = gmailOpenedBody;
+  if (!b) return;
+  const to = gmailFromEmail(b.from);
+  let subj = b.subject || '';
+  if (!/^\s*re\s*:/i.test(subj)) subj = 'Re: ' + subj;
+  const original = b.html ? gmailSanitizeMailHtml(b.html) : esc(b.text || '').replace(/\n/g, '<br>');
+  const quoted = '<br><br><blockquote style="border-left:2px solid #ccc;margin:0;padding-left:12px;color:#666">'
+    + 'Le ' + esc(gmailFmtDate(b.date)) + ', ' + esc(gmailCleanFrom(b.from)) + ' a écrit :<br>' + original + '</blockquote>';
+  const reply = { threadId: b.threadId || '', inReplyTo: b.messageId || '', references: (b.references ? b.references + ' ' : '') + (b.messageId || '') };
+  // fermer la lecture, ouvrir la composition
+  const ov = document.getElementById('mailOverlay'); if (ov) ov.classList.remove('show');
+  gmailOpenedId = null; gmailOpenedBody = null;
+  gmailOpenCompose({ title: 'Répondre', to, subject: subj, body: quoted, reply });
+}
+window.gmailReplyOpen = gmailReplyOpen;
+
+async function gmailSendCompose() {
+  const to = $('composeTo').value.trim();
+  const subject = $('composeSubject').value.trim();
+  const bodyHtml = $('composeBody').innerHTML;
+  if (!to) { showToast('Indique au moins un destinataire'); $('composeTo').focus(); return; }
+  const btn = $('composeSendBtn'); btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    const headers = [];
+    headers.push('To: ' + to);
+    headers.push('Subject: ' + gmailEncodeSubject(subject));
+    if (composeReply && composeReply.inReplyTo) {
+      headers.push('In-Reply-To: ' + composeReply.inReplyTo);
+      headers.push('References: ' + (composeReply.references || composeReply.inReplyTo));
+    }
+    headers.push('MIME-Version: 1.0');
+    headers.push('Content-Type: text/html; charset="UTF-8"');
+    const raw = headers.join('\r\n') + '\r\n\r\n' + bodyHtml;
+    const payload = { raw: gmailB64urlUtf8(raw) };
+    if (composeReply && composeReply.threadId) payload.threadId = composeReply.threadId;
+    await gmailApi('/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    composeReply = null;
+    $('composeOverlay').classList.remove('show');
+    $('composeBody').innerHTML = '';
+    showToast('Message envoyé');
+  } catch (e) {
+    const hint = /403|400/.test(e.message) ? ' — as-tu bien ajouté la permission « gmail.send » et reconnecté ton compte ?' : '';
+    showToast('Échec de l\'envoi : ' + e.message + hint);
+  }
+  btn.disabled = false; btn.textContent = 'Envoyer';
+}
+window.gmailSendCompose = gmailSendCompose;
 
 // Ouvre / ferme le petit menu « Ranger dans... » sur un mail donné.
 // Si l'overlay de lecture est ouvert sur ce mail, on rafraîchit l'overlay ;
@@ -17212,6 +17376,14 @@ function gmailCleanFrom(s) {
   if (m) return m[1].trim() || m[2];
   return s;
 }
+// extrait juste l'adresse email d'un en-tête « Nom <email> » (ou l'adresse nue)
+function gmailFromEmail(s) {
+  if (!s) return '';
+  const m = /<([^>]+)>/.exec(s);
+  if (m) return m[1].trim();
+  const m2 = /[^\s<>@]+@[^\s<>@]+/.exec(s);
+  return m2 ? m2[0] : '';
+}
 
 function gmailFmtDate(s) {
   if (!s) return '';
@@ -17276,15 +17448,22 @@ function renderMailOverlay() {
   const menu = gmailMoveMenuFor === gmailOpenedId ? gmailMoveMenuHtml(gmailOpenedId) : '';
   const icoFolder = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
   const icoTrash = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/><path d="M10 11v6M14 11v6"/></svg>';
+  const icoReply = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17l-5-5 5-5"/><path d="M4 12h11a5 5 0 0 1 5 5v1"/></svg>';
+  const email = gmailFromEmail(b.from);
+  const nom = gmailCleanFrom(b.from);
   box.innerHTML = '<div class="mail-panel-head">'
     + '<span class="mail-panel-title" title="' + esc(b.subject || '') + '">' + esc(b.subject || '(sans objet)') + '</span>'
+    + '<button class="mail-icon-btn" onclick="gmailReplyOpen()" title="Répondre">' + icoReply + '</button>'
     + '<span class="mail-move-wrap"><button class="mail-icon-btn" onclick="gmailToggleMoveMenu(\'' + gmailOpenedId + '\',event)" title="Ranger dans un dossier">' + icoFolder + '</button>' + menu + '</span>'
     + '<button class="mail-icon-btn danger" onclick="gmailTrashMessage(\'' + gmailOpenedId + '\')" title="Mettre à la corbeille">' + icoTrash + '</button>'
     + '<button class="mail-panel-close" data-close title="Fermer">✕</button>'
     + '</div>'
     + '<div class="mail-panel-body">'
     + '<div class="mail-read-head">'
-    + '<div class="mail-read-from">' + esc(gmailCleanFrom(b.from)) + '</div>'
+    + '<div class="mail-read-who">'
+    + '<div class="mail-read-from">' + esc(nom) + '</div>'
+    + (email && email !== nom ? '<div class="mail-read-email">&lt;' + esc(email) + '&gt;</div>' : '')
+    + '</div>'
     + '<div class="mail-read-date">' + esc(gmailFmtDate(b.date)) + '</div>'
     + '</div>'
     + '<div class="mail-read-body">' + bodyHtml + '</div>'
@@ -17310,11 +17489,14 @@ function renderMailSpace() {
     const railBuiltin = [
       { key: 'inbox', label: 'Boîte de réception', ico: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg>' },
       { key: 'starred', label: 'Étoilés', ico: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6L12 17l-5.4 2.6 1-6L3.3 9.4l6-.9z"/></svg>' }
-    ].map(t =>
-      '<div class="mail-rail-item' + (!rechercheActive && gmailFilter === t.key ? ' on' : '') + '" onclick="gmailSetFilter(\'' + t.key + '\')">'
+    ].map(t => {
+      const c = gmailCountFor(t.key);
+      return '<div class="mail-rail-item' + (!rechercheActive && gmailFilter === t.key ? ' on' : '') + '" onclick="gmailSetFilter(\'' + t.key + '\')">'
       + '<span class="mail-rail-ico">' + t.ico + '</span>'
-      + '<span class="mail-rail-name">' + esc(t.label) + '</span></div>'
-    ).join('');
+      + '<span class="mail-rail-name">' + esc(t.label) + '</span>'
+      + (typeof c === 'number' ? '<span class="mail-rail-count">' + c + '</span>' : '')
+      + '</div>';
+    }).join('');
 
     const railFolders = gmailLabels.map(l => {
       const c = gmailFolderColor(l.id);
@@ -17325,6 +17507,7 @@ function renderMailSpace() {
         + '<button class="mail-rail-color" onclick="gmailToggleColorMenu(\'' + l.id + '\',event)" title="Couleur du dossier">'
         + '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.5 1.8-1.5H16a6 6 0 0 0 6-6c0-4.4-4.5-8-10-8z"/></svg>'
         + '</button>'
+        + (typeof gmailCounts[l.id] === 'number' ? '<span class="mail-rail-count">' + gmailCounts[l.id] + '</span>' : '')
         + '</div>' + row;
     }).join('');
     const railHtml = railBuiltin
@@ -17376,6 +17559,7 @@ function renderMailSpace() {
       + '<div class="space-head">'
       + '<span class="space-title">Mail</span>'
       + '<span style="flex:1"></span>'
+      + '<button class="btn primary" onclick="gmailNewMail()" title="Écrire un nouveau mail">✎ Nouveau</button>'
       + '<button class="btn ghost" onclick="gmailFetchList()" title="Actualiser">↻ Actualiser</button>'
       + '<button class="btn ghost" onclick="gmailDisconnect()" title="Déconnecter Gmail">Déconnecter</button>'
       + '</div>'
