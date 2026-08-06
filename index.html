@@ -2571,9 +2571,22 @@
   .mail-panel-close:hover { background: var(--bg-soft); }
   .mail-panel-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
   .mail-panel-body .mail-read-body { flex: 1; height: auto; }
-  /* Onglets dossiers (dynamiques, peuvent défiler horizontalement) */
-  .mail-tabs { display: flex; gap: 6px; padding: 8px 12px 6px; overflow-x: auto; border-bottom: 1px solid var(--border); flex-wrap: nowrap; }
-  .mail-tabs .space-tab { flex: 0 0 auto; white-space: nowrap; }
+  /* Disposition à deux colonnes : rail (dossiers) + liste */
+  .mail-layout { display: flex; align-items: stretch; }
+  .mail-rail { flex: 0 0 190px; border-right: 1px solid var(--border); padding: 8px 6px; overflow-y: auto; }
+  .mail-main { flex: 1; min-width: 0; }
+  .mail-rail-item { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; color: var(--text); }
+  .mail-rail-item:hover { background: var(--bg-soft); }
+  .mail-rail-item.on { background: var(--accent-soft, var(--bg-soft)); font-weight: 600; }
+  .mail-rail-ico { display: inline-flex; color: var(--text-soft); flex: 0 0 auto; }
+  .mail-rail-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
+  .mail-rail-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-rail-color { background: transparent; border: none; color: var(--text-soft); cursor: pointer; padding: 2px; opacity: 0; transition: opacity .1s; flex: 0 0 auto; }
+  .mail-rail-item:hover .mail-rail-color, .mail-rail-item.on .mail-rail-color { opacity: 1; }
+  .mail-rail-color:hover { color: var(--accent); }
+  .mail-rail-sep { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); padding: 12px 9px 4px; }
+  .mail-rail-empty { font-size: 12px; color: var(--text-soft); padding: 12px 9px; line-height: 1.4; }
+  .gmail-color-menu { left: 0; right: auto; }
   /* Barre de recherche */
   .mail-searchbar { position: relative; padding: 10px 12px 0; }
   .mail-search { width: 100%; padding: 8px 32px 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); }
@@ -2582,8 +2595,30 @@
   .mail-search-clear:hover { color: var(--text); }
   .mail-search-banner { padding: 6px 14px; font-size: 12px; color: var(--text-soft); background: var(--bg-soft); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .mail-search-clear-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  /* Case à cocher de sélection (1re colonne) */
+  .mail-check { width: 18px; height: 18px; border: 1.5px solid var(--border-strong); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: white; font-size: 12px; opacity: 0; transition: opacity .1s; }
+  .mail-row:hover .mail-check, .mail-check.on { opacity: 1; }
+  .mail-check.on { background: var(--accent); border-color: var(--accent); }
+  .mail-row.selected { background: var(--bg-soft); }
+  /* Pastille de couleur sur un onglet dossier */
+  .mail-tab-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  /* Barre d'actions groupées */
+  .mail-bulkbar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+  .mail-bulk-count { font-size: 13px; font-weight: 600; }
+  .mail-bulk-all { font-size: 12px; color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .mail-bulk-close { background: transparent; border: none; color: var(--text-soft); cursor: pointer; font-size: 15px; padding: 2px 6px; }
+  .mail-bulk-close:hover { color: var(--text); }
+  /* Menu couleur d'un dossier */
+  .gmail-color-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 20; padding: 10px; width: 200px; }
+  .gc-title { font-size: 12px; color: var(--text-soft); margin-bottom: 8px; }
+  .gc-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .gc-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+  .gc-swatch.on { border-color: var(--text); }
+  .gc-none { margin-top: 8px; width: 100%; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px; font-size: 12px; color: var(--text-soft); cursor: pointer; font-family: var(--font-sans); }
+  .gc-none:hover { background: var(--bg-soft); }
+  .mv-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
   /* Bouton Ranger + menu */
-  .mail-row { grid-template-columns: 24px 180px 1fr 90px 28px 28px; }
+  .mail-row { grid-template-columns: 26px 24px 180px 1fr 90px 28px 28px; }
   .mail-move-wrap { position: relative; }
   .mail-move { background: transparent; border: none; color: var(--text-soft); cursor: pointer; padding: 4px; opacity: 0; transition: opacity .1s; }
   .mail-row:hover .mail-move { opacity: 1; }
@@ -2595,11 +2630,19 @@
   .mv-sep { height: 1px; background: var(--border); margin: 4px 0; }
   .mv-empty { padding: 8px 10px; color: var(--text-soft); font-size: 12px; font-style: italic; }
   @media (max-width: 640px) {
-    .mail-row { grid-template-columns: 24px 1fr 70px 26px; }
+    .mail-row { grid-template-columns: 24px 22px 1fr 62px 26px; }
     .mail-row .mail-from { display: none; }
     .mail-row .mail-trash { display: none; }
     .mail-row .mail-move { opacity: 1; }
+    .mail-row .mail-check { opacity: 1; }
     .mail-move-menu { right: -10px; }
+    /* rail en bandeau horizontal défilable sur téléphone */
+    .mail-layout { flex-direction: column; }
+    .mail-rail { flex: 0 0 auto; border-right: none; border-bottom: 1px solid var(--border); display: flex; gap: 6px; overflow-x: auto; padding: 8px; }
+    .mail-rail-item { flex: 0 0 auto; }
+    .mail-rail-sep, .mail-rail-empty { display: none; }
+    .mail-rail-item .mail-rail-name { max-width: 120px; }
+    .gmail-color-menu { left: auto; right: 0; }
   }
 </style>
 </head>
@@ -16445,6 +16488,9 @@ let gmailOpenedBody = null;
 let gmailLoading = false;
 let gmailMoveMenuFor = null; // id du message dont le menu « Ranger » est ouvert
 let gmailSearchQuery = ''; // recherche libre (syntaxe Gmail : from:, subject:, mots-clés...)
+let gmailColorMenuFor = null; // id du dossier dont le sélecteur de couleur est ouvert
+let gmailSelected = new Set(); // ids des mails cochés (sélection multiple)
+let gmailBulkMenuOpen = false; // menu « Ranger dans » de la barre d'actions groupées
 
 function loadGoogleScript() {
   if (gmailScriptLoaded) return Promise.resolve();
@@ -16523,7 +16569,9 @@ async function gmailApi(path, opts) {
   });
   if (res.status === 401) { clearGmailToken(); throw new Error('Session Gmail expirée — reconnecte-toi'); }
   if (!res.ok) throw new Error('Gmail API ' + res.status);
-  return res.json();
+  // certains points d'API (batchModify…) répondent 204 sans corps → pas de JSON à parser
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : {};
 }
 
 function gmailHeader(msg, name) {
@@ -16567,6 +16615,21 @@ async function gmailFetchLabels() {
   } catch (e) { gmailLabels = []; }
 }
 
+// Couleur d'affichage d'un dossier — stockée LOCALEMENT dans l'app (indépendante
+// de Gmail : elle veut juste des couleurs qui lui plaisent pour repérer ses dossiers).
+// Palette = les 6 pastels de l'app + quelques teintes plus soutenues.
+const FOLDER_PALETTE = PALETTE.concat(['#f2b8a2', '#a2c8f2', '#c3b2e6', '#8fcf9f', '#e0a9c4', '#d9c94a']);
+function gmailFolderColor(labelId) { return (state.gmailFolderColors || {})[labelId] || ''; }
+function gmailSetFolderColor(labelId, color, ev) {
+  if (ev) ev.stopPropagation();
+  gmailColorMenuFor = null;
+  if (!state.gmailFolderColors) state.gmailFolderColors = {};
+  if (color) state.gmailFolderColors[labelId] = color; else delete state.gmailFolderColors[labelId];
+  save();
+  renderMailSpace();
+}
+window.gmailSetFolderColor = gmailSetFolderColor;
+
 function gmailCurrentQuery() {
   // recherche libre : on la laisse gagner sur le filtre (comme Gmail — chercher = tout, pas juste le dossier courant)
   if (gmailSearchQuery && gmailSearchQuery.trim()) return gmailSearchQuery.trim();
@@ -16589,6 +16652,119 @@ function gmailSetSearch(v) {
 function gmailClearSearch() { if (!gmailSearchQuery) return; gmailSearchQuery = ''; gmailFetchList(); }
 window.gmailSetSearch = gmailSetSearch;
 window.gmailClearSearch = gmailClearSearch;
+
+/* ---------- Couleur d'un dossier (libellé Gmail) ---------- */
+function gmailToggleColorMenu(labelId, ev) {
+  if (ev) ev.stopPropagation();
+  gmailColorMenuFor = (gmailColorMenuFor === labelId) ? null : labelId;
+  gmailMoveMenuFor = null; gmailBulkMenuOpen = false;
+  renderMailSpace();
+}
+window.gmailToggleColorMenu = gmailToggleColorMenu;
+
+function gmailColorMenuHtml(labelId) {
+  const cur = gmailFolderColor(labelId);
+  const swatches = FOLDER_PALETTE.map(c =>
+    '<button class="gc-swatch' + (cur === c ? ' on' : '') + '" style="background:' + dotOf(c) + '" '
+    + 'onclick="gmailSetFolderColor(\'' + labelId + '\',\'' + c + '\',event)"></button>'
+  ).join('');
+  return '<div class="gmail-color-menu" onclick="event.stopPropagation()">'
+    + '<div class="gc-title">Couleur du dossier</div>'
+    + '<div class="gc-grid">' + swatches + '</div>'
+    + '<button class="gc-none" onclick="gmailSetFolderColor(\'' + labelId + '\',\'\',event)">Aucune couleur</button>'
+    + '</div>';
+}
+
+/* ---------- Sélection multiple + actions groupées ---------- */
+function gmailToggleSelect(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (gmailSelected.has(id)) gmailSelected.delete(id); else gmailSelected.add(id);
+  gmailBulkMenuOpen = false;
+  renderMailSpace();
+}
+function gmailSelectAllVisible() {
+  const allSel = gmailList.length && gmailList.every(m => gmailSelected.has(m.id));
+  if (allSel) gmailSelected.clear();
+  else gmailList.forEach(m => gmailSelected.add(m.id));
+  renderMailSpace();
+}
+function gmailClearSelection() { gmailSelected.clear(); gmailBulkMenuOpen = false; renderMailSpace(); }
+function gmailToggleBulkMenu(ev) { if (ev) ev.stopPropagation(); gmailBulkMenuOpen = !gmailBulkMenuOpen; renderMailSpace(); }
+
+async function gmailBulkTrash() {
+  const ids = Array.from(gmailSelected);
+  if (!ids.length) return;
+  if (!confirm('Mettre ' + ids.length + ' mail' + (ids.length > 1 ? 's' : '') + ' à la corbeille ? Récupérable 30 jours dans Gmail.')) return;
+  try {
+    // batchModify : un seul appel pour tout le lot ; ajouter TRASH = mise à la corbeille (récupérable)
+    await gmailApi('/messages/batchModify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, addLabelIds: ['TRASH'], removeLabelIds: ['INBOX'] })
+    });
+    gmailList = gmailList.filter(x => !gmailSelected.has(x.id));
+    gmailSelected.clear();
+    renderMailSpace();
+    showToast(ids.length + ' mail' + (ids.length > 1 ? 's mis' : ' mis') + ' à la corbeille');
+  } catch (e) { showToast('Erreur : ' + e.message); }
+}
+
+async function gmailBulkMove(labelId, ev) {
+  if (ev) ev.stopPropagation();
+  const ids = Array.from(gmailSelected);
+  if (!ids.length) return;
+  gmailBulkMenuOpen = false;
+  try {
+    await gmailApi('/messages/batchModify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, addLabelIds: [labelId], removeLabelIds: ['INBOX'] })
+    });
+    if (gmailFilter === 'inbox') gmailList = gmailList.filter(x => !gmailSelected.has(x.id));
+    const n = ids.length; const lab = gmailLabels.find(l => l.id === labelId);
+    gmailSelected.clear();
+    renderMailSpace();
+    showToast(n + ' mail' + (n > 1 ? 's rangés' : ' rangé') + ' dans « ' + (lab ? lab.name : 'dossier') + ' »');
+  } catch (e) { showToast('Erreur : ' + e.message); }
+}
+
+async function gmailBulkCreateFolderAndMove(ev) {
+  if (ev) ev.stopPropagation();
+  const nom = prompt('Nom du nouveau dossier :');
+  if (!nom || !nom.trim()) return;
+  try {
+    const created = await gmailApi('/labels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nom.trim(), labelListVisibility: 'labelShow', messageListVisibility: 'show' })
+    });
+    gmailLabels.push({ id: created.id, name: created.name, bg: '', text: '' });
+    gmailLabels.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    await gmailBulkMove(created.id);
+  } catch (e) { showToast('Impossible de créer le dossier : ' + e.message); }
+}
+
+window.gmailToggleSelect = gmailToggleSelect;
+window.gmailSelectAllVisible = gmailSelectAllVisible;
+window.gmailClearSelection = gmailClearSelection;
+window.gmailToggleBulkMenu = gmailToggleBulkMenu;
+window.gmailBulkTrash = gmailBulkTrash;
+window.gmailBulkMove = gmailBulkMove;
+window.gmailBulkCreateFolderAndMove = gmailBulkCreateFolderAndMove;
+
+function gmailBulkMoveMenuHtml() {
+  const items = gmailLabels.map(l => {
+    const c = gmailFolderColor(l.id);
+    return '<button class="mv-item" onclick="gmailBulkMove(\'' + l.id + '\',event)">'
+      + '<span class="mv-dot" style="background:' + (c ? dotOf(c) : 'var(--border-strong)') + '"></span>'
+      + esc(l.name) + '</button>';
+  }).join('');
+  return '<div class="mail-move-menu" onclick="event.stopPropagation()">'
+    + (items || '<div class="mv-empty">Aucun dossier existant</div>')
+    + '<div class="mv-sep"></div>'
+    + '<button class="mv-item mv-new" onclick="gmailBulkCreateFolderAndMove(event)">＋ Nouveau dossier…</button>'
+    + '</div>';
+}
 
 async function gmailFetchList() {
   gmailLoading = true; renderMailSpace();
@@ -16782,11 +16958,12 @@ function gmailSanitizeMailHtml(html) {
 }
 
 function gmailMoveMenuHtml(msgId) {
-  const items = gmailLabels.map(l =>
-    '<button class="mv-item" onclick="gmailMoveTo(\'' + msgId + '\',\'' + l.id + '\',event)">'
-    + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
-    + esc(l.name) + '</button>'
-  ).join('');
+  const items = gmailLabels.map(l => {
+    const c = gmailFolderColor(l.id);
+    return '<button class="mv-item" onclick="gmailMoveTo(\'' + msgId + '\',\'' + l.id + '\',event)">'
+      + '<span class="mv-dot" style="background:' + (c ? dotOf(c) : 'var(--border-strong)') + '"></span>'
+      + esc(l.name) + '</button>';
+  }).join('');
   return '<div class="mail-move-menu" onclick="event.stopPropagation()">'
     + (items || '<div class="mv-empty">Aucun dossier existant</div>')
     + '<div class="mv-sep"></div>'
@@ -16840,18 +17017,36 @@ function renderMailSpace() {
       + '<button class="btn primary" onclick="gmailConnect()">Se connecter à Gmail</button>'
       + '</div></div>';
   } else {
-    // Onglets : Boîte de réception + Étoilés + dossiers utilisateur triés
-    const tabs = [
-      { key: 'inbox', label: 'Boîte de réception' },
-      { key: 'starred', label: 'Étoilés' }
-    ].concat(gmailLabels.map(l => ({ key: 'label:' + l.id, label: l.name })));
-    const tabsHtml = tabs.map(t =>
-      '<span class="space-tab' + (!rechercheActive && gmailFilter === t.key ? ' on' : '') + '" onclick="gmailSetFilter(\'' + t.key + '\')" title="' + esc(t.label) + '">' + esc(t.label) + '</span>'
+    // Colonne latérale du Mail : Boîte de réception, Étoilés, puis les dossiers (couleur locale)
+    const railBuiltin = [
+      { key: 'inbox', label: 'Boîte de réception', ico: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4z"/></svg>' },
+      { key: 'starred', label: 'Étoilés', ico: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6L12 17l-5.4 2.6 1-6L3.3 9.4l6-.9z"/></svg>' }
+    ].map(t =>
+      '<div class="mail-rail-item' + (!rechercheActive && gmailFilter === t.key ? ' on' : '') + '" onclick="gmailSetFilter(\'' + t.key + '\')">'
+      + '<span class="mail-rail-ico">' + t.ico + '</span>'
+      + '<span class="mail-rail-name">' + esc(t.label) + '</span></div>'
     ).join('');
 
+    const railFolders = gmailLabels.map(l => {
+      const c = gmailFolderColor(l.id);
+      const menu = gmailColorMenuFor === l.id ? gmailColorMenuHtml(l.id) : '';
+      return '<div class="mail-rail-item' + (!rechercheActive && gmailFilter === 'label:' + l.id ? ' on' : '') + '" onclick="gmailSetFilter(\'label:' + l.id + '\')">'
+        + '<span class="mail-rail-dot" style="background:' + (c ? dotOf(c) : 'var(--border-strong)') + '"></span>'
+        + '<span class="mail-rail-name" title="' + esc(l.name) + '">' + esc(l.name) + '</span>'
+        + '<span class="mail-move-wrap"><button class="mail-rail-color" onclick="gmailToggleColorMenu(\'' + l.id + '\',event)" title="Couleur du dossier">'
+        + '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1 .8-1.5 1.8-1.5H16a6 6 0 0 0 6-6c0-4.4-4.5-8-10-8z"/></svg>'
+        + '</button>' + menu + '</span>'
+        + '</div>';
+    }).join('');
+    const railHtml = railBuiltin
+      + (railFolders ? '<div class="mail-rail-sep">Dossiers</div>' + railFolders : '<div class="mail-rail-empty">Range un mail pour créer ton premier dossier.</div>');
+
+    const nbSel = gmailSelected.size;
     const rows = gmailList.map(m => {
       const menu = gmailMoveMenuFor === m.id ? gmailMoveMenuHtml(m.id) : '';
-      return '<div class="mail-row' + (m.unread ? ' unread' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
+      const checked = gmailSelected.has(m.id);
+      return '<div class="mail-row' + (m.unread ? ' unread' : '') + (checked ? ' selected' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
+        + '<span class="mail-check' + (checked ? ' on' : '') + '" onclick="gmailToggleSelect(\'' + m.id + '\',event)" title="Sélectionner">' + (checked ? '✓' : '') + '</span>'
         + '<span class="mail-star' + (m.starred ? ' on' : '') + '">' + (m.starred ? '★' : '☆') + '</span>'
         + '<span class="mail-from" title="' + esc(m.from) + '">' + esc(gmailCleanFrom(m.from)) + '</span>'
         + '<span class="mail-subj"><b>' + esc(m.subject) + '</b><i>' + esc(m.snippet) + '</i></span>'
@@ -16876,25 +17071,37 @@ function renderMailSpace() {
       ? '<div class="mail-search-banner">Résultats pour « ' + esc(gmailSearchQuery) + ' » <span class="mail-search-clear-link" onclick="gmailClearSearch()">Revenir aux dossiers</span></div>'
       : '';
 
-    html = '<div class="space wide" onclick="if(gmailMoveMenuFor){gmailMoveMenuFor=null;renderMailSpace()}">'
+    // barre d'actions groupées (visible dès qu'au moins un mail est coché)
+    const allSel = gmailList.length && gmailList.every(m => gmailSelected.has(m.id));
+    const bulkBar = nbSel ? '<div class="mail-bulkbar">'
+      + '<span class="mail-bulk-count">' + nbSel + ' sélectionné' + (nbSel > 1 ? 's' : '') + '</span>'
+      + '<span class="mail-bulk-all" onclick="gmailSelectAllVisible()">' + (allSel ? 'Tout désélectionner' : 'Tout sélectionner') + '</span>'
+      + '<span style="flex:1"></span>'
+      + '<span class="mail-move-wrap"><button class="btn ghost" onclick="gmailToggleBulkMenu(event)">Ranger dans…</button>'
+      + (gmailBulkMenuOpen ? gmailBulkMoveMenuHtml() : '') + '</span>'
+      + '<button class="btn danger" onclick="gmailBulkTrash()">Corbeille</button>'
+      + '<button class="mail-bulk-close" onclick="gmailClearSelection()" title="Annuler la sélection">✕</button>'
+      + '</div>' : '';
+
+    html = '<div class="space wide" onclick="if(gmailMoveMenuFor||gmailBulkMenuOpen||gmailColorMenuFor){gmailMoveMenuFor=null;gmailBulkMenuOpen=false;gmailColorMenuFor=null;renderMailSpace()}">'
       + '<div class="space-head">'
       + '<span class="space-title">Mail</span>'
       + '<span style="flex:1"></span>'
       + '<button class="btn ghost" onclick="gmailFetchList()" title="Actualiser">↻ Actualiser</button>'
       + '<button class="btn ghost" onclick="gmailDisconnect()" title="Déconnecter Gmail">Déconnecter</button>'
       + '</div>'
+      + '<div class="mail-layout">'
+      + '<div class="mail-rail">' + railHtml + '</div>'
+      + '<div class="mail-main">'
       + searchBar
-      + '<div class="mail-tabs">' + tabsHtml + '</div>'
       + bandeauRecherche
+      + bulkBar
       + (gmailLoading ? '<div class="mail-loading">Chargement…</div>' : (rows || '<div class="mail-empty">Aucun mail à afficher.</div>'))
+      + '</div>'
+      + '</div>'
       + '</div>';
   }
   canvas.innerHTML = html;
-  // Rendre le focus au champ de recherche si l'utilisatrice était en train de taper
-  const inp = document.querySelector('.mail-search');
-  if (inp && document.activeElement && document.activeElement.tagName !== 'INPUT' && rechercheActive) {
-    // ne pas voler le focus au chargement — seulement si on a explicitement une recherche active
-  }
 }
 window.renderMailSpace = renderMailSpace;
 window.gmailAutoLoad = gmailAutoLoad;
