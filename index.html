@@ -461,6 +461,26 @@
   .folder-cover-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .folder-cover-row { display: flex; gap: 8px; align-items: center; }
   .folder-cover-row .styled-select { flex: 1; }
+  .folder-cover-fit { display: flex; gap: 6px; margin-top: 8px; }
+  .fit-opt { flex: 1; font-size: 12px; color: var(--text-soft); padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; }
+  .fit-opt:hover { background: var(--surface-2); }
+  .fit-opt.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  /* partage : fenêtre + boutons */
+  .share-linkrow { display: flex; gap: 8px; }
+  .share-linkrow input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); font-size: 12.5px; color: var(--text); }
+  .share-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; margin-top: 12px; }
+  .share-app { display: block; text-align: center; padding: 9px 8px; border: 1px solid var(--border); border-radius: 9px; font-size: 13px; color: var(--text); text-decoration: none; cursor: pointer; }
+  .share-app:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  /* visionneuse publique (page ouverte via ?partage=) */
+  .share-view { max-width: 760px; margin: 0 auto; padding: 34px 20px 40px; }
+  .share-view .sh-title { font-size: 1.8em; font-weight: 600; margin: 0 0 12px; }
+  .share-view .sh-sub { color: var(--text-soft); font-size: 13px; margin: 2px 0; }
+  .share-view .sh-tasks { list-style: none; padding: 0; margin: 14px 0 0; }
+  .share-view .sh-tasks li { padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .share-view .sh-tasks li.done { color: var(--text-faint); text-decoration: line-through; }
+  .share-view .sh-due { color: var(--text-faint); font-size: 12px; }
+  .share-view img { max-width: 100%; height: auto; border-radius: 8px; }
+  .share-foot { text-align: center; color: var(--text-faint); font-size: 12px; padding: 22px; }
   /* image de couverture d'une note (au lieu de l'aperçu du contenu) */
   .note-card.has-cover { overflow: hidden; }
   .note-card-cover { margin: -12px -14px 10px; height: 118px; background: var(--surface); overflow: hidden; }
@@ -2888,6 +2908,10 @@
         <button type="button" class="styled-select" id="folderCoverBtn" onclick="pickFolderCover()">Choisir une image…</button>
         <button type="button" class="btn-ghost hidden" id="folderCoverClear" onclick="clearFolderCover()">Retirer</button>
       </div>
+      <div class="folder-cover-fit hidden" id="folderCoverFit">
+        <button type="button" class="fit-opt" data-fit="cover" onclick="setFolderCoverFit('cover')">Remplir</button>
+        <button type="button" class="fit-opt" data-fit="contain" onclick="setFolderCoverFit('contain')">Image entière</button>
+      </div>
       <label style="margin-top:14px">Dossier parent (facultatif)</label>
       <button type="button" class="styled-select" id="folderParentBtn"></button>
       <label style="margin-top:14px">Dépend d'un projet (facultatif)</label>
@@ -3013,6 +3037,7 @@
       <span class="page-crumb" id="pageCrumb"></span>
       <div style="display:flex;align-items:center;gap:2px">
         <button class="icon-btn hidden" id="pageTplBtn" title="Modèles"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
+        <button class="icon-btn hidden" id="pageShareBtn" title="Partager (lien lecture seule)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
         <button class="icon-btn" id="pageDupBtn" title="Dupliquer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="icon-btn" id="pageModeBtn" title="Basculer entre fenêtre et panneau latéral"></button>
         <button class="icon-btn danger" id="pageDelBtn" title="Supprimer"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/><path d="M10 11v6M14 11v6"/></svg></button>
@@ -8490,7 +8515,7 @@ function noteCardHtml(n) {
   const link = noteLinkLabel(n);
   const col = dotOf(n.color || '#eae8e4');
   const ico = (n.icon && ICON_LIB[n.icon]) ? '<span class="nc-ico-svg">' + iconSvg(n.icon, 16, col) + '</span>' : '<span class="nc-ico-dot" style="background:' + col + '"></span>';
-  const cover = n.cover ? `<div class="note-card-cover"><img src="${n.cover}" alt="" loading="lazy"></div>` : '';
+  const cover = n.cover ? `<div class="note-card-cover"><img src="${n.cover}" alt="" loading="lazy"${objFit(n)}></div>` : '';
   const body = n.cover ? '' : `<div class="note-card-body" data-note="${n.id}">${n.body ? sanitizeNoteHtml(n.body) : '<span class="note-card-empty">Note vide</span>'}</div>`;
   return `<div class="note-card ${n.cover ? 'has-cover' : ''}" draggable="true" ondragstart="noteDragStart(event,'${n.id}',this)" ondragend="noteDragEnd(this)" style="border-top:3px solid ${col}" onclick="openNote('${n.id}')">
       ${cover}
@@ -8499,7 +8524,8 @@ function noteCardHtml(n) {
       <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="ncf-right"><span class="note-card-date">${esc(noteDateLabel(n))}</span><span class="note-card-tools">
         <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
         <button class="nc-btn" onclick="openNoteCoverMenu('${n.id}',event,this)" title="Image de couverture">${ICON_IMAGE}</button>
-        <button class="nc-btn" onclick="openNoteSendMenu('${n.id}',event,this)" title="Envoyer vers…">${ICON_SEND}</button>
+        <button class="nc-btn" onclick="openShareDialog('note','${n.id}',event)" title="Partager (lien lecture seule)">${ICON_SHARE}</button>
+        <button class="nc-btn" onclick="openNoteSendMenu('${n.id}',event,this)" title="Ranger dans un dossier…">${ICON_SEND}</button>
         <button class="nc-btn" onclick="toggleNoteHidden('${n.id}',event)" title="Masquer cette tuile">${ICON_EYE}</button>
       </span></span></div>
     </div>`;
@@ -8509,9 +8535,15 @@ function openNoteCoverMenu(id, e, anchor) {
   e.stopPropagation();
   const n = state.notes.find(x => x.id === id); if (!n) return;
   const items = [{ value: 'pick', label: n.cover ? "Changer l'image" : 'Choisir une image de couverture' }];
-  if (n.cover) items.push({ value: 'remove', label: 'Retirer (afficher le contenu)' });
-  openStyledMenu(anchor, [{ items }], '', v => {
+  if (n.cover) items.push(
+    { value: 'fill', label: 'Remplir la bannière' },
+    { value: 'contain', label: "Voir l'image entière" },
+    { value: 'remove', label: 'Retirer (afficher le contenu)' });
+  const cur = n.cover ? (n.coverFit === 'contain' ? 'contain' : 'fill') : '';
+  openStyledMenu(anchor, [{ items }], cur, v => {
     if (v === 'pick') pickImages(srcs => { n.cover = srcs[0]; n.updated = Date.now(); save(); render(); });
+    else if (v === 'fill') { n.coverFit = 'cover'; n.updated = Date.now(); save(); render(); }
+    else if (v === 'contain') { n.coverFit = 'contain'; n.updated = Date.now(); save(); render(); }
     else if (v === 'remove') { n.cover = ''; n.updated = Date.now(); save(); render(); }
   });
 }
@@ -8676,7 +8708,7 @@ function folderTileHtml(f) {
   const subs = foldersInParent(f.id).length;
   const meta = subs ? (notes + ' note' + (notes > 1 ? 's' : '') + ' · ' + subs + ' dossier' + (subs > 1 ? 's' : '')) : (notes + ' note' + (notes > 1 ? 's' : ''));
   const face = f.cover
-    ? '<div class="folder-tile-cover"><img src="' + f.cover + '" alt="" loading="lazy"></div>'
+    ? '<div class="folder-tile-cover"><img src="' + f.cover + '" alt="" loading="lazy"' + objFit(f) + '></div>'
     : '<div class="folder-tile-ico">' + folderSvg(f.color, f.icon, 46) + '</div>';
   return '<div class="folder-tile' + (f.cover ? ' has-cover' : '') + '" onclick="openNotesFolder(\'' + f.id + '\')" ondragover="noteDragOver(event,this)" ondragleave="this.classList.remove(\'drop-hover\')" ondrop="noteDropOnFolder(event,\'' + f.id + '\',this)">' +
     face +
@@ -10780,6 +10812,7 @@ function openFolderModal(id, presetParent) {
   folderDraftProj = f ? (f.projectId || '') : '';
   folderDraftIcon = f ? (f.icon || '') : '';
   folderDraftCover = f ? (f.cover || '') : '';
+  folderDraftCoverFit = f ? (f.coverFit || 'cover') : 'cover';
   folderDraftParent = f ? (f.parentId || '') : (presetParent || '');
   setFolderTab('color');
   renderFolderColor();
@@ -10796,19 +10829,22 @@ function openFolderModal(id, presetParent) {
 window.openFolderModal = openFolderModal;
 let reopenNoteAfterFolder = false;
 // aperçu du dossier : l'image de couverture si elle est choisie, sinon la grande icône colorée
-let folderDraftCover = '';
+let folderDraftCover = '', folderDraftCoverFit = 'cover';
 function renderFolderPreview() {
   $('folderPreview').innerHTML = folderDraftCover
-    ? `<div class="folder-cover-preview"><img src="${folderDraftCover}" alt=""></div>`
+    ? `<div class="folder-cover-preview"><img src="${folderDraftCover}" alt=""${folderDraftCoverFit === 'contain' ? ' style="object-fit:contain"' : ''}></div>`
     : folderSvg(folderDraftColor, folderDraftIcon, 96);
 }
 function updateFolderCoverBtn() {
   $('folderCoverBtn').textContent = folderDraftCover ? "Changer l'image" : 'Choisir une image…';
   $('folderCoverClear').classList.toggle('hidden', !folderDraftCover);
+  $('folderCoverFit').classList.toggle('hidden', !folderDraftCover);
+  $$('#folderCoverFit .fit-opt').forEach(b => b.classList.toggle('on', b.dataset.fit === folderDraftCoverFit));
 }
 function pickFolderCover() { pickImages(srcs => { folderDraftCover = srcs[0]; renderFolderPreview(); updateFolderCoverBtn(); }); }
 function clearFolderCover() { folderDraftCover = ''; renderFolderPreview(); updateFolderCoverBtn(); }
-window.pickFolderCover = pickFolderCover; window.clearFolderCover = clearFolderCover;
+function setFolderCoverFit(fit) { folderDraftCoverFit = fit; renderFolderPreview(); updateFolderCoverBtn(); }
+window.pickFolderCover = pickFolderCover; window.clearFolderCover = clearFolderCover; window.setFolderCoverFit = setFolderCoverFit;
 function renderFolderColor() { $('folderColorPicker').innerHTML = paletteHtml(folderDraftColor, 'pickFolderColor', 'folder'); }
 window.pickFolderColor = c => { folderDraftColor = c; rememberColor(c); renderFolderColor(); renderFolderPreview(); };
 function renderFolderIconGrid() {
@@ -10829,7 +10865,7 @@ function saveFolder() {
   if (!name) { $('folderName').focus(); return; }
   let parentId = folderDraftParent || '';
   if (editingFolder && parentId && (parentId === editingFolder || folderDescendants(editingFolder).has(parentId))) parentId = '';
-  const data = { name, color: folderDraftColor, projectId: folderDraftProj || '', icon: folderDraftIcon || '', cover: folderDraftCover || '', parentId };
+  const data = { name, color: folderDraftColor, projectId: folderDraftProj || '', icon: folderDraftIcon || '', cover: folderDraftCover || '', coverFit: folderDraftCover ? folderDraftCoverFit : '', parentId };
   let fid = editingFolder;
   if (editingFolder) Object.assign(folderById(editingFolder), data);
   else { fid = uid(); state.noteFolders.push({ id: fid, ...data }); }
@@ -12676,6 +12712,9 @@ function renderPage() {
       ico.onclick = () => openIconPicker(coll, id);
     }
   }
+  // bouton « Partager » : pour l'instant les projets (lien public en lecture seule)
+  const shBtn = $('pageShareBtn');
+  if (shBtn) { shBtn.classList.toggle('hidden', coll !== 'projects'); shBtn.onclick = () => openShareDialog('project', id); }
 
   // bandeau « se répète » : c'est le seul endroit d'où l'on agit sur la série entière
   $('pageRecur').innerHTML = isSeries(rec)
@@ -12945,6 +12984,115 @@ async function migrateImagesToStorage() {
   alert(`Migration terminée : ${done} image(s) envoyée(s) en ligne${failed ? ` — ${failed} n’ont pas pu l’être (gardées en local).` : '.'}`);
 }
 window.migrateImagesToStorage = migrateImagesToStorage;
+
+/* ---------- Partage : lien public en lecture seule (table Supabase `shares`) ----------
+   Crée une page figée (HTML rendu) lisible par n'importe qui via un lien, sans compte.
+   Les images (URLs Supabase publiques ou base64) s'affichent. Révocable à tout moment. */
+const ICON_SHARE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+const newSlug = () => Array.from({ length: 11 }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 32)]).join('');
+const shareLink = slug => `${location.origin}${location.pathname}?partage=${slug}`;
+async function sharesFetch(method, opts = {}) {
+  const token = auth && await ensureToken();
+  const headers = Object.assign({ apikey: SUPA_KEY, 'Content-Type': 'application/json' }, opts.headers || {});
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const r = await fetch(`${SUPA_URL}/rest/v1/shares${opts.query || ''}`, { method, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  if (!r.ok) throw new Error('shares ' + r.status);
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+function shareTitleOf(kind, id) { const o = kind === 'note' ? (state.notes || []).find(x => x.id === id) : projById(id); return (o && (o.title || o.name)) || (kind === 'note' ? 'Note' : 'Projet'); }
+function shareNoteContent(id) {
+  const n = (state.notes || []).find(x => x.id === id); if (!n) return null;
+  const title = n.title || 'Note';
+  return { title, html: `<h1 class="sh-title">${esc(title)}</h1><div class="note-body sh-note">${n.body ? sanitizeNoteHtml(n.body) : ''}</div>` };
+}
+function shareProjectContent(id) {
+  const p = projById(id); if (!p) return null;
+  const st = projStats(p);
+  const tasks = state.tasks.filter(t => t.projectId === id).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  const rows = tasks.map(t => `<li class="${t.done ? 'done' : ''}">${t.done ? '☑' : '☐'} ${esc(t.title || '')}${t.due ? ` <span class="sh-due">${esc(fmtDateShort(t.due))}</span>` : ''}</li>`).join('');
+  const sub = [p.start ? fmtDateShort(p.start) : '', p.end ? '→ ' + fmtDateShort(p.end) : ''].filter(Boolean).join(' ');
+  return {
+    title: p.name || 'Projet',
+    html: `<h1 class="sh-title">${esc(p.name || 'Projet')}</h1>
+      ${sub ? `<p class="sh-sub">${esc(sub)}</p>` : ''}
+      ${st.total ? `<p class="sh-sub">${st.done}/${st.total} tâches · ${st.pct}%</p>` : ''}
+      <ul class="sh-tasks">${rows || '<li>Aucune tâche.</li>'}</ul>`,
+  };
+}
+async function createShare(kind, srcId) {
+  const content = kind === 'note' ? shareNoteContent(srcId) : shareProjectContent(srcId);
+  if (!content) return null;
+  const token = auth && await ensureToken();
+  if (!token || !auth || !auth.user_id) { alert('Connecte-toi (synchro) pour créer un lien de partage.'); return null; }
+  const slug = newSlug();
+  try {
+    await sharesFetch('POST', { headers: { Prefer: 'return=minimal' }, body: { id: slug, owner: auth.user_id, kind, title: content.title, html: content.html, src_id: srcId } });
+  } catch (e) { alert('Le lien n’a pas pu être créé. Vérifie que la table « shares » est bien configurée dans Supabase (voir les étapes que je t’ai données).'); return null; }
+  return slug;
+}
+async function updateShare(kind, srcId, slug) {
+  const content = kind === 'note' ? shareNoteContent(srcId) : shareProjectContent(srcId);
+  if (!content) return;
+  try { await sharesFetch('PATCH', { query: `?id=eq.${slug}`, headers: { Prefer: 'return=minimal' }, body: { title: content.title, html: content.html } }); } catch (e) {}
+}
+async function revokeShare(slug) { try { await sharesFetch('DELETE', { query: `?id=eq.${slug}` }); } catch (e) {} }
+function getShareId(kind, id) { const o = kind === 'note' ? (state.notes || []).find(x => x.id === id) : projById(id); return (o && o.shareId) || ''; }
+function setShareId(kind, id, slug) { const o = kind === 'note' ? (state.notes || []).find(x => x.id === id) : projById(id); if (o) { o.shareId = slug || ''; save(); } }
+// fenêtre de partage (créée à la volée)
+function openShareDialog(kind, id, ev) {
+  if (ev) ev.stopPropagation();
+  let slug = getShareId(kind, id);
+  const title = shareTitleOf(kind, id);
+  const ov = document.createElement('div');
+  ov.className = 'overlay show share-ov';
+  ov.innerHTML = `<div class="modal" style="max-width:430px"><div class="modal-head"><h2>Partager</h2><button class="icon-btn" data-x>✕</button></div><div class="modal-body" id="shareBody"></div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x]')) ov.remove(); });
+  const body = ov.querySelector('#shareBody');
+  const draw = () => {
+    if (!slug) {
+      body.innerHTML = `<p class="hint-txt" style="margin-top:0">Crée un lien public en lecture seule. Toute personne qui a le lien pourra voir cette ${kind === 'note' ? 'note' : 'page projet'} (avec ses images), sans compte. Tu pourras le désactiver quand tu veux.</p>
+        <button class="btn-primary" style="width:100%" id="shCreate">Créer le lien de partage</button>`;
+      body.querySelector('#shCreate').onclick = async () => {
+        body.innerHTML = '<p class="hint-txt">Création du lien…</p>';
+        slug = await createShare(kind, id);
+        if (!slug) { ov.remove(); return; }
+        setShareId(kind, id, slug); draw();
+      };
+      return;
+    }
+    const link = shareLink(slug);
+    const msg = `${kind === 'note' ? 'Une note' : 'Un projet'} à voir : ${link}`;
+    body.innerHTML = `
+      <div class="share-linkrow"><input readonly value="${esc(link)}" id="shLink" onclick="this.select()"><button class="btn-ghost" id="shCopy">Copier</button></div>
+      <div class="share-btns">
+        <a class="share-app" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-app" href="mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(msg)}">Mail</a>
+        <a class="share-app" href="sms:?&body=${encodeURIComponent(msg)}">SMS</a>
+        ${navigator.share ? `<button class="share-app" id="shNative">Autre…</button>` : ''}
+      </div>
+      <p class="hint-txt">Le lien montre un instantané. <a id="shUpdate" style="cursor:pointer;color:var(--accent)">Mettre à jour le contenu partagé</a></p>
+      <button class="btn-ghost btn-danger" style="width:100%;margin-top:4px" id="shRevoke">Désactiver ce lien</button>`;
+    body.querySelector('#shCopy').onclick = () => { try { navigator.clipboard.writeText(link); } catch (e) {} const b = body.querySelector('#shCopy'); b.textContent = 'Copié ✓'; setTimeout(() => b.textContent = 'Copier', 1500); };
+    const nat = body.querySelector('#shNative'); if (nat) nat.onclick = () => { navigator.share({ title, text: msg, url: link }).catch(() => {}); };
+    body.querySelector('#shUpdate').onclick = async () => { await updateShare(kind, id, slug); const u = body.querySelector('#shUpdate'); u.textContent = 'À jour ✓'; };
+    body.querySelector('#shRevoke').onclick = async () => { await revokeShare(slug); setShareId(kind, id, ''); slug = ''; draw(); };
+  };
+  draw();
+}
+window.openShareDialog = openShareDialog;
+// VISIONNEUSE : ouverte via ?partage=<slug> — remplace l'app par la page partagée, sans compte
+async function renderShareViewer(slug) {
+  document.title = 'Partage — Mon Agenda';
+  document.body.innerHTML = `<div class="share-view"><div class="share-view-inner" id="shareView"><p class="hint-txt">Chargement…</p></div><div class="share-foot">Partagé depuis Mon Agenda</div></div>`;
+  try {
+    const rows = await (await fetch(`${SUPA_URL}/rest/v1/shares?id=eq.${encodeURIComponent(slug)}&select=title,html`, { headers: { apikey: SUPA_KEY } })).json();
+    const s = rows && rows[0];
+    if (!s) { document.getElementById('shareView').innerHTML = '<p>Ce partage n’existe plus ou a été désactivé.</p>'; return; }
+    document.title = (s.title || 'Partage') + ' — Mon Agenda';
+    document.getElementById('shareView').innerHTML = s.html || '';
+  } catch (e) { document.getElementById('shareView').innerHTML = '<p>Impossible de charger ce partage (connexion ?).</p>'; }
+}
 function imagesSectionHtml(coll, rec) {
   const imgs = rec.images || [];
   return `<div class="page-section-title">Images</div>`
@@ -14750,6 +14898,8 @@ function lineMeta(c, r) {
 // image de couverture d'un enregistrement = 1re image de sa fiche (rec.images[0])
 const ICON_IMAGE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
 const recCover = rec => (rec && (rec.cover || (Array.isArray(rec.images) && rec.images[0]))) || '';
+// mode d'affichage d'une couverture : 'contain' = image entière (avec marges), sinon 'cover' = remplir
+const objFit = o => (o && o.coverFit === 'contain') ? ' style="object-fit:contain"' : '';
 // ajoute/complète l'image d'un enregistrement depuis une carte, puis rafraîchit le contexte visible
 function addRecCover(c, id, ev) {
   if (ev) ev.stopPropagation();
@@ -14761,6 +14911,25 @@ function addRecCover(c, id, ev) {
   });
 }
 window.addRecCover = addRecCover;
+// menu d'image de couverture d'un enregistrement (carte galerie/kanban) : choisir / remplir / entière / retirer
+function openRecCoverMenu(c, id, e, anchor) {
+  e.stopPropagation();
+  const rec = collArr(c).find(x => x.id === id); if (!rec) return;
+  const has = !!recCover(rec);
+  const items = [{ value: 'pick', label: has ? "Changer l'image" : 'Ajouter une image de couverture' }];
+  if (has) items.push(
+    { value: 'fill', label: 'Remplir la carte' },
+    { value: 'contain', label: "Voir l'image entière" },
+    { value: 'remove', label: "Retirer l'image" });
+  const cur = has ? (rec.coverFit === 'contain' ? 'contain' : 'fill') : '';
+  openStyledMenu(anchor, [{ items }], cur, v => {
+    if (v === 'pick') addRecCover(c, id);
+    else if (v === 'fill') { rec.coverFit = 'cover'; save(); refreshDataContext(); }
+    else if (v === 'contain') { rec.coverFit = 'contain'; save(); refreshDataContext(); }
+    else if (v === 'remove') { rec.cover = ''; rec.images = []; save(); refreshDataContext(); }
+  });
+}
+window.openRecCoverMenu = openRecCoverMenu;
 function renderCardsView(c, rows, keys, groupBy) {
   const cardHtml = r => {
     const pr = (c === 'projects') ? projProgress(r.id) : null;
@@ -14769,8 +14938,8 @@ function renderCardsView(c, rows, keys, groupBy) {
     const cover = recCover(r);
     const style = (!cover && dot) ? ` style="border-top:3px solid ${dot}"` : '';
     return `<div class="card-item ${cover ? 'has-cover' : ''}"${style} onclick="openPage('${c}','${r.id}')" title="Ouvrir la fiche">
-      ${cover ? `<div class="card-cover"><img src="${cover}" alt="" loading="lazy"></div>` : ''}
-      <button class="card-cover-btn" onclick="addRecCover('${c}','${r.id}',event)" title="${cover ? "Ajouter une image" : "Ajouter une image de couverture"}">${ICON_IMAGE}</button>
+      ${cover ? `<div class="card-cover"><img src="${cover}" alt="" loading="lazy"${objFit(r)}></div>` : ''}
+      <button class="card-cover-btn" onclick="openRecCoverMenu('${c}','${r.id}',event,this)" title="Image de couverture">${ICON_IMAGE}</button>
       <div class="card-title">${esc(recLabel(c, r))}</div>
       ${pr ? `<div class="card-prog"><div class="pd-progress-line"><span>${pr.done}/${pr.total} tâches</span><span>${pr.pct}%</span></div>
         <div class="proj-bar" style="margin-top:5px"><div style="width:${pr.pct}%;background:${dot||'var(--accent)'}"></div></div></div>` : ''}
@@ -14839,7 +15008,7 @@ function renderKanban(c, rows, view) {
     return `<div class="kb-col" data-opt="${g.key}">
       <div class="kb-head"><span class="mpill" style="background:${col};color:${inkOn(col)}"><span class="pill-dot" style="background:${dotOf(col)}"></span>${esc(g.label)}</span><span class="kb-count">${g.items.length}</span></div>
       <div class="kb-cards">${g.items.map(r => { const cover = recCover(r); return `<div class="kb-card ${cover ? 'has-cover' : ''}" draggable="true" data-rec="${r.id}" onclick="openPage('${c}','${r.id}')">
-        ${cover ? `<div class="kb-cover"><img src="${cover}" alt="" loading="lazy"></div>` : ''}
+        ${cover ? `<div class="kb-cover"><img src="${cover}" alt="" loading="lazy"${objFit(r)}></div>` : ''}
         <div class="kb-card-title">${esc(recLabel(c, r))}</div>
         <div class="card-meta">${(view.cardProps && view.cardProps.length) ? viewPropsInline(c, r, view.cardProps) : lineMeta(c, r)}</div>
       </div>`; }).join('')}</div>
@@ -16074,14 +16243,20 @@ document.addEventListener('keydown', e => {
 
 
 /* ---------- Go ---------- */
-tabbarPage = tabbarPageOf(state.view);   // afficher d'emblée la page contenant la vue courante
-render();
-initCloud();            // synchro : reprend la session, va chercher les changements de l'autre appareil
-registerServiceWorker(); // app installable + fonctionnement hors ligne
-handleLaunchAction();    // raccourcis d'icône (appui long) : nouvelle tâche / note / aujourd'hui
-drainPendingHabitDone(); // habitudes cochées depuis une notification pendant que l'app était fermée
-maybeAutoBackup();       // sauvegarde locale automatique (une par jour), filet de sécurité
-setTimeout(revalidatePushSub, 3000); // recrée l'abonnement push s'il a été perdu (rappels qui ne partent plus)
+const _partageSlug = new URLSearchParams(location.search).get('partage');
+if (_partageSlug) {
+  // page partagée : on n'ouvre PAS l'app (ni synchro, ni service worker) — juste la visionneuse
+  renderShareViewer(_partageSlug);
+} else {
+  tabbarPage = tabbarPageOf(state.view);   // afficher d'emblée la page contenant la vue courante
+  render();
+  initCloud();            // synchro : reprend la session, va chercher les changements de l'autre appareil
+  registerServiceWorker(); // app installable + fonctionnement hors ligne
+  handleLaunchAction();    // raccourcis d'icône (appui long) : nouvelle tâche / note / aujourd'hui
+  drainPendingHabitDone(); // habitudes cochées depuis une notification pendant que l'app était fermée
+  maybeAutoBackup();       // sauvegarde locale automatique (une par jour), filet de sécurité
+  setTimeout(revalidatePushSub, 3000); // recrée l'abonnement push s'il a été perdu (rappels qui ne partent plus)
+}
 </script>
 </body>
 </html>
