@@ -2563,10 +2563,35 @@
   .btn.ghost:hover { background: var(--bg-soft); }
   .btn.danger { background: #d98a8a; color: white; border: 1px solid #d98a8a; }
   .btn.danger:hover { filter: brightness(0.95); }
+  /* Onglets dossiers (dynamiques, peuvent défiler horizontalement) */
+  .mail-tabs { display: flex; gap: 6px; padding: 8px 12px 6px; overflow-x: auto; border-bottom: 1px solid var(--border); flex-wrap: nowrap; }
+  .mail-tabs .space-tab { flex: 0 0 auto; white-space: nowrap; }
+  /* Barre de recherche */
+  .mail-searchbar { position: relative; padding: 10px 12px 0; }
+  .mail-search { width: 100%; padding: 8px 32px 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); }
+  .mail-search:focus { outline: none; border-color: var(--accent); }
+  .mail-search-clear { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-soft); cursor: pointer; padding: 2px 6px; font-size: 14px; }
+  .mail-search-clear:hover { color: var(--text); }
+  .mail-search-banner { padding: 6px 14px; font-size: 12px; color: var(--text-soft); background: var(--bg-soft); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .mail-search-clear-link { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  /* Bouton Ranger + menu */
+  .mail-row { grid-template-columns: 24px 180px 1fr 90px 28px 28px; }
+  .mail-move-wrap { position: relative; }
+  .mail-move { background: transparent; border: none; color: var(--text-soft); cursor: pointer; padding: 4px; opacity: 0; transition: opacity .1s; }
+  .mail-row:hover .mail-move { opacity: 1; }
+  .mail-move:hover { color: var(--accent); }
+  .mail-move-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 20; min-width: 200px; max-height: 320px; overflow-y: auto; padding: 4px; }
+  .mv-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; background: transparent; border: none; color: var(--text); text-align: left; font-size: 13px; cursor: pointer; border-radius: var(--radius-sm); font-family: var(--font-sans); }
+  .mv-item:hover { background: var(--bg-soft); }
+  .mv-item.mv-new { color: var(--accent); }
+  .mv-sep { height: 1px; background: var(--border); margin: 4px 0; }
+  .mv-empty { padding: 8px 10px; color: var(--text-soft); font-size: 12px; font-style: italic; }
   @media (max-width: 640px) {
-    .mail-row { grid-template-columns: 24px 1fr 70px; }
+    .mail-row { grid-template-columns: 24px 1fr 70px 26px; }
     .mail-row .mail-from { display: none; }
     .mail-row .mail-trash { display: none; }
+    .mail-row .mail-move { opacity: 1; }
+    .mail-move-menu { right: -10px; }
   }
 </style>
 </head>
@@ -16396,10 +16421,13 @@ let gmailAccessToken = null;
 let gmailTokenExpires = 0;
 let gmailScriptLoaded = false;
 let gmailList = [];
-let gmailFilterStar = false;
+let gmailLabels = []; // libellés utilisateur, [{id, name}] triés par nom
+let gmailFilter = 'inbox'; // 'inbox' | 'starred' | 'label:<id>'
 let gmailOpenedId = null;
 let gmailOpenedBody = null;
 let gmailLoading = false;
+let gmailMoveMenuFor = null; // id du message dont le menu « Ranger » est ouvert
+let gmailSearchQuery = ''; // recherche libre (syntaxe Gmail : from:, subject:, mots-clés...)
 
 function loadGoogleScript() {
   if (gmailScriptLoaded) return Promise.resolve();
@@ -16512,10 +16540,44 @@ function gmailExtractBody(payload) {
   return { html, text };
 }
 
+async function gmailFetchLabels() {
+  try {
+    const r = await gmailApi('/labels');
+    gmailLabels = (r.labels || [])
+      .filter(l => l.type === 'user')
+      .map(l => ({ id: l.id, name: l.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  } catch (e) { gmailLabels = []; }
+}
+
+function gmailCurrentQuery() {
+  // recherche libre : on la laisse gagner sur le filtre (comme Gmail — chercher = tout, pas juste le dossier courant)
+  if (gmailSearchQuery && gmailSearchQuery.trim()) return gmailSearchQuery.trim();
+  if (gmailFilter === 'starred') return 'is:starred';
+  if (gmailFilter && gmailFilter.startsWith('label:')) {
+    const id = gmailFilter.slice(6);
+    const lab = gmailLabels.find(l => l.id === id);
+    return lab ? 'label:' + JSON.stringify(lab.name) : 'in:inbox';
+  }
+  return 'in:inbox';
+}
+
+function gmailSetSearch(v) {
+  const nv = (v || '').trim();
+  if (nv === gmailSearchQuery) return;
+  gmailSearchQuery = nv;
+  gmailMoveMenuFor = null;
+  gmailFetchList();
+}
+function gmailClearSearch() { if (!gmailSearchQuery) return; gmailSearchQuery = ''; gmailFetchList(); }
+window.gmailSetSearch = gmailSetSearch;
+window.gmailClearSearch = gmailClearSearch;
+
 async function gmailFetchList() {
   gmailLoading = true; renderMailSpace();
   try {
-    const q = gmailFilterStar ? 'is:starred' : 'in:inbox';
+    if (!gmailLabels.length) await gmailFetchLabels();
+    const q = gmailCurrentQuery();
     const list = await gmailApi('/messages?q=' + encodeURIComponent(q) + '&maxResults=25');
     const msgs = list.messages || [];
     if (!msgs.length) { gmailList = []; gmailLoading = false; renderMailSpace(); return; }
@@ -16581,7 +16643,54 @@ function gmailDisconnect() {
   renderMailSpace();
 }
 function gmailBack() { gmailOpenedId = null; gmailOpenedBody = null; renderMailSpace(); }
-function gmailSetFilter(star) { if (gmailFilterStar === star) return; gmailFilterStar = star; gmailFetchList(); }
+function gmailSetFilter(f) { if (gmailFilter === f) return; gmailFilter = f; gmailMoveMenuFor = null; gmailFetchList(); }
+
+// Ouvre / ferme le petit menu « Ranger dans... » sur un mail donné
+function gmailToggleMoveMenu(id, ev) {
+  if (ev) ev.stopPropagation();
+  gmailMoveMenuFor = (gmailMoveMenuFor === id) ? null : id;
+  renderMailSpace();
+}
+
+// Déplace un message vers un dossier (= ajouter le libellé + retirer INBOX)
+async function gmailMoveTo(msgId, labelId, ev) {
+  if (ev) ev.stopPropagation();
+  gmailMoveMenuFor = null;
+  try {
+    await gmailApi('/messages/' + msgId + '/modify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ addLabelIds: [labelId], removeLabelIds: ['INBOX'] })
+    });
+    // si on est sur la vue « Boîte de réception », le message quitte la liste
+    if (gmailFilter === 'inbox') gmailList = gmailList.filter(x => x.id !== msgId);
+    else {
+      const local = gmailList.find(x => x.id === msgId);
+      if (local && local.labels.indexOf(labelId) < 0) local.labels.push(labelId);
+    }
+    if (gmailOpenedId === msgId) { gmailOpenedId = null; gmailOpenedBody = null; }
+    const lab = gmailLabels.find(l => l.id === labelId);
+    renderMailSpace();
+    showToast('Rangé dans « ' + (lab ? lab.name : 'dossier') + ' »');
+  } catch (e) { showToast('Erreur : ' + e.message); }
+}
+
+// Crée un nouveau libellé puis y range le mail
+async function gmailCreateFolderAndMove(msgId, ev) {
+  if (ev) ev.stopPropagation();
+  const nom = prompt('Nom du nouveau dossier :');
+  if (!nom || !nom.trim()) return;
+  try {
+    const created = await gmailApi('/labels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nom.trim(), labelListVisibility: 'labelShow', messageListVisibility: 'show' })
+    });
+    gmailLabels.push({ id: created.id, name: created.name });
+    gmailLabels.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    await gmailMoveTo(msgId, created.id);
+  } catch (e) { showToast('Impossible de créer le dossier : ' + e.message); }
+}
 
 // Charge la boîte automatiquement à l'ouverture de l'onglet si on a déjà un token valide.
 function gmailAutoLoad() {
@@ -16595,6 +16704,9 @@ window.gmailTrashMessage = gmailTrashMessage;
 window.gmailBack = gmailBack;
 window.gmailSetFilter = gmailSetFilter;
 window.gmailFetchList = gmailFetchList;
+window.gmailToggleMoveMenu = gmailToggleMoveMenu;
+window.gmailMoveTo = gmailMoveTo;
+window.gmailCreateFolderAndMove = gmailCreateFolderAndMove;
 
 function gmailCleanFrom(s) {
   if (!s) return '';
@@ -16634,8 +16746,22 @@ function gmailSanitizeMailHtml(html) {
   return box.innerHTML;
 }
 
+function gmailMoveMenuHtml(msgId) {
+  const items = gmailLabels.map(l =>
+    '<button class="mv-item" onclick="gmailMoveTo(\'' + msgId + '\',\'' + l.id + '\',event)">'
+    + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
+    + esc(l.name) + '</button>'
+  ).join('');
+  return '<div class="mail-move-menu" onclick="event.stopPropagation()">'
+    + (items || '<div class="mv-empty">Aucun dossier existant</div>')
+    + '<div class="mv-sep"></div>'
+    + '<button class="mv-item mv-new" onclick="gmailCreateFolderAndMove(\'' + msgId + '\',event)">＋ Nouveau dossier…</button>'
+    + '</div>';
+}
+
 function renderMailSpace() {
   const connectee = !!gmailAccessToken || readStoredGmailToken();
+  const rechercheActive = !!(gmailSearchQuery && gmailSearchQuery.trim());
   let html;
   if (!connectee) {
     html = '<div class="space wide">'
@@ -16650,11 +16776,13 @@ function renderMailSpace() {
     const bodyHtml = b.html
       ? '<iframe class="mail-iframe" sandbox="allow-popups allow-popups-to-escape-sandbox" srcdoc="' + esc(gmailSanitizeMailHtml(b.html)) + '"></iframe>'
       : '<div class="mail-plain">' + esc(b.text || '(mail vide)').replace(/\n/g, '<br>') + '</div>';
+    const menu = gmailMoveMenuFor === gmailOpenedId ? gmailMoveMenuHtml(gmailOpenedId) : '';
     html = '<div class="space wide">'
       + '<div class="space-head">'
       + '<button class="space-back" onclick="gmailBack()" title="Retour"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>'
       + '<span class="space-title">' + esc(b.subject || '(sans objet)') + '</span>'
       + '<span style="flex:1"></span>'
+      + '<span class="mail-move-wrap"><button class="btn ghost" onclick="gmailToggleMoveMenu(\'' + gmailOpenedId + '\',event)">Ranger dans…</button>' + menu + '</span>'
       + '<button class="btn danger" onclick="gmailTrashMessage(\'' + gmailOpenedId + '\')">Corbeille</button>'
       + '</div>'
       + '<div class="mail-read-head">'
@@ -16666,29 +16794,61 @@ function renderMailSpace() {
   } else if (gmailOpenedId && !gmailOpenedBody) {
     html = '<div class="space wide"><div class="space-head"><button class="space-back" onclick="gmailBack()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><span class="space-title">Chargement du mail…</span></div></div>';
   } else {
-    const rows = gmailList.map(m => '<div class="mail-row' + (m.unread ? ' unread' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
-      + '<span class="mail-star' + (m.starred ? ' on' : '') + '">' + (m.starred ? '★' : '☆') + '</span>'
-      + '<span class="mail-from" title="' + esc(m.from) + '">' + esc(gmailCleanFrom(m.from)) + '</span>'
-      + '<span class="mail-subj"><b>' + esc(m.subject) + '</b><i>' + esc(m.snippet) + '</i></span>'
-      + '<span class="mail-date">' + esc(gmailFmtDate(m.date)) + '</span>'
-      + '<button class="mail-trash" onclick="event.stopPropagation();gmailTrashMessage(\'' + m.id + '\')" title="Corbeille">'
-      + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>'
-      + '</button></div>').join('');
-    html = '<div class="space wide">'
+    // Onglets : Boîte de réception + Étoilés + dossiers utilisateur triés
+    const tabs = [
+      { key: 'inbox', label: 'Boîte de réception' },
+      { key: 'starred', label: 'Étoilés' }
+    ].concat(gmailLabels.map(l => ({ key: 'label:' + l.id, label: l.name })));
+    const tabsHtml = tabs.map(t =>
+      '<span class="space-tab' + (!rechercheActive && gmailFilter === t.key ? ' on' : '') + '" onclick="gmailSetFilter(\'' + t.key + '\')" title="' + esc(t.label) + '">' + esc(t.label) + '</span>'
+    ).join('');
+
+    const rows = gmailList.map(m => {
+      const menu = gmailMoveMenuFor === m.id ? gmailMoveMenuHtml(m.id) : '';
+      return '<div class="mail-row' + (m.unread ? ' unread' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
+        + '<span class="mail-star' + (m.starred ? ' on' : '') + '">' + (m.starred ? '★' : '☆') + '</span>'
+        + '<span class="mail-from" title="' + esc(m.from) + '">' + esc(gmailCleanFrom(m.from)) + '</span>'
+        + '<span class="mail-subj"><b>' + esc(m.subject) + '</b><i>' + esc(m.snippet) + '</i></span>'
+        + '<span class="mail-date">' + esc(gmailFmtDate(m.date)) + '</span>'
+        + '<span class="mail-move-wrap">'
+        + '<button class="mail-move" onclick="gmailToggleMoveMenu(\'' + m.id + '\',event)" title="Ranger dans un dossier">'
+        + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
+        + '</button>' + menu + '</span>'
+        + '<button class="mail-trash" onclick="event.stopPropagation();gmailTrashMessage(\'' + m.id + '\')" title="Corbeille">'
+        + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>'
+        + '</button></div>';
+    }).join('');
+
+    const searchBar = '<div class="mail-searchbar">'
+      + '<input type="search" class="mail-search" placeholder="Rechercher (nom, mot, from:…, subject:…)" value="' + esc(gmailSearchQuery) + '" '
+      + 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();gmailSetSearch(this.value)}else if(event.key===\'Escape\'){this.value=\'\';gmailClearSearch()}" '
+      + 'onblur="if(this.value.trim()!==\'' + esc(gmailSearchQuery).replace(/'/g, "\\'") + '\')gmailSetSearch(this.value)" />'
+      + (rechercheActive ? '<button class="mail-search-clear" onclick="gmailClearSearch()" title="Effacer la recherche">✕</button>' : '')
+      + '</div>';
+
+    const bandeauRecherche = rechercheActive
+      ? '<div class="mail-search-banner">Résultats pour « ' + esc(gmailSearchQuery) + ' » <span class="mail-search-clear-link" onclick="gmailClearSearch()">Revenir aux dossiers</span></div>'
+      : '';
+
+    html = '<div class="space wide" onclick="if(gmailMoveMenuFor){gmailMoveMenuFor=null;renderMailSpace()}">'
       + '<div class="space-head">'
       + '<span class="space-title">Mail</span>'
-      + '<span class="space-tabs">'
-      + '<span class="space-tab' + (gmailFilterStar ? '' : ' on') + '" onclick="gmailSetFilter(false)">Boîte de réception</span>'
-      + '<span class="space-tab' + (gmailFilterStar ? ' on' : '') + '" onclick="gmailSetFilter(true)">Étoilés</span>'
-      + '</span>'
       + '<span style="flex:1"></span>'
       + '<button class="btn ghost" onclick="gmailFetchList()" title="Actualiser">↻ Actualiser</button>'
       + '<button class="btn ghost" onclick="gmailDisconnect()" title="Déconnecter Gmail">Déconnecter</button>'
       + '</div>'
+      + searchBar
+      + '<div class="mail-tabs">' + tabsHtml + '</div>'
+      + bandeauRecherche
       + (gmailLoading ? '<div class="mail-loading">Chargement…</div>' : (rows || '<div class="mail-empty">Aucun mail à afficher.</div>'))
       + '</div>';
   }
   canvas.innerHTML = html;
+  // Rendre le focus au champ de recherche si l'utilisatrice était en train de taper
+  const inp = document.querySelector('.mail-search');
+  if (inp && document.activeElement && document.activeElement.tagName !== 'INPUT' && rechercheActive) {
+    // ne pas voler le focus au chargement — seulement si on a explicitement une recherche active
+  }
 }
 window.renderMailSpace = renderMailSpace;
 window.gmailAutoLoad = gmailAutoLoad;
