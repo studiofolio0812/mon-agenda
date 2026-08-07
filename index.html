@@ -1742,6 +1742,25 @@
   .hc-event { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
   .hc-event-dot { fill: var(--text-soft); }
   .hc-quad-lbl { font-size: 10px; fill: var(--text-faint); font-weight: 500; }
+  .hc-quad-trail { fill: none; stroke: var(--text-soft); stroke-width: 1.5; opacity: .4; stroke-linecap: round; stroke-linejoin: round; }
+  /* lecture en clair */
+  .health-reading { background: var(--surface); }
+  .hr-read-txt { font-size: 13.5px; line-height: 1.55; color: var(--text); }
+  .hr-read-txt b { font-weight: 600; }
+  .hr-read-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
+  .hr-read-lean { margin-top: 10px; font-size: 12.5px; line-height: 1.5; padding: 9px 12px; border-radius: var(--radius-sm); }
+  .hr-read-lean.up { background: #f6dfb5; color: #6b4f16; }
+  .hr-read-lean.down { background: #cdd6e8; color: #33415c; }
+  :root[data-theme="dark"] .hr-read-lean.up { background: #3a3320; color: #f0d894; }
+  :root[data-theme="dark"] .hr-read-lean.down { background: #23304a; color: #cdd6e8; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hr-read-lean.up { background: #3a3320; color: #f0d894; } :root:not([data-theme="light"]) .hr-read-lean.down { background: #23304a; color: #cdd6e8; } }
+  /* bouton + bloc « comment lire » */
+  .hr-quad-help-btn { float: right; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 10px; font-size: 11.5px; color: var(--accent); cursor: pointer; font-family: var(--font-sans); font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .hr-quad-help-btn:hover { background: var(--bg-soft); }
+  .hr-quad-help { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.55; color: var(--text-soft); }
+  .hr-quad-help p { margin: 0 0 8px; } .hr-quad-help p:last-child { margin-bottom: 0; }
+  .hr-quad-help b { color: var(--text); font-weight: 600; }
+  .hr-quad-help ul { margin: 6px 0 8px; padding-left: 18px; } .hr-quad-help li { margin-bottom: 5px; }
   /* curseurs humeur / énergie */
   .health-slider-row { margin-bottom: 16px; }
   .health-slider-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
@@ -8709,8 +8728,79 @@ function healthQuadrantChartHtml(days) {
     const last = i === nP - 1;
     return `<circle cx="${xAt(p.mood).toFixed(1)}" cy="${yAt(p.energy).toFixed(1)}" r="${r.toFixed(1)}" fill="${q.color}" opacity="${op.toFixed(2)}" ${last ? 'stroke="var(--text)" stroke-width="1.5"' : ''}><title>${esc(fmtDateShort(p.d))} · ${esc(q.label)} · humeur ${p.mood > 0 ? '+' : ''}${p.mood}, énergie ${p.energy}/10</title></circle>`;
   }).join('');
+  // trajectoire : relie les derniers jours dans l'ordre, flèche vers le plus récent
+  const trailPts = pts.slice(-10);
+  let trail = '';
+  if (trailPts.length >= 2) {
+    const dAttr = trailPts.map((p, i) => `${i ? 'L' : 'M'}${xAt(p.mood).toFixed(1)},${yAt(p.energy).toFixed(1)}`).join(' ');
+    trail = `<path d="${dAttr}" class="hc-quad-trail" marker-end="url(#hcQuadArrow)"/>`;
+  }
+  const defs = `<defs><marker id="hcQuadArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text-soft)"/></marker></defs>`;
   if (!pts.length) return `<div class="hc-corr-empty">Note ton humeur ET ton énergie sur quelques jours : chaque journée apparaîtra comme un point ici, dans l'une des quatre zones.</div>`;
-  return `<svg viewBox="0 0 ${W} ${H}" class="hc-quad">${zones}${axes}${zoneLabels}${axisLabels}${dots}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-quad">${defs}${zones}${axes}${zoneLabels}${axisLabels}${trail}${dots}</svg>`;
+}
+
+/* ---- LECTURE EN CLAIR des 7 derniers jours (descriptif, jamais un diagnostic) ---- */
+function healthRecentSummary() {
+  const days7 = [...Array(7)].map((_, i) => ymd(addDays(new Date(), -(6 - i))));
+  const logs = days7.map(healthLogFor).filter(Boolean);
+  const en = logs.filter(l => l.energy != null).map(l => l.energy);
+  const hu = logs.filter(l => l.moodVal != null).map(l => l.moodVal);
+  if (en.length < 2 && hu.length < 2) return null;
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const trend = vals => { if (vals.length < 3) return 'stable'; const h = Math.floor(vals.length / 2); const d = avg(vals.slice(-h)) - avg(vals.slice(0, h)); return d > 1 ? 'en hausse' : d < -1 ? 'en baisse' : 'plutôt stable'; };
+  const avgEne = en.length ? avg(en) : null, avgHum = hu.length ? avg(hu) : null;
+  // sommeil récent vs habitude (30 j)
+  const sl7 = logs.filter(l => l.sleepHours != null).map(l => l.sleepHours);
+  const sl30 = [...Array(30)].map((_, i) => healthLogFor(ymd(addDays(new Date(), -i)))).filter(l => l && l.sleepHours != null).map(l => l.sleepHours);
+  let sleepTxt = null;
+  if (sl7.length >= 2 && sl30.length >= 4) { const d = avg(sl7) - avg(sl30); sleepTxt = d > 0.5 ? 'en hausse' : d < -0.5 ? 'en baisse' : 'comme d\'habitude'; }
+  // quadrant dominant
+  const quads = {};
+  logs.forEach(l => { if (l.energy != null && l.moodVal != null) { const q = healthQuadrant(l.moodVal, l.energy).label; quads[q] = (quads[q] || 0) + 1; } });
+  const domQuad = Object.keys(quads).sort((a, b) => quads[b] - quads[a])[0] || null;
+  // signaux
+  const upDays = logs.filter(l => Array.isArray(l.signals) && l.signals.some(k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).type === 'up')).length;
+  const downDays = logs.filter(l => Array.isArray(l.signals) && l.signals.some(k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).type === 'down')).length;
+  return { avgEne, avgHum, eneTrend: trend(en), humWord: avgHum == null ? null : (avgHum >= 1.5 ? 'plutôt agréable' : avgHum <= -1.5 ? 'plutôt désagréable' : 'plutôt neutre'), sleepTxt, domQuad, upDays, downDays, nb: Math.max(en.length, hu.length) };
+}
+function healthReadingCardHtml() {
+  const s = healthRecentSummary();
+  if (!s) return `<div class="health-card health-reading"><div class="health-card-title">Lecture de tes derniers jours</div>
+    <div class="hr-read-empty">Renseigne quelques jours (humeur + énergie) et je te ferai ici un résumé en clair de la semaine.</div></div>`;
+  const parts = [];
+  if (s.avgEne != null) parts.push(`énergie <b>${esc(energyWord(s.avgEne).toLowerCase())}</b> et <b>${esc(s.eneTrend)}</b>`);
+  if (s.humWord) parts.push(`ressenti <b>${esc(s.humWord)}</b>`);
+  if (s.sleepTxt) parts.push(`sommeil <b>${esc(s.sleepTxt)}</b>${s.sleepTxt !== 'comme d\'habitude' ? ' par rapport à ton habitude' : ''}`);
+  let phrase = `Ces derniers jours (${s.nb} jour${s.nb > 1 ? 's' : ''} renseigné${s.nb > 1 ? 's' : ''}) : ` + parts.join(', ') + '.';
+  if (s.domQuad) phrase += ` Tes journées se placent surtout côté <b>${esc(s.domQuad)}</b>.`;
+  // note de tendance douce (jamais un diagnostic)
+  let lean = '';
+  if (s.avgEne != null && s.avgEne >= 6.5 && (s.upDays >= 2 || s.sleepTxt === 'en baisse'))
+    lean = `<div class="hr-read-lean up">Ça penche plutôt <b>vers le haut</b> (activation en hausse). Garde un œil sur ton sommeil — c'est souvent le premier signe. Ce n'est pas un diagnostic, juste un écart à surveiller.</div>`;
+  else if (s.avgEne != null && s.avgEne <= 3.5 && s.avgHum != null && s.avgHum <= -1 && s.downDays >= 2)
+    lean = `<div class="hr-read-lean down">Ça penche plutôt <b>vers le bas</b> (ressenti et énergie en baisse). Sois douce avec toi. Si ça dure, ça peut valoir un mot à ton soignant.</div>`;
+  return `<div class="health-card health-reading">
+    <div class="health-card-title">Lecture de tes derniers jours</div>
+    <div class="hr-read-txt">${phrase}</div>${lean}</div>`;
+}
+
+// ---- « Comment lire » dépliable sur la carte des journées ----
+let healthQuadHelpOpen = false;
+function healthToggleQuadHelp() { healthQuadHelpOpen = !healthQuadHelpOpen; renderHealthSpace(); }
+window.healthToggleQuadHelp = healthToggleQuadHelp;
+function healthQuadHelpHtml() {
+  if (!healthQuadHelpOpen) return '';
+  return `<div class="hr-quad-help">
+    <p><b>Comment lire cette carte.</b> Chaque point est une journée. Sa position vient de deux choses : à l'horizontale ton <b>ressenti</b> (gauche = désagréable, droite = agréable), à la verticale ton <b>énergie</b> (bas = calme, haut = activée).</p>
+    <ul>
+      <li><b>En haut à droite</b> (Enthousiasme) : beaucoup d'énergie et ça va bien. Si ça <b>dure</b> et que le sommeil baisse, c'est le versant à surveiller côté hypomanie.</li>
+      <li><b>En haut à gauche</b> (Anxiété / agitation) : beaucoup d'énergie mais désagréable — tension, irritabilité. C'est aussi un visage de la montée.</li>
+      <li><b>En bas à gauche</b> (Fatigue / tristesse) : peu d'énergie et désagréable, plusieurs jours de suite = versant dépressif.</li>
+      <li><b>En bas à droite</b> (Calme / repos) : peu d'énergie mais agréable — c'est un bon état de repos.</li>
+    </ul>
+    <p>Ce qui compte, c'est <b>où va ton nuage sur plusieurs jours</b> (la petite ligne suit tes derniers jours), pas un point isolé. La carte t'aide à repérer une dérive par rapport à ton habitude — elle ne pose aucun diagnostic.</p>
+  </div>`;
 }
 
 // ---- TRAITEMENT + CYCLE : deux rangées de pastilles alignées sur les jours ----
@@ -8938,6 +9028,7 @@ function renderHealthSpace() {
         ${healthMoodChartHtml(days)}
       </div>` : '';
       return `${kpis}
+      ${healthReadingCardHtml()}
       <div class="health-charts-wrap" id="healthChartsWrap">
       ${nav}
       <div class="health-card">
@@ -8945,7 +9036,10 @@ function renderHealthSpace() {
         ${healthMoodEnergyChartHtml(days)}
       </div>
       <div class="health-card">
-        <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour · les plus gros sont les plus récents</span></div>
+        <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour · la ligne suit tes derniers jours</span>
+          <button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>
+        </div>
+        ${healthQuadHelpHtml()}
         ${healthQuadrantChartHtml(days)}
       </div>
       <div class="health-card">
