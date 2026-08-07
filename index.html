@@ -1732,10 +1732,42 @@
   .health-chart-wrap { margin-top: 22px; }
   .health-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; margin-top: 16px; }
   .health-card-title { font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
-  .hc-mood, .hc-sleep, .hc-cm, .hc-corr { width: 100%; height: auto; display: block; }
+  .hc-mood, .hc-sleep, .hc-cm, .hc-corr, .hc-moodene { width: 100%; height: auto; display: block; }
+  .hc-quad { width: 100%; max-width: 520px; height: auto; display: block; margin: 0 auto; }
   .hc-grid { stroke: var(--border); stroke-width: 1; }
   .hc-grid-mid { stroke: var(--border-strong); }
   .hc-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .hc-hum { stroke: #e2985e; }
+  .hc-ene { stroke: #c98aa8; }
+  .hc-event { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
+  .hc-event-dot { fill: var(--text-soft); }
+  .hc-quad-lbl { font-size: 10px; fill: var(--text-faint); font-weight: 500; }
+  /* curseurs humeur / énergie */
+  .health-slider-row { margin-bottom: 16px; }
+  .health-slider-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  .health-slider-top label { font-size: 12.5px; color: var(--text-soft); font-weight: 600; }
+  .health-slider-val { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+  .health-range { width: 100%; margin: 0; accent-color: var(--accent); }
+  .health-range.hr-ene { accent-color: #c98aa8; }
+  .health-range-ends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-faint); margin-top: 2px; }
+  /* signaux à surveiller */
+  .health-sig-block { margin-bottom: 14px; }
+  .health-sig-lbl { font-size: 12.5px; color: var(--text-soft); font-weight: 600; display: block; margin-bottom: 8px; }
+  .health-sig-hint { font-weight: 400; color: var(--text-faint); font-size: 11px; }
+  .health-sig-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .health-sig { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 999px; padding: 5px 11px; font-size: 12px; cursor: pointer; color: var(--text-soft); }
+  .health-sig:hover { border-color: var(--accent); }
+  .health-sig.on { border-color: transparent; font-weight: 600; color: var(--text); }
+  .health-sig.on.up { background: #f6dfb5; }
+  .health-sig.on.down { background: #cdd6e8; }
+  /* repère doux (jamais un diagnostic) */
+  .health-alert { display: flex; align-items: flex-start; gap: 10px; background: #fbe7c2; border: 1px solid #eed6a0; border-radius: var(--radius-md); padding: 12px 14px; margin-top: 14px; }
+  :root[data-theme="dark"] .health-alert { background: #3a3320; border-color: #5c4d22; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .health-alert { background: #3a3320; border-color: #5c4d22; } }
+  .health-alert-ico { font-size: 16px; color: #b5852a; flex: 0 0 auto; line-height: 1.4; }
+  .health-alert-txt { font-size: 12.5px; line-height: 1.5; color: var(--text); flex: 1; }
+  .health-alert-x { background: transparent; border: none; color: var(--text-soft); cursor: pointer; font-size: 14px; padding: 2px 4px; flex: 0 0 auto; }
+  .health-alert-x:hover { color: var(--text); }
   .hc-bar { fill: var(--accent-soft); }
   .hc-zone { fill: #46c07d; opacity: .14; }
   .hc-avg { stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 4 3; }
@@ -8430,6 +8462,82 @@ window.setHealthEditDate = setHealthEditDate;
 function healthGoToday() { setHealthEditDate(ymd(new Date())); }
 window.healthGoToday = healthGoToday;
 
+/* ---- Modèle à deux axes (humeur/valence + énergie/activation) ----
+   Inspiré des recherches de Clémence (dossier Bipolarité) : ne pas résumer
+   l'état à un seul score. Humeur = ressenti agréable↔désagréable (−5..+5),
+   Énergie = activation basse↔haute (0..10). Le croisement donne 4 quadrants.
+   L'ancienne échelle `mood` (−3..+3) est CONSERVÉE (jamais supprimée) : les
+   journées déjà notées restent lisibles ; les nouveaux graphiques se remplissent
+   avec les deux axes à partir de maintenant. */
+const HUMEUR_WORDS = ['Très désagréable', 'Désagréable', 'Plutôt désagréable', 'Un peu désagréable', 'Légèrement bas', 'Neutre', 'Légèrement agréable', 'Un peu agréable', 'Plutôt agréable', 'Agréable', 'Très agréable'];
+function humeurWord(v) { return HUMEUR_WORDS[Math.max(-5, Math.min(5, Math.round(v))) + 5] || 'Neutre'; }
+function energyWord(v) { v = Math.max(0, Math.min(10, Math.round(v))); return v <= 1 ? 'Très basse' : v <= 3 ? 'Basse' : v <= 6 ? 'Moyenne' : v <= 8 ? 'Haute' : 'Très haute'; }
+// couleur d'une valence −5..+5 (froid/mat = désagréable, chaud/vif = agréable)
+function humeurColor(v) {
+  if (v == null) return null;
+  if (v <= -4) return '#92a8d1'; if (v <= -2) return '#aebfdb'; if (v <= -1) return '#cdd6e8';
+  if (v === 0) return '#d3e8cf'; if (v <= 1) return '#f6dfb5'; if (v <= 3) return '#eec089'; return '#e2985e';
+}
+// les 4 quadrants du modèle circumplexe (activation × valence)
+function healthQuadrant(mood, energy) {
+  const hi = energy >= 5, pos = mood >= 0;
+  if (hi && pos) return { key: 'enth', label: 'Enthousiasme', color: '#46c07d' };
+  if (hi && !pos) return { key: 'anx', label: 'Anxiété / agitation', color: '#f4726a' };
+  if (!hi && pos) return { key: 'calme', label: 'Calme / repos', color: '#7fb3d5' };
+  return { key: 'fatig', label: 'Fatigue / tristesse', color: '#9aa0b0' };
+}
+// signaux à surveiller (relevé cochable, JAMAIS un diagnostic) — 'up' = côté activation/hypomanie, 'down' = côté dépressif
+const HEALTH_SIGNALS = [
+  { k: 'sleep_less', label: 'Moins de sommeil sans fatigue', type: 'up' },
+  { k: 'fast_ideas', label: 'Idées accélérées', type: 'up' },
+  { k: 'more_projects', label: 'Plus de projets, élan', type: 'up' },
+  { k: 'spending', label: 'Dépenses impulsives', type: 'up' },
+  { k: 'social', label: 'Sociabilité inhabituelle', type: 'up' },
+  { k: 'irritable', label: 'Irritabilité', type: 'up' },
+  { k: 'anxiety', label: 'Anxiété, tension', type: 'up' },
+  { k: 'no_slow', label: 'Difficile de ralentir', type: 'up' },
+  { k: 'slow_sad', label: 'Ralentissement, tristesse', type: 'down' },
+  { k: 'no_focus', label: 'Mal à me concentrer', type: 'down' },
+];
+const signalLabel = k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).label || k;
+
+function healthSetHumeur(v, doRender) { healthUpsert(healthEditDate, { moodVal: v === '' ? null : Number(v) }); if (doRender) { renderHealthSpace(); renderHealthSidebar(); } }
+window.healthSetHumeur = healthSetHumeur;
+function healthSetEnergy(v, doRender) { healthUpsert(healthEditDate, { energy: v === '' ? null : Number(v) }); if (doRender) renderHealthSpace(); }
+window.healthSetEnergy = healthSetEnergy;
+function healthToggleSignal(k) {
+  const log = healthLogFor(healthEditDate) || {};
+  const cur = Array.isArray(log.signals) ? log.signals.slice() : [];
+  const i = cur.indexOf(k);
+  if (i >= 0) cur.splice(i, 1); else cur.push(k);
+  healthUpsert(healthEditDate, { signals: cur });
+  renderHealthSpace();
+}
+window.healthToggleSignal = healthToggleSignal;
+function healthSetEvent(v) { healthUpsert(healthEditDate, { event: v.trim() }); }
+window.healthSetEvent = healthSetEvent;
+
+// Repère doux : détecte un ÉCART sur plusieurs jours (jamais un diagnostic). Renvoie {msg} ou null.
+let healthAlertDismissed = false;
+function healthGentleSignal() {
+  if (healthAlertDismissed) return null;
+  const days = [...Array(4)].map((_, i) => ymd(addDays(new Date(), -(3 - i))));
+  const logs = days.map(healthLogFor).filter(Boolean);
+  const upDays = logs.filter(l => Array.isArray(l.signals) && l.signals.filter(k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).type === 'up').length >= 2).length;
+  const downDays = logs.filter(l => Array.isArray(l.signals) && l.signals.filter(k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).type === 'down').length >= 2).length;
+  const highEnergy = logs.filter(l => l.energy != null && l.energy >= 7).length;
+  const lowMood = logs.filter(l => l.moodVal != null && l.moodVal <= -3).length;
+  const mixed = logs.filter(l => l.energy != null && l.moodVal != null && l.energy >= 7 && l.moodVal <= -1).length;
+  let resume = null;
+  if (mixed >= 1 && (upDays >= 1 || highEnergy >= 2)) resume = 'beaucoup d\'énergie mais un ressenti plutôt désagréable';
+  else if (upDays >= 2 || highEnergy >= 3) resume = 'une énergie et des signaux en hausse sur plusieurs jours';
+  else if (downDays >= 2 || lowMood >= 3) resume = 'un ressenti bas et un ralentissement sur plusieurs jours';
+  if (!resume) return null;
+  return { msg: `Ces derniers jours ressemblent à un écart par rapport à ton rythme habituel (${resume}). Une appli de suivi ne peut rien affirmer — mais si tu le sens, c'est peut-être le bon moment de regarder ton plan de prévention ou d'en parler à ton soignant.` };
+}
+function healthDismissAlert() { healthAlertDismissed = true; renderHealthSpace(); }
+window.healthDismissAlert = healthDismissAlert;
+
 // aperçu dans la barre latérale : 7 derniers jours, un point coloré par jour (comme les habitudes en vue mois)
 function renderHealthSidebar() {
   const box = $('healthPreview');
@@ -8437,8 +8545,11 @@ function renderHealthSidebar() {
   const days = [...Array(7)].map((_, i) => ymd(addDays(new Date(), -(6 - i))));
   box.innerHTML = `<div class="health-mini">` + days.map(ds => {
     const log = healthLogFor(ds);
-    const m = log && log.mood != null ? moodInfo(log.mood) : null;
-    return `<span class="health-dot" style="background:${m ? dotOf(m.color) : 'var(--border-strong)'}" title="${esc(fmtDateShort(ds))}${m ? ' · ' + esc(m.label) : ' · pas renseigné'}"></span>`;
+    // nouvel axe humeur en priorité, repli sur l'ancienne échelle pour l'historique
+    let col = null, lbl = '';
+    if (log && log.moodVal != null) { col = humeurColor(log.moodVal); lbl = ' · humeur ' + (log.moodVal > 0 ? '+' : '') + log.moodVal; }
+    else if (log && log.mood != null) { col = moodInfo(log.mood).color; lbl = ' · ' + moodInfo(log.mood).label; }
+    return `<span class="health-dot" style="background:${col ? dotOf(col) : 'var(--border-strong)'}" title="${esc(fmtDateShort(ds))}${col ? esc(lbl) : ' · pas renseigné'}"></span>`;
   }).join('') + `</div>`;
 }
 
@@ -8480,9 +8591,15 @@ function healthKpiData(days) {
   const sleeps = logs.filter(l => l.sleepHours != null).map(l => l.sleepHours);
   const avgSleep = sleeps.length ? sleeps.reduce((a, b) => a + b, 0) / sleeps.length : null;
   const shortNights = sleeps.filter(h => h < 6).length;
+  const hums = logs.filter(l => l.moodVal != null).map(l => l.moodVal);
+  const avgHum = hums.length ? Math.round((hums.reduce((a, b) => a + b, 0) / hums.length) * 10) / 10 : null;
+  const enes = logs.filter(l => l.energy != null).map(l => l.energy);
+  const avgEne = enes.length ? Math.round((enes.reduce((a, b) => a + b, 0) / enes.length) * 10) / 10 : null;
+  // repli sur l'ancienne échelle si aucun nouvel axe rempli (historique)
   const moods = logs.filter(l => l.mood != null).map(l => l.mood);
   const avgMood = moods.length ? Math.round(moods.reduce((a, b) => a + b, 0) / moods.length) : null;
-  return { avgSleep, shortNights, avgMood, nbSleep: sleeps.length, nbMood: moods.length };
+  const hasLegacyMood = moods.length > 0;
+  return { avgSleep, shortNights, avgHum, avgEne, avgMood, hasLegacyMood, nbSleep: sleeps.length, nbHum: hums.length };
 }
 
 // ---- HUMEUR : courbe lissée, points colorés, coupure sur les jours non renseignés ----
@@ -8531,6 +8648,71 @@ function healthSleepChartHtml(days) {
   return `<svg viewBox="0 0 ${W} ${H}" class="hc-sleep">${zone}${grid}${bars}${avgLine}${labels}</svg>`;
 }
 
+// ---- HUMEUR + ÉNERGIE : deux courbes superposées (valence −5..+5 et activation 0..10) ----
+function healthMoodEnergyChartHtml(days) {
+  const n = days.length, W = 860, H = 210, x0 = 40, x1 = 824, top = 20, bottom = 168;
+  const step = n > 1 ? (x1 - x0) / (n - 1) : 0;
+  const xAt = i => x0 + i * step;
+  const yHum = v => bottom - (v + 5) * ((bottom - top) / 10);   // −5..+5
+  const yEne = v => bottom - v * ((bottom - top) / 10);          // 0..10
+  let grid = '';
+  [-5, 0, 5].forEach(v => grid += `<line x1="${x0}" y1="${yHum(v)}" x2="${x1}" y2="${yHum(v)}" class="hc-grid ${v === 0 ? 'hc-grid-mid' : ''}"/>`);
+  const humPts = days.map((d, i) => { const l = healthLogFor(d); return (l && l.moodVal != null) ? { x: xAt(i), y: yHum(l.moodVal), v: l.moodVal, d } : null; });
+  const enePts = days.map((d, i) => { const l = healthLogFor(d); return (l && l.energy != null) ? { x: xAt(i), y: yEne(l.energy), v: l.energy, d } : null; });
+  const segPath = (pts, cls) => { let out = '', seg = []; pts.forEach((p, i) => { if (p) seg.push(p); if (!p || i === pts.length - 1) { if (seg.length > 1) out += `<path d="${smoothPath(seg)}" class="${cls}"/>`; seg = []; } }); return out; };
+  const humLine = segPath(humPts, 'hc-line hc-hum'), eneLine = segPath(enePts, 'hc-line hc-ene');
+  const humDots = humPts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="${dotOf(humeurColor(p.v))}" stroke="var(--surface)" stroke-width="1.1"><title>${esc(fmtDateShort(p.d))} · humeur ${p.v > 0 ? '+' : ''}${p.v} (${esc(humeurWord(p.v))})</title></circle>`).join('');
+  const eneDots = enePts.filter(Boolean).map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#c98aa8" stroke="var(--surface)" stroke-width="1.1"><title>${esc(fmtDateShort(p.d))} · énergie ${p.v}/10 (${esc(energyWord(p.v))})</title></circle>`).join('');
+  // repères d'événement (annotations)
+  const events = days.map((d, i) => { const l = healthLogFor(d); if (!l || !l.event) return ''; const x = xAt(i); return `<line x1="${x}" y1="${top}" x2="${x}" y2="${bottom}" class="hc-event"/><circle cx="${x}" cy="${top}" r="3" class="hc-event-dot"><title>${esc(fmtDateShort(d))} · ${esc(l.event)}</title></circle>`; }).join('');
+  const yLab = `<text x="${x0 - 6}" y="${yHum(5) + 3}" class="hc-axis" text-anchor="end">+5</text>
+    <text x="${x0 - 6}" y="${yHum(0) + 3}" class="hc-axis" text-anchor="end">0</text>
+    <text x="${x0 - 6}" y="${yHum(-5) + 3}" class="hc-axis" text-anchor="end">−5</text>`;
+  const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); return `<text x="${xAt(i)}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
+  const legend = `<g class="hc-legend"><circle cx="${x0 + 6}" cy="10" r="4" fill="#e2985e"/><text x="${x0 + 15}" y="13" class="hc-axis">Humeur</text><circle cx="${x0 + 92}" cy="10" r="4" fill="#c98aa8"/><text x="${x0 + 101}" y="13" class="hc-axis">Énergie</text></g>`;
+  if (!humPts.some(Boolean) && !enePts.some(Boolean)) return `<div class="hc-corr-empty">Renseigne ton humeur et ton énergie du jour : les deux courbes se rempliront ici.</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-moodene">${grid}${events}${yLab}${legend}${humLine}${eneLine}${humDots}${eneDots}${labels}</svg>`;
+}
+
+// ---- QUADRANTS : chaque jour = un point (X = humeur −5..+5, Y = énergie 0..10) ----
+function healthQuadrantChartHtml(days) {
+  const pts = [];
+  days.forEach((k, idx) => { const l = healthLogFor(k); if (l && l.moodVal != null && l.energy != null) pts.push({ mood: l.moodVal, energy: l.energy, d: k, idx }); });
+  const W = 520, H = 380, x0 = 40, x1 = 500, top = 24, bottom = 336;
+  const xAt = m => x0 + (m + 5) / 10 * (x1 - x0);
+  const yAt = e => bottom - e / 10 * (bottom - top);
+  const midX = xAt(0), midY = yAt(5);
+  // fonds des 4 zones (teintes très douces)
+  const zones = `
+    <rect x="${midX}" y="${top}" width="${x1 - midX}" height="${midY - top}" fill="#46c07d" opacity="0.08"/>
+    <rect x="${x0}" y="${top}" width="${midX - x0}" height="${midY - top}" fill="#f4726a" opacity="0.08"/>
+    <rect x="${midX}" y="${midY}" width="${x1 - midX}" height="${bottom - midY}" fill="#7fb3d5" opacity="0.09"/>
+    <rect x="${x0}" y="${midY}" width="${midX - x0}" height="${bottom - midY}" fill="#9aa0b0" opacity="0.10"/>`;
+  const axes = `<line x1="${midX}" y1="${top}" x2="${midX}" y2="${bottom}" class="hc-grid-mid"/><line x1="${x0}" y1="${midY}" x2="${x1}" y2="${midY}" class="hc-grid-mid"/>
+    <rect x="${x0}" y="${top}" width="${x1 - x0}" height="${bottom - top}" fill="none" class="hc-grid"/>`;
+  const zoneLabels = `
+    <text x="${(midX + x1) / 2}" y="${top + 16}" class="hc-quad-lbl" text-anchor="middle">Enthousiasme</text>
+    <text x="${(x0 + midX) / 2}" y="${top + 16}" class="hc-quad-lbl" text-anchor="middle">Anxiété / agitation</text>
+    <text x="${(midX + x1) / 2}" y="${bottom - 8}" class="hc-quad-lbl" text-anchor="middle">Calme / repos</text>
+    <text x="${(x0 + midX) / 2}" y="${bottom - 8}" class="hc-quad-lbl" text-anchor="middle">Fatigue / tristesse</text>`;
+  const axisLabels = `
+    <text x="${x1}" y="${midY - 6}" class="hc-axis" text-anchor="end">Agréable →</text>
+    <text x="${x0}" y="${midY - 6}" class="hc-axis" text-anchor="start">← Désagréable</text>
+    <text x="${midX + 6}" y="${top + 10}" class="hc-axis" text-anchor="start">Énergie haute</text>
+    <text x="${midX + 6}" y="${bottom - 4}" class="hc-axis" text-anchor="start">Énergie basse</text>`;
+  // points : les plus récents plus opaques et plus gros ; le dernier entouré
+  const nP = pts.length;
+  const dots = pts.map((p, i) => {
+    const recent = nP > 1 ? i / (nP - 1) : 1;               // 0 (ancien) → 1 (récent)
+    const r = 3.5 + recent * 2.5, op = 0.35 + recent * 0.55;
+    const q = healthQuadrant(p.mood, p.energy);
+    const last = i === nP - 1;
+    return `<circle cx="${xAt(p.mood).toFixed(1)}" cy="${yAt(p.energy).toFixed(1)}" r="${r.toFixed(1)}" fill="${q.color}" opacity="${op.toFixed(2)}" ${last ? 'stroke="var(--text)" stroke-width="1.5"' : ''}><title>${esc(fmtDateShort(p.d))} · ${esc(q.label)} · humeur ${p.mood > 0 ? '+' : ''}${p.mood}, énergie ${p.energy}/10</title></circle>`;
+  }).join('');
+  if (!pts.length) return `<div class="hc-corr-empty">Note ton humeur ET ton énergie sur quelques jours : chaque journée apparaîtra comme un point ici, dans l'une des quatre zones.</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-quad">${zones}${axes}${zoneLabels}${axisLabels}${dots}</svg>`;
+}
+
 // ---- TRAITEMENT + CYCLE : deux rangées de pastilles alignées sur les jours ----
 function healthCycleMedChartHtml(days) {
   const n = days.length, W = 860, H = 104, x0 = 74, x1 = 846, Y_MED = 20, Y_CYCLE = 82;
@@ -8558,13 +8740,13 @@ function healthCycleMedChartHtml(days) {
 // chaque point = un jour où humeur ET sommeil sont notés ; x = heures de sommeil, y = humeur.
 function healthMoodSleepChartHtml(days) {
   const pts = [];
-  days.forEach(k => { const l = healthLogFor(k); if (l && l.mood != null && l.sleepHours != null) pts.push({ sleep: l.sleepHours, mood: l.mood, d: k }); });
+  days.forEach(k => { const l = healthLogFor(k); if (l && l.moodVal != null && l.sleepHours != null) pts.push({ sleep: l.sleepHours, mood: l.moodVal, d: k }); });
   if (pts.length < 3) return `<div class="hc-corr-empty">Il faut au moins 3 jours avec humeur <b>et</b> sommeil notés sur la période pour dessiner la tendance. Continue à remplir, elle apparaîtra toute seule.</div>`;
   const W = 860, H = 220, x0 = 74, x1 = 846, top = 18, bottom = 172, MAXH = 12;
   const xAt = h => x0 + Math.min(Math.max(h, 0), MAXH) / MAXH * (x1 - x0);
-  const yAt = m => bottom - (m + 3) * ((bottom - top) / 6);
+  const yAt = m => bottom - (m + 5) * ((bottom - top) / 10);
   let grid = '';
-  for (let m = -3; m <= 3; m++) grid += `<line x1="${x0}" y1="${yAt(m)}" x2="${x1}" y2="${yAt(m)}" class="hc-grid ${m === 0 ? 'hc-grid-mid' : ''}"/>`;
+  for (let m = -5; m <= 5; m++) grid += `<line x1="${x0}" y1="${yAt(m)}" x2="${x1}" y2="${yAt(m)}" class="hc-grid ${m === 0 ? 'hc-grid-mid' : ''}"/>`;
   [0, 3, 6, 9, 12].forEach(h => { grid += `<line x1="${xAt(h)}" y1="${top}" x2="${xAt(h)}" y2="${bottom}" class="hc-grid"/><text x="${xAt(h)}" y="${bottom + 15}" class="hc-label" text-anchor="middle">${h}h</text>`; });
   // droite de tendance (moindres carrés : humeur ~ sommeil)
   const n = pts.length, sx = pts.reduce((s, p) => s + p.sleep, 0), sy = pts.reduce((s, p) => s + p.mood, 0);
@@ -8572,13 +8754,13 @@ function healthMoodSleepChartHtml(days) {
   const denom = n * sxx - sx * sx;
   let trend = '';
   if (Math.abs(denom) > 1e-6) {
-    const a = (n * sxy - sx * sy) / denom, b = (sy - a * sx) / n, clamp = v => Math.max(-3, Math.min(3, v));
+    const a = (n * sxy - sx * sy) / denom, b = (sy - a * sx) / n, clamp = v => Math.max(-5, Math.min(5, v));
     trend = `<line x1="${xAt(2)}" y1="${yAt(clamp(a * 2 + b))}" x2="${xAt(11)}" y2="${yAt(clamp(a * 11 + b))}" class="hc-trend"/>`;
   }
-  const dots = pts.map(p => `<circle cx="${xAt(p.sleep)}" cy="${yAt(p.mood)}" r="4" fill="${dotOf(moodInfo(p.mood).color)}" stroke="var(--surface)" stroke-width="1.3"><title>${esc(fmtDateShort(p.d))} · ${esc(moodInfo(p.mood).label)} · ${p.sleep} h</title></circle>`).join('');
-  const yLabels = `<text x="${x0 - 8}" y="${yAt(3) + 3}" class="hc-axis" text-anchor="end">Hypomanie</text>
-    <text x="${x0 - 8}" y="${yAt(0) + 3}" class="hc-axis" text-anchor="end">Stable</text>
-    <text x="${x0 - 8}" y="${yAt(-3) + 3}" class="hc-axis" text-anchor="end">Dépression</text>`;
+  const dots = pts.map(p => `<circle cx="${xAt(p.sleep)}" cy="${yAt(p.mood)}" r="4" fill="${dotOf(humeurColor(p.mood))}" stroke="var(--surface)" stroke-width="1.3"><title>${esc(fmtDateShort(p.d))} · humeur ${p.mood > 0 ? '+' : ''}${p.mood} · ${p.sleep} h</title></circle>`).join('');
+  const yLabels = `<text x="${x0 - 8}" y="${yAt(5) + 3}" class="hc-axis" text-anchor="end">Agréable</text>
+    <text x="${x0 - 8}" y="${yAt(0) + 3}" class="hc-axis" text-anchor="end">Neutre</text>
+    <text x="${x0 - 8}" y="${yAt(-5) + 3}" class="hc-axis" text-anchor="end">Désagréable</text>`;
   const xTitle = `<text x="${(x0 + x1) / 2}" y="${H - 3}" class="hc-axis" text-anchor="middle">Heures de sommeil</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" class="hc-corr">${grid}${yLabels}${trend}${dots}${xTitle}</svg>`;
 }
@@ -8660,19 +8842,28 @@ function healthWinLabel(days) {
 function renderHealthSpace() {
   const log = healthLogFor(healthEditDate) || {};
   const isToday = healthEditDate === ymd(new Date());
-  const mood = log.mood;
-  const nbEntrees = (state.healthLogs || []).filter(h => h.mood != null || h.sleepHours != null).length;
+  const hum = log.moodVal, ene = log.energy;
+  const nbEntrees = (state.healthLogs || []).filter(h => h.moodVal != null || h.energy != null || h.mood != null || h.sleepHours != null).length;
   const medOccs = healthTrackedHabitsOn(healthEditDate);
+  const signals = Array.isArray(log.signals) ? log.signals : [];
 
-  const moodPicker = MOOD_SCALE.map(m => `<button type="button" class="health-mood-btn ${mood === m.v ? 'on' : ''}"
-    style="${mood === m.v ? `background:${m.color};color:${inkOn(m.color)}` : ''}"
-    onclick="setHealthMood(${m.v})" title="${esc(m.label)}">${esc(m.label)}</button>`).join('');
+  const humLbl = hum != null ? humeurWord(hum) + ' (' + (hum > 0 ? '+' : '') + hum + ')' : 'pas encore renseignée';
+  const eneLbl = ene != null ? energyWord(ene) + ' (' + ene + '/10)' : 'pas encore renseignée';
+  const signalChips = HEALTH_SIGNALS.map(s => `<button type="button" class="health-sig ${signals.indexOf(s.k) >= 0 ? 'on ' + s.type : ''}" onclick="healthToggleSignal('${s.k}')">${esc(s.label)}</button>`).join('');
+
+  const alert = healthGentleSignal();
+  const alertHtml = alert ? `<div class="health-alert">
+      <div class="health-alert-ico">◐</div>
+      <div class="health-alert-txt">${esc(alert.msg)}</div>
+      <button class="health-alert-x" onclick="healthDismissAlert()" title="Masquer">✕</button>
+    </div>` : '';
 
   const html = `<div class="space">
     <div class="space-head">
       <span class="space-title">Suivi santé</span>
       <span class="space-count">${nbEntrees} entrée${nbEntrees > 1 ? 's' : ''}</span>
     </div>
+    ${alertHtml}
 
     <div class="health-entry">
       <div class="health-entry-head">
@@ -8684,23 +8875,50 @@ function renderHealthSpace() {
         <label>Traitement</label>
         ${medOccs.map(occ => habitChip(occ, healthEditDate)).join('')}
       </div>` : ''}
-      <div class="health-mood-picker">${moodPicker}</div>
+
+      <div class="health-slider-row">
+        <div class="health-slider-top"><label>Humeur</label><span class="health-slider-val" id="humLbl">${esc(humLbl)}</span></div>
+        <input type="range" class="health-range hr-hum" min="-5" max="5" step="1" value="${hum ?? 0}"
+          oninput="document.getElementById('humLbl').textContent=humeurWord(+this.value)+' ('+(this.value>0?'+':'')+this.value+')'; healthSetHumeur(this.value,false)"
+          onchange="healthSetHumeur(this.value,true)">
+        <div class="health-range-ends"><span>Désagréable</span><span>Neutre</span><span>Agréable</span></div>
+      </div>
+
+      <div class="health-slider-row">
+        <div class="health-slider-top"><label>Énergie</label><span class="health-slider-val" id="eneLbl">${esc(eneLbl)}</span></div>
+        <input type="range" class="health-range hr-ene" min="0" max="10" step="1" value="${ene ?? 5}"
+          oninput="document.getElementById('eneLbl').textContent=energyWord(+this.value)+' ('+this.value+'/10)'; healthSetEnergy(this.value,false)"
+          onchange="healthSetEnergy(this.value,true)">
+        <div class="health-range-ends"><span>Basse (calme)</span><span></span><span>Haute (activée)</span></div>
+      </div>
+
       <div class="health-field-row">
         <label>Sommeil (heures)</label>
         <input type="number" step="0.5" min="0" max="24" value="${log.sleepHours ?? ''}" onchange="setHealthSleep(this.value)" placeholder="ex : 7">
         <label class="health-check"><input type="checkbox" ${log.cycle ? 'checked' : ''} onchange="setHealthCycle(this.checked)"> Règles ce jour</label>
       </div>
+
+      <div class="health-sig-block">
+        <label class="health-sig-lbl">Signaux à surveiller <span class="health-sig-hint">(coche ce qui te parle aujourd'hui — c'est un simple relevé, pas un diagnostic)</span></label>
+        <div class="health-sig-wrap">${signalChips}</div>
+      </div>
+
+      <div class="health-field-row">
+        <label>Repère du jour</label>
+        <input type="text" value="${esc(log.event || '')}" onchange="healthSetEvent(this.value)" placeholder="Événement, changement de traitement, voyage…">
+      </div>
+
       <textarea class="health-note" placeholder="Note libre (facultatif)…" onchange="setHealthNote(this.value)">${esc(log.note || '')}</textarea>
     </div>
 
     ${(() => {
       const days = healthWinDays();
       const k = healthKpiData(days);
-      const moodLbl = k.avgMood != null ? moodInfo(k.avgMood).label : '—';
       const kpis = `<div class="bl-kpis">
+        <div class="bl-kpi"><div class="bl-kpi-val">${k.avgHum != null ? (k.avgHum > 0 ? '+' : '') + k.avgHum : '—'}</div><div class="bl-kpi-lbl">humeur moyenne</div></div>
+        <div class="bl-kpi"><div class="bl-kpi-val">${k.avgEne != null ? k.avgEne + '/10' : '—'}</div><div class="bl-kpi-lbl">énergie moyenne</div></div>
         <div class="bl-kpi"><div class="bl-kpi-val">${k.avgSleep != null ? k.avgSleep.toFixed(1) + ' h' : '—'}</div><div class="bl-kpi-lbl">sommeil moyen</div></div>
         <div class="bl-kpi"><div class="bl-kpi-val">${k.nbSleep ? k.shortNights : '—'}</div><div class="bl-kpi-lbl">nuit${k.shortNights > 1 ? 's' : ''} sous 6h</div></div>
-        <div class="bl-kpi"><div class="bl-kpi-val">${esc(moodLbl)}</div><div class="bl-kpi-lbl">humeur moyenne</div></div>
       </div>`;
       const atNow = healthChartAtPresent();
       const nav = `<div class="health-chart-nav">
@@ -8714,12 +8932,21 @@ function renderHealthSpace() {
           ${!atNow ? `<button type="button" class="hcn-today" onclick="healthChartToday()">Aujourd'hui</button>` : ''}
         </div>
       </div>`;
+      // l'ancienne courbe d'humeur n'apparaît que s'il reste des journées notées à l'ancienne échelle dans la fenêtre
+      const legacyCard = k.hasLegacyMood ? `<div class="health-card">
+        <div class="health-card-title">Humeur (ancienne échelle)<span class="health-card-hint">tes journées notées avant les deux axes</span></div>
+        ${healthMoodChartHtml(days)}
+      </div>` : '';
       return `${kpis}
       <div class="health-charts-wrap" id="healthChartsWrap">
       ${nav}
       <div class="health-card">
-        <div class="health-card-title">Humeur</div>
-        ${healthMoodChartHtml(days)}
+        <div class="health-card-title">Humeur et énergie<span class="health-card-hint">deux courbes · les repères verticaux = tes événements</span></div>
+        ${healthMoodEnergyChartHtml(days)}
+      </div>
+      <div class="health-card">
+        <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour · les plus gros sont les plus récents</span></div>
+        ${healthQuadrantChartHtml(days)}
       </div>
       <div class="health-card">
         <div class="health-card-title">Sommeil</div>
@@ -8733,6 +8960,7 @@ function renderHealthSpace() {
         <div class="health-card-title">Traitement et cycle</div>
         ${healthCycleMedChartHtml(days)}
       </div>
+      ${legacyCard}
       </div>
       <div class="health-card health-notes">
         <div class="health-card-title">Mes notes</div>
