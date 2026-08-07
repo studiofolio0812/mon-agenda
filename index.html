@@ -1730,6 +1730,10 @@
   .health-check { display: flex; align-items: center; gap: 6px; }
   .health-note { width: 100%; min-height: 50px; resize: vertical; font-family: var(--font-sans); font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
   .health-chart-wrap { margin-top: 22px; }
+  /* tableau de bord des tendances : grille 2 colonnes (une seule sur mobile) */
+  .health-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+  .health-grid .health-card { margin-top: 0; }
+  @media (max-width: 760px) { .health-grid { grid-template-columns: 1fr; } }
   .health-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; margin-top: 16px; }
   .health-card-title { font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
   .hc-mood, .hc-sleep, .hc-cm, .hc-corr, .hc-moodene { width: 100%; height: auto; display: block; }
@@ -8878,6 +8882,9 @@ function healthNotesHtml() {
    défiler la période (flèches, molette, clavier) et choisir 30 j / 90 j / mois. */
 let healthChartMode = '30';               // '30' | '90' | 'month'
 let healthChartEnd = ymd(new Date());     // dernier jour affiché (mode 30/90) ou un jour du mois voulu (mode 'month')
+let healthTab = 'entry';                  // 'entry' (ma journée) | 'trends' (mes tendances)
+function setHealthTab(t) { healthTab = t; renderHealthSpace(); }
+window.setHealthTab = setHealthTab;
 function healthWinDays() {
   if (healthChartMode === 'month') {
     const d = parseYmd(healthChartEnd), y = d.getFullYear(), m = d.getMonth();
@@ -8948,14 +8955,7 @@ function renderHealthSpace() {
       <button class="health-alert-x" onclick="healthDismissAlert()" title="Masquer">✕</button>
     </div>` : '';
 
-  const html = `<div class="space">
-    <div class="space-head">
-      <span class="space-title">Suivi santé</span>
-      <span class="space-count">${nbEntrees} entrée${nbEntrees > 1 ? 's' : ''}</span>
-    </div>
-    ${alertHtml}
-
-    <div class="health-entry">
+  const entryHtml = `<div class="health-entry">
       <div class="health-entry-head">
         <span>${isToday ? "Aujourd'hui" : esc(fmtDateLong(healthEditDate))}</span>
         <input type="date" value="${healthEditDate}" max="${ymd(new Date())}" onchange="setHealthEditDate(this.value)">
@@ -8999,9 +8999,9 @@ function renderHealthSpace() {
       </div>
 
       <textarea class="health-note" placeholder="Note libre (facultatif)…" onchange="setHealthNote(this.value)">${esc(log.note || '')}</textarea>
-    </div>
+    </div>`;
 
-    ${(() => {
+  const trendsHtml = (() => {
       const days = healthWinDays();
       const k = healthKpiData(days);
       const kpis = `<div class="bl-kpis">
@@ -9031,36 +9031,52 @@ function renderHealthSpace() {
       ${healthReadingCardHtml()}
       <div class="health-charts-wrap" id="healthChartsWrap">
       ${nav}
-      <div class="health-card">
-        <div class="health-card-title">Humeur et énergie<span class="health-card-hint">deux courbes · les repères verticaux = tes événements</span></div>
-        ${healthMoodEnergyChartHtml(days)}
-      </div>
-      <div class="health-card">
-        <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour · la ligne suit tes derniers jours</span>
-          <button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>
+      <div class="health-grid">
+        <div class="health-card">
+          <div class="health-card-title">Humeur et énergie<span class="health-card-hint">deux courbes · repères verticaux = événements</span></div>
+          ${healthMoodEnergyChartHtml(days)}
         </div>
-        ${healthQuadHelpHtml()}
-        ${healthQuadrantChartHtml(days)}
+        <div class="health-card">
+          <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour</span>
+            <button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>
+          </div>
+          ${healthQuadHelpHtml()}
+          ${healthQuadrantChartHtml(days)}
+        </div>
+        <div class="health-card">
+          <div class="health-card-title">Sommeil</div>
+          ${healthSleepChartHtml(days)}
+        </div>
+        <div class="health-card">
+          <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">chaque point = une journée</span></div>
+          ${healthMoodSleepChartHtml(days)}
+        </div>
+        <div class="health-card">
+          <div class="health-card-title">Traitement et cycle</div>
+          ${healthCycleMedChartHtml(days)}
+        </div>
+        ${legacyCard}
       </div>
-      <div class="health-card">
-        <div class="health-card-title">Sommeil</div>
-        ${healthSleepChartHtml(days)}
-      </div>
-      <div class="health-card">
-        <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">chaque point = une journée</span></div>
-        ${healthMoodSleepChartHtml(days)}
-      </div>
-      <div class="health-card">
-        <div class="health-card-title">Traitement et cycle</div>
-        ${healthCycleMedChartHtml(days)}
-      </div>
-      ${legacyCard}
       </div>
       <div class="health-card health-notes">
         <div class="health-card-title">Mes notes</div>
         ${healthNotesHtml()}
       </div>`;
-    })()}
+    })();
+
+  const tabs = `<span style="flex:1"></span><span class="space-tabs">
+      <span class="space-tab ${healthTab === 'entry' ? 'on' : ''}" onclick="setHealthTab('entry')">Ma journée</span>
+      <span class="space-tab ${healthTab === 'trends' ? 'on' : ''}" onclick="setHealthTab('trends')">Mes tendances</span>
+    </span>`;
+
+  const html = `<div class="space">
+    <div class="space-head">
+      <span class="space-title">Suivi santé</span>
+      <span class="space-count">${nbEntrees} entrée${nbEntrees > 1 ? 's' : ''}</span>
+      ${tabs}
+    </div>
+    ${alertHtml}
+    ${healthTab === 'entry' ? entryHtml : trendsHtml}
   </div>`;
   canvas.innerHTML = html;
 }
