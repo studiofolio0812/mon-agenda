@@ -923,7 +923,7 @@
   #noteOverlay.doc.wide .note-body,
   #noteOverlay.doc.wide .note-hint,
   #noteOverlay.doc.wide .note-props,
-  #noteOverlay.doc.wide .modal-foot .btn-primary { max-width: 1180px; }
+  #noteOverlay.doc.wide .modal-foot .btn-primary { max-width: 1500px; }
   /* ---- Sommaire de la note (plein écran) : les titres de la note, cliquables.
      La feuille centrale ne bouge pas : le panneau flotte à gauche, comme dans Notion. ---- */
   .note-toc { display: none; }
@@ -1874,6 +1874,14 @@
   .note-imgrow .note-fig { margin: 0; flex: none; min-width: 0; }
   .note-fig.drop-l { box-shadow: -4px 0 0 0 var(--accent); }
   .note-fig.drop-r { box-shadow: 4px 0 0 0 var(--accent); }
+  /* ---- Colonnes de blocs cote a cote (facon Notion) ---- */
+  .note-cols { display: flex; gap: 20px; margin: 10px 0; align-items: flex-start; }
+  .note-col { flex: 1 1 0; min-width: 0; }
+  .note-col > *:first-child { margin-top: 0; }
+  .note-col > *:last-child { margin-bottom: 0; }
+  .nb-col-drop { position: fixed; z-index: 66; width: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+  @media (max-width: 720px) { .note-cols { flex-direction: column; gap: 6px; } }
+  .note-card-body .note-cols { flex-direction: column; gap: 4px; }
   #figToolbar { position: fixed; z-index: 90; display: flex; align-items: center; gap: 2px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px 4px; box-shadow: 0 8px 28px rgba(0,0,0,.16); }
   #figToolbar.hidden { display: none; }
   .ft-btn { border: none; background: none; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 12px; color: var(--text-soft); display: inline-flex; align-items: center; line-height: 1; white-space: nowrap; }
@@ -3228,6 +3236,7 @@
 <div id="noteAttachMenu" class="note-attach hidden"></div>
 <div id="noteDragHandle" class="note-drag-handle hidden" draggable="true" title="Glisser pour déplacer · Cliquer : couleur de l'encadré"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="5" r="1.7"/><circle cx="15" cy="5" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="19" r="1.7"/><circle cx="15" cy="19" r="1.7"/></svg></div>
 <div id="noteDropLine" class="note-drop-line hidden"></div>
+<div id="nbColLine" class="nb-col-drop hidden"></div>
 
 <!-- ============ MODAL: HABIT ============ -->
 <div class="overlay" id="habitOverlay">
@@ -10059,6 +10068,7 @@ function openNote(id, presetFolder) {
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   ensureNoteBlocks();
   upgradeNoteImages();
+  upgradeNoteCols();
   hydrateNoteDbBlocks();   // remplit les blocs « base de données » avec leur table (jamais persistée)
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
@@ -10128,14 +10138,16 @@ function noteWrap(className) {
    (<p>, <h1>…) et pas un simple texte séparé par des <br>. */
 const NOTE_BLOCK_TAGS = new Set(['P','H1','H2','H3','H4','BLOCKQUOTE','PRE','UL','OL','DIV','DETAILS','HR','FIGURE']);
 // bloc de premier niveau qui contient le curseur (enfant direct de #noteBody)
+// hote d'edition d'un bloc : #noteBody ou une colonne .note-col
+function nbIsHost(el) { return !!el && (el === $('noteBody') || (el.classList && el.classList.contains('note-col'))); }
 function caretBlock() {
   const s = window.getSelection();
   if (!s.rangeCount) return null;
   let n = s.anchorNode;
   if (n === $('noteBody')) { const c = n.childNodes; n = c[Math.min(s.anchorOffset, c.length - 1)] || null; }
   if (n && n.nodeType === 3) n = n.parentNode;
-  while (n && n.parentNode && n.parentNode !== $('noteBody')) n = n.parentNode;
-  return (n && n.parentNode === $('noteBody')) ? n : null;
+  while (n && n.parentNode && !nbIsHost(n.parentNode)) n = n.parentNode;
+  return (n && nbIsHost(n.parentNode)) ? n : null;
 }
 // ancêtre de la sélection correspondant au sélecteur, sans sortir de la note
 function noteClosest(sel) {
@@ -10667,6 +10679,7 @@ function nbStripSize(root) {
 function nbDeleteBlock(el) {
   if (!el || !$('noteBody').contains(el)) return;
   el.remove();
+  nbCleanupCols();
   if (!$('noteBody').children.length) { const p = document.createElement('p'); p.innerHTML = '<br>'; $('noteBody').appendChild(p); }
   nbHideHandle();
   noteAutosave(); nbBuildToc();
@@ -10783,7 +10796,7 @@ function nbSyncMarkerColors() {
    La poignée (⋮⋮) et la ligne d'insertion vivent HORS de #noteBody : le HTML
    enregistré reste propre. V1 : blocs de premier niveau (paragraphe, titre,
    liste entière, encadré…), à la souris. */
-let nbDragEl = null, nbHoverEl = null, nbDropRef = null, nbDropBefore = true, nbDragJustEnded = 0;
+let nbDragEl = null, nbHoverEl = null, nbDropRef = null, nbDropBefore = true, nbDragJustEnded = 0, nbDropSide = null;
 function nbHideHandle() { $('noteDragHandle').classList.add('hidden'); nbHoverEl = null; }
 function nbHideLine() { $('noteDropLine').classList.add('hidden'); nbDropRef = null; }
 function nbPlaceHandle(el) {
@@ -10807,15 +10820,35 @@ function nbOnMove(e) {
     if (e.clientY >= br.top - 2 && e.clientY <= br.bottom + 2) { cible = b; break; }
   }
   if (!cible) { nbHideHandle(); return; }
-  // liste : on vise la LIGNE précise sous le curseur (déplacement ligne par ligne)
-  if (cible.tagName === 'UL' || cible.tagName === 'OL') {
-    for (const it of cible.children) {
+  // bloc dans des colonnes : viser la colonne sous X, puis le bloc dans cette colonne
+  if (cible.classList && cible.classList.contains('note-cols')) {
+    let col = null;
+    for (const c of cible.children) {
+      const cr = c.getBoundingClientRect();
+      if (e.clientX >= cr.left && e.clientX <= cr.right) { col = c; break; }
+    }
+    const hit = col ? nbResolveHover(col, e) : null;
+    if (hit) { nbPlaceHandle(hit); return; }
+    nbHideHandle(); return;
+  }
+  nbPlaceHandle(nbResolveHover(body, e) || cible);
+}
+// bloc (ou ligne de liste) precis sous le curseur, parmi les enfants directs d'un hote
+function nbResolveHover(container, e) {
+  let blk = null;
+  for (const b of container.children) {
+    const br = b.getBoundingClientRect();
+    if (e.clientY >= br.top - 2 && e.clientY <= br.bottom + 2) { blk = b; break; }
+  }
+  if (!blk) return null;
+  if (blk.tagName === 'UL' || blk.tagName === 'OL') {
+    for (const it of blk.children) {
       if (it.tagName !== 'LI') continue;
       const ir = it.getBoundingClientRect();
-      if (e.clientY >= ir.top - 2 && e.clientY <= ir.bottom + 2) { nbPlaceHandle(it); return; }
+      if (e.clientY >= ir.top - 2 && e.clientY <= ir.bottom + 2) return it;
     }
   }
-  nbPlaceHandle(cible);
+  return blk;
 }
 // conteneur qui défile : la note elle-même en modale, le corps de la fenêtre en plein écran
 function nbScrollBox() {
@@ -10968,6 +11001,12 @@ function sanitizeNoteHtml(html) {
   // bloc « base de données » : on ne persiste JAMAIS le tableau rendu, seulement le marqueur
   // (id de config) — les données restent à leur source unique, zéro duplication dans la note.
   box.querySelectorAll('.note-db').forEach(n => { n.innerHTML = ''; n.setAttribute('contenteditable', 'false'); });
+  // colonnes : on fige l'editabilite (conteneur non editable, colonnes editables) et on retire les vides
+  box.querySelectorAll('.note-cols').forEach(n => {
+    n.setAttribute('contenteditable', 'false');
+    [...n.querySelectorAll(':scope > .note-col')].forEach(c => { if (!c.children.length) c.remove(); else c.setAttribute('contenteditable', 'true'); });
+    if (n.querySelectorAll(':scope > .note-col').length <= 1) { const only = n.querySelector(':scope > .note-col'); if (only) while (only.firstChild) n.parentNode.insertBefore(only.firstChild, n); n.remove(); }
+  });
   return box.innerHTML;
 }
 
@@ -14046,7 +14085,7 @@ function openNoteFromPage(id) {
 }
 window.openNoteFromPage = openNoteFromPage;
 /* Nouvelle note déjà rattachée à ce qu'on regarde : on arme le retour à la page,
-   puis on pré-remplit le champ « Rattacher à ». */
+   puis on pré-remplit le champ �� Rattacher à ». */
 function addNoteTo(cible, id) {
   if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
   openNote(null);
@@ -16407,15 +16446,17 @@ $('noteBody').addEventListener('click', e => {
 /* ---- Drag & drop des blocs : poignée + ligne d'insertion (V1) ---- */
 // fusionne les listes voisines de même sorte (après extraction/déplacement d'une ligne)
 function nbMergeLists() {
-  const body = $('noteBody');
-  let b = body.firstElementChild;
   const estListe = x => x && (x.tagName === 'UL' || x.tagName === 'OL');
   const meme = (x, y) => x.tagName === y.tagName && x.classList.contains('note-todo') === y.classList.contains('note-todo');
-  while (b && b.nextElementSibling) {
-    const n = b.nextElementSibling;
-    if (estListe(b) && estListe(n) && meme(b, n)) { while (n.firstChild) b.appendChild(n.firstChild); n.remove(); }
-    else b = n;
-  }
+  const hosts = [$('noteBody'), ...$('noteBody').querySelectorAll('.note-col')];
+  hosts.forEach(host => {
+    let b = host.firstElementChild;
+    while (b && b.nextElementSibling) {
+      const n = b.nextElementSibling;
+      if (estListe(b) && estListe(n) && meme(b, n)) { while (n.firstChild) b.appendChild(n.firstChild); n.remove(); }
+      else b = n;
+    }
+  });
 }
 $('noteOverlay').addEventListener('mousemove', nbOnMove);
 $('noteOverlay').addEventListener('scroll', () => { nbHideHandle(); if (!nbDragEl) nbHideLine(); }, true);
@@ -16430,7 +16471,7 @@ $('noteDragHandle').addEventListener('dragstart', e => {
 });
 $('noteDragHandle').addEventListener('dragend', () => {
   if (nbDragEl) nbDragEl.classList.remove('nb-dragging');
-  nbDragEl = null; nbDragJustEnded = Date.now(); nbHideLine(); nbHideHandle();
+  nbDragEl = null; nbDropSide = null; nbDragJustEnded = Date.now(); nbHideLine(); nbColHide(); nbHideHandle();
 });
 // clic simple (sans glisser) sur la poignée : menu de transformation / couleur de l'encadré
 $('noteDragHandle').addEventListener('click', e => {
@@ -16445,14 +16486,73 @@ $('noteOverlay').addEventListener('dragover', e => {
   const sc = nbScrollBox(), sr = sc.getBoundingClientRect();   // défilement auto près des bords
   if (e.clientY < sr.top + 28) sc.scrollTop -= 12; else if (e.clientY > sr.bottom - 28) sc.scrollTop += 12;
   const estLigne = nbDragEl.tagName === 'LI';
-  // cibles de dépôt : les LIGNES de liste si on déplace une ligne, sinon les blocs de premier niveau
+
+  // 1) deplacement d'une LIGNE de liste : empilement seulement (jamais de colonne)
+  if (estLigne) {
+    nbColHide();
+    const cibles = [];
+    const pushFrom = host => { for (const b of host.children) {
+      if (b === nbDragEl) continue;
+      if (b.tagName === 'UL' || b.tagName === 'OL') { for (const it of b.children) if (it.tagName === 'LI' && it !== nbDragEl) cibles.push(it); }
+      else if (!(b.classList && b.classList.contains('note-cols'))) cibles.push(b);
+    } };
+    pushFrom($('noteBody'));
+    $('noteBody').querySelectorAll('.note-col').forEach(pushFrom);
+    nbStackLine(cibles, e);
+    return;
+  }
+
+  // 2) deplacement d'un BLOC : on teste d'abord le bord gauche/droit (creer une colonne)
+  const bloc = nbBlockUnder(e);
+  if (bloc && bloc !== nbDragEl && !bloc.contains(nbDragEl) && !nbDragEl.contains(bloc)) {
+    const br = bloc.getBoundingClientRect();
+    const bande = Math.min(64, br.width * 0.3);
+    const inCol = bloc.parentNode && bloc.parentNode.classList && bloc.parentNode.classList.contains('note-col');
+    const nbCols = inCol ? bloc.closest('.note-cols').querySelectorAll(':scope > .note-col').length : 1;
+    const maxCols = noteDraftWide ? 4 : 2;
+    const cote = e.clientX < br.left + bande ? 'left' : (e.clientX > br.right - bande ? 'right' : null);
+    if (cote && (!inCol || nbCols < maxCols)) {
+      nbHideLine();
+      nbDropRef = bloc; nbDropSide = cote;
+      nbColShow(bloc, cote);
+      return;
+    }
+  }
+  // 3) empilement vertical classique (colonnes aplaties en cibles)
+  nbColHide();
   const cibles = [];
   for (const b of $('noteBody').children) {
     if (b === nbDragEl) continue;
-    if (estLigne && (b.tagName === 'UL' || b.tagName === 'OL')) {
-      for (const it of b.children) if (it.tagName === 'LI' && it !== nbDragEl) cibles.push(it);
-    } else { cibles.push(b); }
+    if (b.classList && b.classList.contains('note-cols')) { for (const col of b.children) for (const blk of col.children) if (blk !== nbDragEl) cibles.push(blk); }
+    else cibles.push(b);
   }
+  nbStackLine(cibles, e);
+});
+// bloc de 1er niveau OU bloc dans une colonne, sous le curseur (pour le drag de blocs)
+function nbBlockUnder(e) {
+  const body = $('noteBody');
+  for (const b of body.children) {
+    const br = b.getBoundingClientRect();
+    if (e.clientY < br.top - 2 || e.clientY > br.bottom + 2) continue;
+    if (b.classList && b.classList.contains('note-cols')) {
+      for (const col of b.children) {
+        for (const blk of col.children) {
+          const kr = blk.getBoundingClientRect();
+          if (e.clientY >= kr.top - 2 && e.clientY <= kr.bottom + 2) return blk;
+        }
+      }
+      for (const col of b.children) {
+        const cr = col.getBoundingClientRect();
+        if (e.clientX >= cr.left && e.clientX <= cr.right) return col.firstElementChild;
+      }
+      return null;
+    }
+    return b;
+  }
+  return null;
+}
+// trace la ligne d'insertion horizontale (empilement) pour une liste de cibles
+function nbStackLine(cibles, e) {
   if (!cibles.length) { nbHideLine(); return; }
   let ref = null, avant = true;
   for (const b of cibles) {
@@ -16460,40 +16560,90 @@ $('noteOverlay').addEventListener('dragover', e => {
     if (e.clientY < br.top + br.height / 2) { ref = b; avant = true; break; }
     ref = b; avant = false;
   }
-  nbDropRef = ref; nbDropBefore = avant;
-  const line = $('noteDropLine'), rr = ref.getBoundingClientRect(), nr = $('noteBody').getBoundingClientRect();
+  nbDropRef = ref; nbDropBefore = avant; nbDropSide = null;
+  const line = $('noteDropLine'), rr = ref.getBoundingClientRect();
+  const host = ref.parentNode;
   const surLigne = ref.tagName === 'LI';
-  line.style.left = (surLigne ? rr.left : nr.left + 6) + 'px';
-  line.style.width = (surLigne ? rr.width : nr.width - 12) + 'px';
+  const inCol = host && host.classList && host.classList.contains('note-col');
+  const hr = (surLigne || inCol) ? rr : (host && host.getBoundingClientRect ? host.getBoundingClientRect() : $('noteBody').getBoundingClientRect());
+  line.style.left = ((surLigne || inCol) ? rr.left : hr.left + 6) + 'px';
+  line.style.width = ((surLigne || inCol) ? rr.width : hr.width - 12) + 'px';
   line.style.top = ((avant ? rr.top : rr.bottom) - 1) + 'px';
   line.classList.remove('hidden');
-});
+}
+// indicateur vertical (depot en colonne, a gauche/droite d'un bloc)
+function nbColShow(bloc, cote) {
+  const line = $('nbColLine'), r = bloc.getBoundingClientRect();
+  line.style.top = r.top + 'px';
+  line.style.height = r.height + 'px';
+  line.style.left = ((cote === 'left' ? r.left : r.right) - 1) + 'px';
+  line.classList.remove('hidden');
+}
+function nbColHide() { const l = $('nbColLine'); if (l) l.classList.add('hidden'); }
 $('noteOverlay').addEventListener('drop', e => {
   if (!nbDragEl) return;
   e.preventDefault();
-  const ref = nbDropRef;
-  if (ref && ref !== nbDragEl) {
-    if (nbDragEl.tagName === 'LI') {
-      const srcList = nbDragEl.parentNode;
+  const ref = nbDropRef, side = nbDropSide, drag = nbDragEl;
+  if (ref && ref !== drag && side && drag.tagName !== 'LI' && !ref.contains(drag) && !drag.contains(ref)) {
+    // depot en colonne : a gauche/droite d'un bloc
+    const refCol = (ref.parentNode && ref.parentNode.classList && ref.parentNode.classList.contains('note-col')) ? ref.parentNode : null;
+    if (refCol) {
+      const nc = document.createElement('div'); nc.className = 'note-col'; nc.contentEditable = 'true';
+      nc.appendChild(drag);
+      if (side === 'left') refCol.before(nc); else refCol.after(nc);
+    } else {
+      const cols = document.createElement('div'); cols.className = 'note-cols'; cols.contentEditable = 'false';
+      const cA = document.createElement('div'); cA.className = 'note-col'; cA.contentEditable = 'true';
+      const cB = document.createElement('div'); cB.className = 'note-col'; cB.contentEditable = 'true';
+      ref.replaceWith(cols);
+      cA.appendChild(ref); cB.appendChild(drag);
+      if (side === 'left') { cols.appendChild(cB); cols.appendChild(cA); } else { cols.appendChild(cA); cols.appendChild(cB); }
+    }
+    nbCleanupCols(); nbEnsureTrailer();
+    noteAutosave(); nbBuildToc();
+  } else if (ref && ref !== drag) {
+    if (drag.tagName === 'LI') {
+      const srcList = drag.parentNode;
       if (ref.tagName === 'LI') {
-        if (nbDropBefore) ref.before(nbDragEl); else ref.after(nbDragEl);
+        if (nbDropBefore) ref.before(drag); else ref.after(drag);
       } else {
         // déposée entre deux blocs : la ligne devient une petite liste de sa sorte d'origine
         const nl = makeListEl(listKindOf(srcList));
-        nl.appendChild(nbDragEl);
+        nl.appendChild(drag);
         if (nbDropBefore) ref.before(nl); else ref.after(nl);
       }
-      if (srcList && srcList !== nbDragEl.parentNode && !srcList.children.length) srcList.remove();
-      nbMergeLists();
+      if (srcList && srcList !== drag.parentNode && !srcList.children.length) srcList.remove();
+      nbMergeLists(); nbCleanupCols();
     } else {
-      if (nbDropBefore) ref.before(nbDragEl); else ref.after(nbDragEl);
+      if (nbDropBefore) ref.before(drag); else ref.after(drag);
+      nbCleanupCols(); nbEnsureTrailer();
     }
     noteAutosave(); nbBuildToc();
   }
-  nbHideLine();
+  nbHideLine(); nbColHide();
 });
+// retire les colonnes vides et deballe une rangee qui n'a plus qu'une colonne
+function nbCleanupCols() {
+  const body = $('noteBody');
+  [...body.querySelectorAll('.note-cols')].forEach(cols => {
+    [...cols.querySelectorAll(':scope > .note-col')].forEach(col => { if (!col.children.length) col.remove(); });
+    const left = [...cols.children].filter(c => c.classList && c.classList.contains('note-col'));
+    if (left.length <= 1) {
+      const only = left[0];
+      if (only) while (only.firstChild) cols.parentNode.insertBefore(only.firstChild, cols);
+      cols.remove();
+    }
+  });
+}
+// garantit un paragraphe editable avant/apres un bloc de colonnes en bord de note
+function nbEnsureTrailer() {
+  const body = $('noteBody');
+  const isCols = el => el && el.classList && el.classList.contains('note-cols');
+  if (isCols(body.firstElementChild)) { const p = document.createElement('p'); p.innerHTML = '<br>'; body.insertBefore(p, body.firstElementChild); }
+  if (isCols(body.lastElementChild)) { const p = document.createElement('p'); p.innerHTML = '<br>'; body.appendChild(p); }
+}
 $('noteOverlay').addEventListener('dragleave', e => {
-  if (nbDragEl && !e.relatedTarget) nbHideLine();   // on sort de la fenêtre : plus de ligne
+  if (nbDragEl && !e.relatedTarget) { nbHideLine(); nbColHide(); }   // on sort de la fenêtre : plus de repère
 });
 
 /* ---- Tableaux : redimensionner une colonne en tirant le bord droit d'une cellule ---- */
@@ -16545,6 +16695,12 @@ function upgradeNoteImages() {
     im.before(f); f.appendChild(im);
   });
   box.querySelectorAll('.note-fig').forEach(figWireHandles);
+}
+// colonnes : le conteneur n'est pas editable, chaque colonne l'est (au cas ou le HTML enregistre l'aurait perdu)
+function upgradeNoteCols() {
+  const box = $('noteBody');
+  box.querySelectorAll('.note-cols').forEach(c => c.setAttribute('contenteditable', 'false'));
+  box.querySelectorAll('.note-cols > .note-col').forEach(c => c.setAttribute('contenteditable', 'true'));
 }
 
 /* ---- Barre d'outils flottante d'une image ---- */
