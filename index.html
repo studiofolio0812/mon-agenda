@@ -919,6 +919,11 @@
   #noteOverlay.doc .note-props { max-width: 820px; margin: 26px auto 0; }
   #noteOverlay.doc .modal-foot { flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 12px 22px; }
   #noteOverlay.doc .modal-foot .btn-primary { max-width: 820px; margin: 0 auto; }
+  /* largeur paysage, choisie note par note : la colonne de texte s'élargit */
+  #noteOverlay.doc.wide .note-body,
+  #noteOverlay.doc.wide .note-hint,
+  #noteOverlay.doc.wide .note-props,
+  #noteOverlay.doc.wide .modal-foot .btn-primary { max-width: 1180px; }
   /* ---- Sommaire de la note (plein écran) : les titres de la note, cliquables.
      La feuille centrale ne bouge pas : le panneau flotte à gauche, comme dans Notion. ---- */
   .note-toc { display: none; }
@@ -3107,6 +3112,7 @@
       <button class="icon-btn" title="Modèles" onclick="openTplMenu(this,'note')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11"/></svg></button>
       <button class="icon-btn" id="noteReadBtn" title="Aperçu"></button>
       <button class="icon-btn" id="noteZoomBtn" title="Ouvrir en grand"></button>
+      <button class="icon-btn hidden" id="noteWideBtn" title="Élargir en paysage"></button>
       <button class="icon-btn" data-close>✕</button>
     </div>
     <div id="noteTplBanner" class="tpl-banner hidden"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Tu modifies un modèle de note — les changements sont enregistrés dans le modèle, pas dans une vraie note.</span></div>
@@ -3739,7 +3745,7 @@ const defaultState = () => ({
   tasks: [],
   // habitudes récurrentes (médicament, sport…) : {id,name,times:['08:00'],days:[0..6],color,icon}
   habits: [],
-  // pointages : clé « habitId|AAAA-MM-JJ|HH:MM » → true quand l'habitude est faite ce jour-là à cette heure
+  // pointages : clé �� habitId|AAAA-MM-JJ|HH:MM » → true quand l'habitude est faite ce jour-là à cette heure
   habitDone: {},
   // notes libres : {id,title,body(HTML),color,projectId,eventId,folderId,fav,updated}
   notes: [],
@@ -8198,7 +8204,7 @@ function personById(id) {
   }
   return null;
 }
-// petit sous-texte : la 1re coordonnée renseignée (e-mail, téléphone…) pour aider à reconnaître
+// petit sous-texte : la 1re coordonnée renseignée (e-mail, téléphone���) pour aider à reconnaître
 function personSub(tableId, rec) {
   const props = schemaOf(tableId) || [];
   const pref = props.find(p => ['email', 'phone', 'text', 'url'].includes(p.type) && (rec.props || {})[p.id]);
@@ -8226,7 +8232,7 @@ function peopleTableId() {
 // crée un contact vierge, le lie à l'événement/projet, et ouvre sa fiche à remplir
 function createContactFor(coll, recId) {
   let tid = peopleTableId();
-  if (!tid) {   // aucune table : on démarre un répertoire « Personnes »
+  if (!tid) {   // aucune table : on démarre un répertoire �� Personnes »
     tid = uid();
     state.customTables.push({ id: tid, name: 'Personnes' });
     state.customRecords[tid] = [];
@@ -9196,6 +9202,7 @@ window.noteDropOnFolder = noteDropOnFolder;
 
 /* ===== Ameliorations Notes : sous-dossiers, envoyer vers, icones, masquage ===== */
 var noteDraftIcon = '';
+var noteDraftWide = false;
 var folderDraftParent = '';
 
 function foldersInParent(pid) { return (state.noteFolders || []).filter(f => (f.parentId || '') === (pid || '')); }
@@ -9958,6 +9965,10 @@ window.toggleNoteFav = toggleNoteFav;
                      un mode lecture seule (elle veut pouvoir corriger au passage). */
 const ICON_EXPAND = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10V4h6"/><path d="M4 4l6.5 6.5"/><path d="M20 14v6h-6"/><path d="M20 20l-6.5-6.5"/></svg>';
 const ICON_SHRINK = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v6H4"/><path d="M10.5 10.5L4 4"/><path d="M14 20v-6h6"/><path d="M13.5 13.5L20 20"/></svg>';
+/* Portrait (colonne étroite, défaut) ou paysage (pleine largeur) : icônes du bouton
+   qui bascule la largeur de la note ouverte. */
+const ICON_WIDE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="1.5"/></svg>';
+const ICON_NARROW = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4" width="10" height="16" rx="1.5"/></svg>';
 function applyNoteMode() {
   const o = $('noteOverlay');
   o.classList.toggle('doc', !!state.noteDoc);
@@ -9968,9 +9979,17 @@ function applyNoteMode() {
   $('noteReadBtn').innerHTML = ICON_EYE;
   $('noteReadBtn').title = state.noteRead ? 'Réafficher les réglages et le bouton Enregistrer' : 'Aperçu : rien que la note';
   $('noteReadBtn').classList.toggle('on', !!state.noteRead);
+  // largeur paysage : choix propre à chaque note, visible seulement en pleine page
+  o.classList.toggle('wide', !!noteDraftWide);
+  $('noteWideBtn').classList.toggle('hidden', !state.noteDoc);
+  $('noteWideBtn').innerHTML = noteDraftWide ? ICON_NARROW : ICON_WIDE;
+  $('noteWideBtn').title = noteDraftWide ? 'Revenir en portrait (colonne étroite)' : 'Élargir en paysage (pleine largeur)';
+  $('noteWideBtn').classList.toggle('on', !!noteDraftWide);
   nbBuildToc();
 }
 function toggleNoteDoc() { state.noteDoc = !state.noteDoc; save(); applyNoteMode(); }
+// largeur portrait/paysage : propre à la note ouverte (persistée sur la note)
+function toggleNoteWide() { noteDraftWide = !noteDraftWide; applyNoteMode(); noteAutosave(true); }
 function toggleNoteRead() {
   state.noteRead = !state.noteRead;
   // en quittant l'aperçu on repasse par une sauvegarde : le pied de fenêtre réapparaît « à jour »
@@ -10007,6 +10026,7 @@ function noteRecordFromForm(title, body) {
   }
   const data = { title, body, color: noteDraftColor,
     icon: noteDraftIcon || '',
+    wide: noteDraftWide,
     folderId: noteDraftFolder || '',
     projectId: noteDraftLink.startsWith('p:') ? noteDraftLink.slice(2) : '',
     eventId: noteDraftLink.startsWith('e:') ? noteDraftLink.slice(2) : '',
@@ -10045,6 +10065,7 @@ function openNote(id, presetFolder) {
   noteDraftLink = n ? (n.projectId ? 'p:' + n.projectId : n.eventId ? 'e:' + n.eventId : n.taskId ? 't:' + n.taskId : '') : '';
   noteDraftFav = n ? !!n.fav : false;
   noteDraftIcon = n ? (n.icon || '') : '';
+  noteDraftWide = n ? !!n.wide : false;
   renderNoteColorPicker();
   updateNoteFieldButtons();
   updateNoteIconBtn();
@@ -10676,7 +10697,8 @@ function nbTransformBlock(el, kind) {
   noteAutosave(); nbBuildToc();
 }
 function nbOpenBlockMenu() {
-  const el = nbHoverEl;
+  let el = nbHoverEl;
+  if (el && el.tagName === 'LI') el = el.parentNode;   // le menu agit sur la liste entière
   if (!el || !$('noteBody').contains(el) || el.tagName === 'HR') return;
   const h = $('noteDragHandle');
   // un bloc sous-page ne se transforme pas : on l'ouvre ou on le supprime
@@ -10784,7 +10806,16 @@ function nbOnMove(e) {
     const br = b.getBoundingClientRect();
     if (e.clientY >= br.top - 2 && e.clientY <= br.bottom + 2) { cible = b; break; }
   }
-  if (cible) nbPlaceHandle(cible); else nbHideHandle();
+  if (!cible) { nbHideHandle(); return; }
+  // liste : on vise la LIGNE précise sous le curseur (déplacement ligne par ligne)
+  if (cible.tagName === 'UL' || cible.tagName === 'OL') {
+    for (const it of cible.children) {
+      if (it.tagName !== 'LI') continue;
+      const ir = it.getBoundingClientRect();
+      if (e.clientY >= ir.top - 2 && e.clientY <= ir.bottom + 2) { nbPlaceHandle(it); return; }
+    }
+  }
+  nbPlaceHandle(cible);
 }
 // conteneur qui défile : la note elle-même en modale, le corps de la fenêtre en plein écran
 function nbScrollBox() {
@@ -12333,7 +12364,7 @@ function openNoteTemplate(tplId) {
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   ensureNoteBlocks();
   noteDraftColor = d.color || PALETTE[2];
-  noteDraftFolder = ''; noteDraftLink = ''; noteDraftFav = false; noteDraftIcon = '';
+  noteDraftFolder = ''; noteDraftLink = ''; noteDraftFav = false; noteDraftIcon = ''; noteDraftWide = false;
   renderNoteColorPicker();
   updateNoteFieldButtons();
   updateNoteIconBtn();
@@ -16321,6 +16352,7 @@ $('addCrmBtn').onclick = e => { e.stopPropagation(); if (!state.navOpen.crm) tog
 $('saveNoteBtn').onclick = saveNote;
 $('deleteNoteBtn').onclick = () => { if (editingNote) deleteNote(editingNote); };
 $('noteZoomBtn').onclick = toggleNoteDoc;
+$('noteWideBtn').onclick = toggleNoteWide;
 $('noteReadBtn').onclick = toggleNoteRead;
 $('noteBackBtn').onclick = () => {
   const n = state.notes.find(x => x.id === editingNote);
@@ -16373,6 +16405,18 @@ $('noteBody').addEventListener('click', e => {
 });
 
 /* ---- Drag & drop des blocs : poignée + ligne d'insertion (V1) ---- */
+// fusionne les listes voisines de même sorte (après extraction/déplacement d'une ligne)
+function nbMergeLists() {
+  const body = $('noteBody');
+  let b = body.firstElementChild;
+  const estListe = x => x && (x.tagName === 'UL' || x.tagName === 'OL');
+  const meme = (x, y) => x.tagName === y.tagName && x.classList.contains('note-todo') === y.classList.contains('note-todo');
+  while (b && b.nextElementSibling) {
+    const n = b.nextElementSibling;
+    if (estListe(b) && estListe(n) && meme(b, n)) { while (n.firstChild) b.appendChild(n.firstChild); n.remove(); }
+    else b = n;
+  }
+}
 $('noteOverlay').addEventListener('mousemove', nbOnMove);
 $('noteOverlay').addEventListener('scroll', () => { nbHideHandle(); if (!nbDragEl) nbHideLine(); }, true);
 $('noteDragHandle').addEventListener('dragstart', e => {
@@ -16400,26 +16444,50 @@ $('noteOverlay').addEventListener('dragover', e => {
   e.dataTransfer.dropEffect = 'move';
   const sc = nbScrollBox(), sr = sc.getBoundingClientRect();   // défilement auto près des bords
   if (e.clientY < sr.top + 28) sc.scrollTop -= 12; else if (e.clientY > sr.bottom - 28) sc.scrollTop += 12;
-  const blocs = [...$('noteBody').children].filter(b => b !== nbDragEl);
-  if (!blocs.length) { nbHideLine(); return; }
+  const estLigne = nbDragEl.tagName === 'LI';
+  // cibles de dépôt : les LIGNES de liste si on déplace une ligne, sinon les blocs de premier niveau
+  const cibles = [];
+  for (const b of $('noteBody').children) {
+    if (b === nbDragEl) continue;
+    if (estLigne && (b.tagName === 'UL' || b.tagName === 'OL')) {
+      for (const it of b.children) if (it.tagName === 'LI' && it !== nbDragEl) cibles.push(it);
+    } else { cibles.push(b); }
+  }
+  if (!cibles.length) { nbHideLine(); return; }
   let ref = null, avant = true;
-  for (const b of blocs) {
+  for (const b of cibles) {
     const br = b.getBoundingClientRect();
     if (e.clientY < br.top + br.height / 2) { ref = b; avant = true; break; }
     ref = b; avant = false;
   }
   nbDropRef = ref; nbDropBefore = avant;
   const line = $('noteDropLine'), rr = ref.getBoundingClientRect(), nr = $('noteBody').getBoundingClientRect();
-  line.style.left = (nr.left + 6) + 'px';
-  line.style.width = (nr.width - 12) + 'px';
+  const surLigne = ref.tagName === 'LI';
+  line.style.left = (surLigne ? rr.left : nr.left + 6) + 'px';
+  line.style.width = (surLigne ? rr.width : nr.width - 12) + 'px';
   line.style.top = ((avant ? rr.top : rr.bottom) - 1) + 'px';
   line.classList.remove('hidden');
 });
 $('noteOverlay').addEventListener('drop', e => {
   if (!nbDragEl) return;
   e.preventDefault();
-  if (nbDropRef && nbDropRef !== nbDragEl) {
-    if (nbDropBefore) nbDropRef.before(nbDragEl); else nbDropRef.after(nbDragEl);
+  const ref = nbDropRef;
+  if (ref && ref !== nbDragEl) {
+    if (nbDragEl.tagName === 'LI') {
+      const srcList = nbDragEl.parentNode;
+      if (ref.tagName === 'LI') {
+        if (nbDropBefore) ref.before(nbDragEl); else ref.after(nbDragEl);
+      } else {
+        // déposée entre deux blocs : la ligne devient une petite liste de sa sorte d'origine
+        const nl = makeListEl(listKindOf(srcList));
+        nl.appendChild(nbDragEl);
+        if (nbDropBefore) ref.before(nl); else ref.after(nl);
+      }
+      if (srcList && srcList !== nbDragEl.parentNode && !srcList.children.length) srcList.remove();
+      nbMergeLists();
+    } else {
+      if (nbDropBefore) ref.before(nbDragEl); else ref.after(nbDragEl);
+    }
     noteAutosave(); nbBuildToc();
   }
   nbHideLine();
