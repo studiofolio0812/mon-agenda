@@ -3717,7 +3717,7 @@ const lighten = c => `color-mix(in oklab, ${c} 45%, white)`;
 
 /* ---------- Contraste texte / fond ----------
    Règle demandée : encre foncée sur un fond clair (pastel), encre claire sur un
-   fond foncé (couleur soutenue ou personnalisée). On calcule la luminance perçue
+   fond foncé (couleur soutenue ou personnalisée). On calcule la luminance per��ue
    du fond ; les fonds non-hex (color-mix…) sont toujours clairs → encre foncée. */
 function hexRgb(h) {
   h = String(h).replace('#', '');
@@ -13504,9 +13504,9 @@ const titleFieldOf = c => TITLE_FIELD[c] || 'title';
 
 // propriétés intégrées affichées dans la page (hors titre)
 const PAGE_BUILTINS = {
-  events:   [['date','Date','date'],['endDate','Dernier jour','date'],['allDay','Journée entière','check'],['start','Début','time'],['end','Fin','time'],['catId','Agenda','cat'],['projectId','Projet','proj'],['people','Personnes','people'],['color','Couleur','color'],['note','Note','longtext']],
-  tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext']],
-  projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color']],
+  events:   [['date','Date','date'],['endDate','Dernier jour','date'],['allDay','Journée entière','check'],['start','Début','time'],['end','Fin','time'],['catId','Agenda','cat'],['projectId','Projet','proj'],['people','Personnes','people'],['color','Couleur','color'],['note','Note','longtext'],['tags','Étiquettes','tags']],
+  tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext'],['tags','Étiquettes','tags']],
+  projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color'],['tags','Étiquettes','tags']],
   cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color']],
   habits:   [['freq','Fréquence','hfreq'],['weekTarget','Objectif hebdo','num'],['color','Couleur','color']],
   health:   [['date','Date','date'],['mood','Humeur','mood'],['sleepHours','Sommeil (h)','num'],['cycle','Règles','check'],['note','Note','longtext']],
@@ -13544,6 +13544,8 @@ function builtinField(c, rec, f) {
   if (f.kind === 'proj')  return `<select onchange="updDataR(${b},this.value)">${optsProjs(v)}</select>`;
   if (f.kind === 'task')  return `<select onchange="updDataR(${b},this.value)">${optsParent(v, rec.id)}</select>`;
   if (f.kind === 'people') return peopleFieldHtml(c, rec);
+  // étiquettes : le champ est monté après coup par renderPage (il enregistre à chaque ajout)
+  if (f.kind === 'tags') return `<div id="pgTagsBox"></div>`;
   if (f.kind === 'prio')  return `<select onchange="updDataR(${b},this.value)">
       <option value="low" ${v==='low'?'selected':''}>Basse</option>
       <option value="med" ${v==='med'?'selected':''}>Moyenne</option>
@@ -13754,6 +13756,8 @@ function renderPage() {
     || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
   // on ajuste la hauteur des zones de texte au contenu déjà saisi
   $$('#pageProps .prop-textarea').forEach(autoGrow);
+  // champ Étiquettes : monté en mode direct, chaque ajout ou retrait est enregistré aussitôt
+  if ($('pgTagsBox')) tagFieldOpen('pgTagsBox', tagsOf(rec), { coll, id });
 
   $('pageHiddenRow').innerHTML = masked.length
     ? `<span class="lbl">Masquées</span>` + masked.map(f =>
@@ -14395,8 +14399,19 @@ function tagRowHtml(rec) {
 window.tagRowHtml = tagRowHtml;
 
 /* ---- Champ « Étiquettes » des fiches ---- */
-let tagDraft = [], tagHostId = null, tagSuggSel = -1, tagSuggQ = '';
-function tagFieldOpen(hostId, ids) { tagHostId = hostId; tagDraft = (ids || []).slice(0, TAG_MAX); tagSuggHide(); tagFieldRender(); }
+let tagDraft = [], tagHostId = null, tagSuggSel = -1, tagSuggQ = '', tagLive = null;
+/* live = { coll, id } pour les fiches sans bouton Enregistrer (la page d'un enregistrement) :
+   chaque ajout ou retrait est écrit directement dans l'élément. Sans live, on attend Enregistrer. */
+function tagFieldOpen(hostId, ids, live) {
+  tagHostId = hostId; tagLive = live || null;
+  tagDraft = (ids || []).slice(0, TAG_MAX);
+  tagSuggHide(); tagFieldRender();
+}
+function tagFieldCommit() {
+  if (!tagLive) return;
+  const rec = collArr(tagLive.coll).find(x => x.id === tagLive.id);
+  if (rec) { rec.tags = tagDraft.slice(); save(); }
+}
 function tagFieldRender() {
   const box = tagHostId && $(tagHostId); if (!box) return;
   const full = tagDraft.length >= TAG_MAX;
@@ -14413,10 +14428,11 @@ function tagFieldRender() {
   }
 }
 function tagFieldFocus() { const i = $('tagFieldInput'); if (i) i.focus(); }
-function tagFieldRemove(id) { tagDraft = tagDraft.filter(x => x !== id); tagFieldRender(); }
+function tagFieldRemove(id) { tagDraft = tagDraft.filter(x => x !== id); tagFieldCommit(); tagFieldRender(); }
 function tagFieldPush(t) {
   if (!t || tagDraft.length >= TAG_MAX) return;
   if (!tagDraft.includes(t.id)) tagDraft.push(t.id);
+  tagFieldCommit();
   save(); tagSuggHide(); tagFieldRender(); tagFieldFocus();
 }
 // on passe par l'identifiant (jamais par le nom) : aucun échappement de texte à gérer
@@ -14444,7 +14460,7 @@ function tagFieldKey(e) {
     return;
   }
   if (e.key === 'Escape') { tagSuggHide(); return; }
-  if (e.key === 'Backspace' && !inp.value && tagDraft.length) { e.preventDefault(); tagDraft.pop(); tagFieldRender(); tagFieldFocus(); }
+  if (e.key === 'Backspace' && !inp.value && tagDraft.length) { e.preventDefault(); tagDraft.pop(); tagFieldCommit(); tagFieldRender(); tagFieldFocus(); }
 }
 function tagSuggItems() {
   const q = tagNorm(tagSuggQ);
