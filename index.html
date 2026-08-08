@@ -2897,6 +2897,12 @@
         <div id="healthPreview"></div>
       </div>
 
+      <!-- Étiquettes (ouvre une fenêtre : aucune section de navigation à router) -->
+      <button class="tags-nav-btn" id="tagsNavBtn" onclick="openTagsOverlay()" title="Étiquettes transversales">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.8" cy="7.8" r="1.4"/></svg>
+        <span>Étiquettes</span>
+      </button>
+
       <!-- Bilan -->
       <button class="nav-item" data-section="bilan">
         <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-6"/></svg>
@@ -3049,11 +3055,63 @@
 
       <label>Note (facultatif)</label>
       <textarea id="fNote" rows="2" placeholder="Détails…"></textarea>
+
+      <label>Étiquettes</label>
+      <div id="fTagsBox"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost btn-danger hidden" id="deleteBtn">Supprimer</button>
       <button class="btn-primary" id="saveBtn">Enregistrer</button>
     </div>
+  </div>
+</div>
+
+<style id="tagsStyle">
+  /* Étiquettes transversales : rectangle légèrement arrondi, teinte choisie posée à 75 % d'opacité
+     (les pilules d'agenda et d'événement restent en couleur pleine, la différence est nette). */
+  .tag-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 170px; padding: 2px 7px;
+    border-radius: 4px; font-size: 11.5px; font-weight: 600; line-height: 1.5; vertical-align: middle; }
+  .tag-chip .tc-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag-chip .tc-x { cursor: pointer; opacity: .6; font-weight: 700; flex: none; font-size: 10px; }
+  .tag-chip .tc-x:hover { opacity: 1; }
+  .tag-row { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; vertical-align: middle; }
+  .tag-field { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-height: 38px; cursor: text;
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; background: var(--surface); }
+  .tag-field input { border: none; outline: none; background: transparent; font: inherit; font-size: 13px;
+    color: inherit; flex: 1; min-width: 100px; padding: 2px; }
+  .tag-hint { font-size: 11px; color: var(--text-soft); margin: 5px 0 0; }
+  .tag-sugg { position: fixed; z-index: 120; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,.14); padding: 4px; min-width: 210px;
+    max-height: 230px; overflow: auto; }
+  .tag-sugg button { display: flex; align-items: center; gap: 8px; width: 100%; border: none; cursor: pointer;
+    background: transparent; text-align: left; padding: 6px 8px; border-radius: 6px; font-size: 13px; color: inherit; }
+  .tag-sugg button:hover, .tag-sugg button.sel { background: var(--surface-2); }
+  .tag-sugg-empty { padding: 8px; font-size: 12.5px; color: var(--text-soft); }
+  .tag-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  /* entrée de la barre latérale */
+  .tags-nav-btn { display: flex; align-items: center; gap: 9px; width: 100%; border: none; cursor: pointer;
+    background: transparent; color: inherit; font: inherit; font-size: 13.5px; text-align: left;
+    padding: 7px 10px; border-radius: 8px; }
+  .tags-nav-btn:hover { background: var(--surface-2); }
+  /* rubrique Étiquettes */
+  .tg-line { display: flex; align-items: center; gap: 6px; padding: 7px 2px; border-bottom: 1px solid var(--border); }
+  .tg-line .tag-chip { cursor: pointer; }
+  .tg-count { font-size: 11.5px; color: var(--text-soft); margin-left: auto; }
+  .tg-grp-title { font-size: 12px; font-weight: 700; color: var(--text-soft); margin: 14px 0 4px; }
+  .tg-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px;
+    cursor: pointer; font-size: 13.5px; }
+  .tg-item:hover { background: var(--surface-2); }
+</style>
+
+<!-- ============ MODAL: ÉTIQUETTES ============ -->
+<div class="overlay" id="tagsOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head">
+      <button class="icon-btn hidden" id="tagsBackBtn" title="Revenir à la liste" onclick="openTagsOverlay()">‹</button>
+      <h2 id="tagsTitle">Étiquettes</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </div>
+    <div class="modal-body" id="tagsBody"></div>
   </div>
 </div>
 
@@ -3135,6 +3193,7 @@
         <div><label>Couleur</label><div class="color-picker" id="noteColorPicker"></div></div>
         <div><label>Dossier</label><button type="button" class="styled-select" id="noteFolderBtn"></button></div>
         <div><label>Rattacher à</label><button type="button" class="styled-select" id="noteLinkBtn"></button></div>
+        <div><label>Étiquettes</label><div id="noteTagsBox"></div></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -3296,6 +3355,8 @@
       <input id="projName" placeholder="Ex : Refonte site client X…" autocomplete="off">
       <label>Couleur</label>
       <div class="color-picker" id="projColorPicker"></div>
+      <label>Étiquettes</label>
+      <div id="projTagsBox"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-ghost btn-danger hidden" id="deleteProjBtn">Supprimer</button>
@@ -10069,6 +10130,7 @@ function openNote(id, presetFolder) {
   ensureNoteBlocks();
   upgradeNoteImages();
   upgradeNoteCols();
+  tagFieldOpen('noteTagsBox', tagsOf(n));
   hydrateNoteDbBlocks();   // remplit les blocs « base de données » avec leur table (jamais persistée)
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
@@ -11013,6 +11075,8 @@ function sanitizeNoteHtml(html) {
 function saveNote() {
   clearTimeout(noteSaveTimer);
   noteRecordFromForm($('noteTitle').value.trim(), sanitizeNoteHtml($('noteBody').innerHTML));
+  const nrec = editingNote ? state.notes.find(n => n.id === editingNote) : null;
+  if (nrec) nrec.tags = tagDraft.slice();
   save(); closeModals(); render();
 }
 
@@ -11779,6 +11843,7 @@ function openProjModal(id) {
     projDraftColor = allColors()[Math.floor(Math.random()*PALETTE.length)];
     $('projName').value = '';
   }
+  tagFieldOpen('projTagsBox', tagsOf(isEdit ? projById(id) : null));
   renderProjPicker();
   $('projOverlay').classList.add('show');
   setTimeout(() => $('projName').focus(), 50);
@@ -11793,10 +11858,10 @@ function saveProj() {
   if (!name) { $('projName').focus(); return; }
   if (editingProj) {
     const p = projById(editingProj);
-    if (p) { p.name = name; p.color = projDraftColor; }
+    if (p) { p.name = name; p.color = projDraftColor; p.tags = tagDraft.slice(); }
   } else {
     const pid = uid();
-    state.projects.push({ id: pid, name, color: projDraftColor });
+    state.projects.push({ id: pid, name, color: projDraftColor, tags: tagDraft.slice() });
     // tâches embarquées par un modèle de projet
     if (projTplTasks && projTplTasks.length) projTplTasks.forEach(t => state.tasks.push({
       id: uid(), done: false, title: t.title, due: '', dueTime: '', dueEnd: '',
@@ -12664,6 +12729,7 @@ function openModal(kind, id, opts) {
     // si un projet est filtré, la nouvelle tâche s'y rattache par défaut
     $('fProj').value = (draft.type === 'task' && projectFilter) ? projectFilter : '';
   }
+  tagFieldOpen('fTagsBox', tagsOf(id ? collArr(kind === 'event' ? 'events' : 'tasks').find(x => x.id === id) : null));
   renderColorPicker();
   syncEventColorField();   // après chargement de l'agenda / du projet
 
@@ -12718,6 +12784,7 @@ function saveItem() {
       dueEnd: $('fDueEnd').value || '', prio: draft.prio, catId, projectId: $('fProj').value, note };
     if (draftParent) data.parentId = draftParent;   // création depuis « Ajouter une sous-tâche »
   }
+  data.tags = tagDraft.slice();
 
   if (seriesEdit) {
     /* Refaire la série : on retient l'état des cases cochées par date pour ne pas
@@ -14274,6 +14341,224 @@ let dataTab = 'tasks';
 let reopenData = false;  // rouvrir le panneau base de données après un sous-formulaire (colonne)
 const BUILTIN_TABLES = ['events', 'tasks', 'projects', 'cats', 'habits', 'health', 'notes'];
 const isBuiltinTable = c => BUILTIN_TABLES.includes(c);
+/* ============================================================
+   ÉTIQUETTES TRANSVERSALES
+   ------------------------------------------------------------
+   • Registre unique : state.tags = [{ id, name, color }]
+   • Sur chaque enregistrement : rec.tags = [idÉtiquette, …], 3 au maximum.
+   • Le filtrage réutilise le moteur existant : kindOf renvoie 'tags' et les
+     opérateurs « contient / ne contient pas / est vide » servent déjà aux
+     propriétés à plusieurs valeurs. Aucun second moteur de filtre.
+   • Rendu : rectangle légèrement arrondi, teinte choisie à 75 % d'opacité.
+   ============================================================ */
+const TAG_MAX = 3;             // limite souple par élément (un seul chiffre à changer)
+const TAG_ALPHA = 'BF';        // 75 % d'opacité, en hexadécimal
+const TAG_NATIVE = [['tasks', 'Tâches'], ['events', 'Événements'], ['notes', 'Notes'], ['projects', 'Projets']];
+
+function tagAll() { if (!state.tags) state.tags = []; return state.tags; }
+function tagById(id) { return tagAll().find(t => t.id === id) || null; }
+// comparaison sans casse ni accent : évite de créer « administratif » à côté de « Administratif »
+const tagNorm = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function tagByName(name) { const k = tagNorm(name); return k ? (tagAll().find(t => tagNorm(t.name) === k) || null) : null; }
+function tagsOf(rec) { return Array.isArray(rec && rec.tags) ? rec.tags.filter(tagById) : []; }
+// renvoie l'étiquette existante, ou la crée (couleur attribuée en tournant dans le nuancier)
+function tagEnsure(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return null;
+  const found = tagByName(clean);
+  if (found) return found;
+  const t = { id: 'tg_' + uid(), name: clean, color: BOX_TINTS[tagAll().length % BOX_TINTS.length][1] };
+  tagAll().push(t);
+  return t;
+}
+function tagColls() { return TAG_NATIVE; }
+function tagUsage(id) {
+  const out = [];
+  tagColls().forEach(([c, label]) => {
+    const rows = collArr(c).filter(r => tagsOf(r).includes(id));
+    if (rows.length) out.push({ coll: c, label, rows });
+  });
+  return out;
+}
+function tagCount(id) { return tagColls().reduce((n, [c]) => n + collArr(c).filter(r => tagsOf(r).includes(id)).length, 0); }
+function tagChipHtml(id, onRemove) {
+  const t = tagById(id); if (!t) return '';
+  const x = onRemove ? `<span class="tc-x" onclick="${onRemove}('${t.id}');event.stopPropagation()">✕</span>` : '';
+  return `<span class="tag-chip" style="background:${t.color}${TAG_ALPHA};color:${inkOn(t.color)}">`
+    + `<span class="tc-lbl">${esc(t.name)}</span>${x}</span>`;
+}
+// à poser dans les listes et les cartes quand on voudra afficher les étiquettes d'un élément
+function tagRowHtml(rec) {
+  const ids = tagsOf(rec); if (!ids.length) return '';
+  return `<span class="tag-row">${ids.map(id => tagChipHtml(id)).join('')}</span>`;
+}
+window.tagRowHtml = tagRowHtml;
+
+/* ---- Champ « Étiquettes » des fiches ---- */
+let tagDraft = [], tagHostId = null, tagSuggSel = -1, tagSuggQ = '';
+function tagFieldOpen(hostId, ids) { tagHostId = hostId; tagDraft = (ids || []).slice(0, TAG_MAX); tagSuggHide(); tagFieldRender(); }
+function tagFieldRender() {
+  const box = tagHostId && $(tagHostId); if (!box) return;
+  const full = tagDraft.length >= TAG_MAX;
+  box.innerHTML = `<div class="tag-field" onclick="tagFieldFocus()">`
+    + tagDraft.map(id => tagChipHtml(id, 'tagFieldRemove')).join('')
+    + (full ? '' : `<input id="tagFieldInput" placeholder="${tagDraft.length ? 'Ajouter…' : 'Ex : Administratif…'}" autocomplete="off">`)
+    + `</div><p class="tag-hint">${full ? TAG_MAX + ' étiquettes maximum' : 'Tape un nom puis Entrée · ' + TAG_MAX + ' maximum'}</p>`;
+  const inp = $('tagFieldInput');
+  if (inp) {
+    inp.oninput = () => tagSuggShow(inp);
+    inp.onfocus = () => tagSuggShow(inp);
+    inp.onkeydown = tagFieldKey;
+    inp.onblur = () => setTimeout(tagSuggHide, 180);
+  }
+}
+function tagFieldFocus() { const i = $('tagFieldInput'); if (i) i.focus(); }
+function tagFieldRemove(id) { tagDraft = tagDraft.filter(x => x !== id); tagFieldRender(); }
+function tagFieldPush(t) {
+  if (!t || tagDraft.length >= TAG_MAX) return;
+  if (!tagDraft.includes(t.id)) tagDraft.push(t.id);
+  save(); tagSuggHide(); tagFieldRender(); tagFieldFocus();
+}
+// on passe par l'identifiant (jamais par le nom) : aucun échappement de texte à gérer
+function tagFieldAddId(id) { tagFieldPush(tagById(id)); }
+function tagFieldAddTyped() {
+  const i = $('tagFieldInput'); if (!i) return;
+  const t = tagEnsure(i.value); if (!t) return;
+  i.value = ''; tagFieldPush(t);
+}
+window.tagFieldFocus = tagFieldFocus; window.tagFieldRemove = tagFieldRemove;
+window.tagFieldAddId = tagFieldAddId; window.tagFieldAddTyped = tagFieldAddTyped;
+function tagFieldKey(e) {
+  const inp = e.target, items = tagSuggItems();
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); if (!items.length) return;
+    tagSuggSel = e.key === 'ArrowDown'
+      ? (tagSuggSel + 1) % items.length
+      : (tagSuggSel <= 0 ? items.length - 1 : tagSuggSel - 1);
+    tagSuggPaint(); return;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (tagSuggSel >= 0 && items[tagSuggSel]) tagFieldAddId(items[tagSuggSel].id);
+    else tagFieldAddTyped();
+    return;
+  }
+  if (e.key === 'Escape') { tagSuggHide(); return; }
+  if (e.key === 'Backspace' && !inp.value && tagDraft.length) { e.preventDefault(); tagDraft.pop(); tagFieldRender(); tagFieldFocus(); }
+}
+function tagSuggItems() {
+  const q = tagNorm(tagSuggQ);
+  return tagAll().filter(t => !tagDraft.includes(t.id) && (!q || tagNorm(t.name).includes(q))).slice(0, 8);
+}
+function tagSuggShow(inp) {
+  tagSuggQ = inp.value; tagSuggSel = -1;
+  let box = $('tagSugg');
+  if (!box) { box = document.createElement('div'); box.id = 'tagSugg'; box.className = 'tag-sugg'; document.body.appendChild(box); }
+  const r = inp.getBoundingClientRect();
+  box.style.left = Math.round(r.left) + 'px';
+  box.style.top = Math.round(r.bottom + 6) + 'px';
+  tagSuggPaint();
+}
+function tagSuggPaint() {
+  const box = $('tagSugg'); if (!box) return;
+  const items = tagSuggItems(), q = tagSuggQ.trim();
+  let html = items.map((t, i) => `<button class="${i === tagSuggSel ? 'sel' : ''}" onmousedown="tagFieldAddId('${t.id}')">`
+    + `<span class="tag-swatch" style="background:${t.color}${TAG_ALPHA}"></span>${esc(t.name)}</button>`).join('');
+  if (q && !tagByName(q)) html += `<button onmousedown="tagFieldAddTyped()">`
+    + `<span class="tag-swatch" style="background:var(--surface-2)"></span>Créer « ${esc(q)} »</button>`;
+  box.innerHTML = html || `<div class="tag-sugg-empty">Tape un nom pour créer une étiquette</div>`;
+}
+function tagSuggHide() { const b = $('tagSugg'); if (b) b.remove(); }
+
+/* ---- Rubrique « Étiquettes » : liste, page d'une étiquette, gestion ---- */
+let tagView = null;            // null = liste ; sinon identifiant de l'étiquette ouverte
+function openTagsOverlay(id) {
+  tagView = id || null;
+  $('tagsOverlay').classList.add('show');
+  renderTagsOverlay();
+}
+window.openTagsOverlay = openTagsOverlay;
+function renderTagsOverlay() {
+  const body = $('tagsBody'); if (!body) return;
+  $('tagsBackBtn').classList.toggle('hidden', !tagView);
+  if (!tagView) {
+    $('tagsTitle').textContent = 'Étiquettes';
+    const list = tagAll().slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    body.innerHTML = list.length
+      ? list.map(t => {
+          const n = tagCount(t.id);
+          return `<div class="tg-line">`
+            + `<span class="tag-chip" style="background:${t.color}${TAG_ALPHA};color:${inkOn(t.color)}" onclick="openTagsOverlay('${t.id}')">${esc(t.name)}</span>`
+            + `<span class="tg-count">${n} élément${n > 1 ? 's' : ''}</span>`
+            + `<button class="icon-btn" title="Renommer" onclick="tagRename('${t.id}')">✎</button>`
+            + `<button class="icon-btn" title="Changer la couleur" onclick="tagRecolor('${t.id}',this)">◧</button>`
+            + `<button class="icon-btn" title="Fusionner dans une autre" onclick="tagMerge('${t.id}',this)">⇢</button>`
+            + `<button class="icon-btn danger" title="Supprimer" onclick="tagDelete('${t.id}')">✕</button>`
+            + `</div>`;
+        }).join('')
+      : `<div class="sf-empty">Aucune étiquette pour l'instant. Ajoute-en depuis une tâche, un événement, une note ou un projet.</div>`;
+    return;
+  }
+  const t = tagById(tagView);
+  if (!t) { tagView = null; renderTagsOverlay(); return; }
+  $('tagsTitle').textContent = t.name;
+  const groups = tagUsage(t.id);
+  const total = groups.reduce((n, g) => n + g.rows.length, 0);
+  body.innerHTML = `<div style="margin-bottom:4px">${tagChipHtml(t.id)} <span class="tg-count">${total} élément${total > 1 ? 's' : ''}</span></div>`
+    + (groups.length
+      ? groups.map(g => `<div class="tg-grp-title">${esc(g.label)} (${g.rows.length})</div>`
+          + g.rows.map(r => `<div class="tg-item" onclick="tagOpenRec('${g.coll}','${r.id}')">`
+            + `<span class="tag-swatch" style="background:${t.color}${TAG_ALPHA}"></span>${esc(recLabel(g.coll, r) || 'Sans titre')}</div>`).join('')).join('')
+      : `<div class="sf-empty">Rien ne porte encore cette étiquette.</div>`);
+}
+window.renderTagsOverlay = renderTagsOverlay;
+function tagOpenRec(coll, id) {
+  closeModals();
+  if (coll === 'notes') openNote(id);
+  else openPage(coll, id);
+}
+window.tagOpenRec = tagOpenRec;
+function tagRename(id) {
+  const t = tagById(id); if (!t) return;
+  const v = prompt("Nouveau nom de l'étiquette", t.name);
+  if (v === null) return;
+  const clean = v.trim(); if (!clean) return;
+  const other = tagByName(clean);
+  if (other && other.id !== id) { alert("Une étiquette « " + other.name + " » existe déjà. Utilise plutôt la fusion."); return; }
+  t.name = clean; save(); renderTagsOverlay(); render();
+}
+function tagRecolor(id, anchor) {
+  const t = tagById(id); if (!t) return;
+  const groups = [{ label: "Couleur de l'étiquette", items: BOX_TINTS.map(([n, c]) => ({ value: c, label: n, dot: c })) }];
+  openStyledMenu(anchor, groups, t.color, c => { if (!c) return; t.color = c; save(); renderTagsOverlay(); render(); });
+}
+function tagMerge(id, anchor) {
+  const t = tagById(id); if (!t) return;
+  const others = tagAll().filter(x => x.id !== id);
+  if (!others.length) { alert("Il faut au moins deux étiquettes pour en fusionner."); return; }
+  const groups = [{ label: 'Fusionner « ' + t.name + ' » dans…', items: others.map(x => ({ value: x.id, label: x.name, dot: x.color })) }];
+  openStyledMenu(anchor, groups, '', target => {
+    if (!target) return;
+    tagColls().forEach(([c]) => collArr(c).forEach(r => {
+      if (!Array.isArray(r.tags) || !r.tags.includes(id)) return;
+      r.tags = r.tags.filter(x => x !== id);
+      if (!r.tags.includes(target) && r.tags.length < TAG_MAX) r.tags.push(target);
+    }));
+    state.tags = tagAll().filter(x => x.id !== id);
+    save(); tagView = null; renderTagsOverlay(); render();
+  });
+}
+function tagDelete(id) {
+  const t = tagById(id); if (!t) return;
+  const n = tagCount(id);
+  if (!confirm("Supprimer l'étiquette « " + t.name + " » ? Elle sera retirée de " + n + " élément" + (n > 1 ? 's' : '') + '.')) return;
+  tagColls().forEach(([c]) => collArr(c).forEach(r => { if (Array.isArray(r.tags)) r.tags = r.tags.filter(x => x !== id); }));
+  state.tags = tagAll().filter(x => x.id !== id);
+  save(); tagView = null; renderTagsOverlay(); render();
+}
+window.tagRename = tagRename; window.tagRecolor = tagRecolor;
+window.tagMerge = tagMerge; window.tagDelete = tagDelete;
+
 function collArr(c) {
   if (c === 'events') return state.events;
   if (c === 'tasks') return state.tasks;
@@ -15073,6 +15358,7 @@ const BUILTIN_KIND = {
 function kindOf(c, key) {
   const prop = schemaOf(c).find(p => p.id === key);
   if (prop) return prop.type;
+  if (key === 'tags') return 'tags';        // étiquettes transversales
   const bk = BUILTIN_KIND[c];
   return (bk && bk[key]) || 'text';
 }
@@ -15088,7 +15374,7 @@ function opsFor(kind) {
   if (kind === 'number')   return [['eq','='], ['ne','≠'], ['gt','>'], ['lt','<'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
   if (kind === 'date')     return [['eq','est le'], ['before','avant le'], ['after','après le'], ['inperiod','est dans la période'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
   if (['select','cat','proj','prio'].includes(kind)) return [['eq','est'], ['ne',"n'est pas"], ['empty','est vide'], ['notempty',"n'est pas vide"]];
-  if (['multi','relation'].includes(kind)) return [['has','contient'], ['hasnot','ne contient pas'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
+  if (['multi','relation','tags'].includes(kind)) return [['has','contient'], ['hasnot','ne contient pas'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
   return [['contains','contient'], ['notcontains','ne contient pas'], ['eq','est'], ['empty','est vide'], ['notempty',"n'est pas vide"]];
 }
 const isEmptyVal = v => v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
@@ -15189,7 +15475,11 @@ function toggleViewProp(key) { const v = curView(); const a = v.cardProps || [];
 window.toggleViewProp = toggleViewProp;
 const curView = () => currentView(dataTab);
 // liste des propriétés sur lesquelles trier/filtrer (l'ID technique n'a pas d'intérêt ici)
-function ruleFields(c) { return allCols(c).filter(col => col.key !== 'id').map(col => [col.key, col.label]); }
+function ruleFields(c) {
+  const cols = allCols(c).filter(col => col.key !== 'id').map(col => [col.key, col.label]);
+  // les étiquettes sont filtrables et triables sans occuper une colonne du tableau
+  return TAG_NATIVE.some(([tc]) => tc === c) ? cols.concat([['tags', 'Étiquettes']]) : cols;
+}
 function fieldOptions(c, sel) {
   return `<option value="">— propriété —</option>` +
     ruleFields(c).map(([k, l]) => `<option value="${k}" ${k===sel?'selected':''}>${esc(l)}</option>`).join('');
@@ -15235,6 +15525,10 @@ function filterValueInput(c, f, i) {
     return `<select ${on}><option value="">—</option>${(prop?.options || []).map(o =>
       `<option value="${o.id}" ${o.id===f.value?'selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
   }
+  if (kind === 'tags') {
+    return `<select ${on}><option value="">—</option>${tagAll().map(t =>
+      `<option value="${t.id}" ${t.id===f.value?'selected':''}>${esc(t.name)}</option>`).join('')}</select>`;
+  }
   if (kind === 'relation') {
     const prop = schemaOf(c).find(p => p.id === f.key);
     const tgt = prop ? prop.target : null;
@@ -15262,7 +15556,7 @@ function renderSFPanel(c, view) {
   }
   if (sfOpen === 'props') {
     const chosen = view.cardProps || [];
-    return `<div class="sf-panel"><div class="vp-checks">${ruleFields(c).filter(([k]) => !['title', 'name'].includes(k)).map(([k, l]) =>
+    return `<div class="sf-panel"><div class="vp-checks">${ruleFields(c).filter(([k]) => !['title', 'name', 'tags'].includes(k)).map(([k, l]) =>
       `<label><input type="checkbox" ${chosen.includes(k) ? 'checked' : ''} onchange="toggleViewProp('${k}')"> ${esc(l)}</label>`).join('')}
       </div><div class="sf-empty" style="padding-top:6px">Choisis les propriétés affichées ${view.type === 'list' ? 'sur chaque ligne' : 'sur chaque carte'} (en plus du nom).</div></div>`;
   }
