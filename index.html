@@ -2096,6 +2096,25 @@
   .page-hidden-chip { font-size: 12.5px; color: var(--text-soft); border: 1px dashed var(--border-strong); border-radius: var(--radius-pill, 999px); padding: 4px 11px; display: inline-flex; align-items: center; gap: 6px; }
   .page-hidden-chip:hover { border-color: var(--accent); color: var(--accent); }
   .page-section-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; margin: 26px 0 10px; }
+  /* fiche contact */
+  .ct-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; margin: 20px 0 2px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+  .ct-av-lg { width: 46px; height: 46px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-size: 16px; font-weight: 600; flex: none; }
+  .ct-id { flex: 1 1 auto; min-width: 0; }
+  .ct-name { font-size: 16px; font-weight: 600; }
+  .ct-sub { font-size: 12.5px; color: var(--text-soft); margin-top: 3px; word-break: break-word; }
+  .ct-bday { font-size: 12.5px; color: var(--accent); margin-top: 4px; }
+  .ct-acts { display: flex; gap: 6px; flex: none; flex-wrap: wrap; }
+  .ct-act { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text-soft); font-size: 12px; text-decoration: none; }
+  .ct-act:hover { border-color: var(--accent); color: var(--accent); }
+  .ct-row { display: flex; align-items: center; gap: 9px; padding: 9px 8px; border-radius: 10px; cursor: pointer; }
+  .ct-row:hover { background: var(--surface-2); }
+  .ct-row + .ct-row { border-top: 1px solid var(--border); }
+  .ct-row-name { flex: 1 1 auto; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ct-row-meta { font-size: 12px; color: var(--text-faint); flex: none; }
+  @media (max-width: 720px) { .ct-card { flex-wrap: wrap; } .ct-acts { width: 100%; } }
   /* bouton « ouvrir en page » sur les lignes de la base de données */
   .row-open { color: var(--text-faint); padding: 4px 6px; border-radius: 6px; display: inline-grid; place-items: center; }
   .row-open:hover { color: var(--accent); background: var(--accent-soft); }
@@ -8424,6 +8443,11 @@ const ICON_PEOPLE = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none"
    valables même si elle renomme la table ou les colonnes ensuite.
    ============================================================ */
 const CRM_STATUTS = { prospect: ['Prospect', '#eae8e4'], actif: ['Client actif', '#d3e8cf'], inactif: ['Inactif', '#f2d3d0'] };
+/* Champs de la fiche contact. Ce sont de VRAIES propriétés de la table Personnes :
+   modifiables depuis la fiche comme depuis la base de données, filtrables, jamais dupliquées. */
+const CRM_FIELDS = [['phone', 'Téléphone', 'phone'], ['email', 'Email', 'email'], ['address', 'Adresse', 'text'],
+                    ['company', 'Société', 'text'], ['role', 'Rôle', 'text'], ['birthday', 'Anniversaire', 'date']];
+const isPeopleColl = c => !!c && c === (state.crmTableId || peopleTableId());
 function ensureCrmSchema() {
   let tid = state.crmTableId && (state.customTables || []).some(t => t.id === state.crmTableId) ? state.crmTableId : peopleTableId();
   if (!tid) {
@@ -8454,6 +8478,14 @@ function ensureCrmSchema() {
     schema.push(prop);
     state.crmTagsProp = prop.id;
   }
+  // champs de la fiche contact : créés une seule fois, repérés par nom pour ne jamais doublonner
+  // une colonne qu'elle aurait déjà créée à la main (Téléphone, Email…)
+  if (!state.crmProps) state.crmProps = {};
+  CRM_FIELDS.forEach(([key, name, type]) => {
+    let prop = schema.find(p => p.id === state.crmProps[key]) || schema.find(p => tagNorm(p.name) === tagNorm(name));
+    if (!prop) { prop = { id: uid(), name, type }; schema.push(prop); }
+    state.crmProps[key] = prop.id;
+  });
   // colonne « type de relation » DÉJÀ créée par elle (Client/Amis/Famille/Collègue…) :
   // jamais fabriquée ici, seulement repérée par nom, pour distinguer pro/perso dans une
   // seule et même table plutôt que de la dupliquer.
@@ -13600,6 +13632,16 @@ function pageFields(c) {
   const builtins = (PAGE_BUILTINS[c] || []).map(([key, label, kind]) => ({ key, label, kind }));
   // une table étiquetable sans PAGE_BUILTINS (les contacts) reçoit quand même le champ Étiquettes
   if (tagColls().some(([tc]) => tc === c) && !builtins.some(f => f.key === 'tags')) builtins.push({ key: 'tags', label: 'Étiquettes', kind: 'tags' });
+  // fiche contact : coordonnées d'abord, puis Étiquettes et une zone de notes libres
+  if (isPeopleColl(c)) {
+    ensureCrmSchema();
+    builtins.push({ key: 'note', label: 'Notes', kind: 'longtext' });
+    const P = state.crmProps || {};
+    const rank = k => { const i = CRM_FIELDS.findIndex(f => P[f[0]] === k); return i < 0 ? 99 : i; };
+    const props = schemaOf(c).map(p => ({ key: p.id, label: p.name, kind: p.type, prop: p }));
+    props.sort((a, b) => rank(a.key) - rank(b.key));
+    return props.concat(builtins);
+  }
   return builtins.concat(schemaOf(c).map(p => ({ key: p.id, label: p.name, kind: p.type, prop: p })));
 }
 // contrôle d'une propriété intégrée
@@ -13844,7 +13886,8 @@ function renderPage() {
   // extra : projet → avancement + tâches ; tâche → ses sous-tâches ; événement → ses notes
   $('pageExtra').innerHTML = (coll === 'projects') ? projectPageExtra(rec)
                            : (coll === 'tasks')    ? taskPageExtra(rec)
-                           : (coll === 'events')   ? eventPageExtra(rec) : '';
+                           : (coll === 'events')   ? eventPageExtra(rec)
+                           : isPeopleColl(coll)    ? contactPageExtra(coll, rec) : '';
 }
 function projectPageExtra(p) {
   const st = projStats(p);
@@ -13905,6 +13948,78 @@ function projectPageExtra(p) {
 }
 // un événement n'a pas de sous-éléments : sa page se prolonge juste de ses notes
 function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectionHtml('e', e.id); }
+
+/* Fiche contact : une carte d'identité en tête (coordonnées cliquables) puis tout ce qui
+   relie ce contact au reste de l'application. Les liens ne sont pas de nouvelles données :
+   ils se lisent dans le champ « Personnes » des événements et des projets, déjà existant. */
+function contactPageExtra(coll, rec) {
+  const P = state.crmProps || {};
+  const val = k => String((rec.props || {})[P[k]] || '').trim();
+  const tel = val('phone'), mail = val('email'), adr = val('address');
+  const sous = [val('company'), val('role')].filter(Boolean).join(' · ');
+  const coord = [tel, mail, adr].filter(Boolean);
+
+  const acts = [
+    tel ? `<a class="ct-act" href="tel:${esc(tel)}" onclick="event.stopPropagation()">Appeler</a>` : '',
+    mail ? `<a class="ct-act" href="mailto:${esc(mail)}" onclick="event.stopPropagation()">Écrire</a>` : '',
+    adr ? `<a class="ct-act" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Itinéraire</a>` : '',
+  ].filter(Boolean).join('');
+
+  // anniversaire : on annonce la PROCHAINE occurrence, pas l'année de naissance
+  let bdayTxt = '';
+  const bd = val('birthday') ? new Date(val('birthday')) : null;
+  if (bd && !isNaN(bd)) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let next = new Date(today.getFullYear(), bd.getMonth(), bd.getDate());
+    if (next < today) next = new Date(today.getFullYear() + 1, bd.getMonth(), bd.getDate());
+    const jours = Math.round((next - today) / 86400000);
+    const age = next.getFullYear() - bd.getFullYear();
+    bdayTxt = `Anniversaire le ${fmtDateLong(ymd(next))}`
+      + (jours === 0 ? " · c'est aujourd'hui" : ` · dans ${jours} jour${jours > 1 ? 's' : ''}`)
+      + (bd.getFullYear() > 1900 ? ` · ${age} ans` : '');
+  }
+
+  const carte = `<div class="ct-card">
+    <span class="ct-av-lg">${esc(initials(rec.title))}</span>
+    <div class="ct-id">
+      <div class="ct-name">${esc(rec.title || 'Sans nom')}</div>
+      ${sous ? `<div class="ct-sub">${esc(sous)}</div>` : ''}
+      ${coord.length ? `<div class="ct-sub">${coord.map(esc).join(' · ')}</div>` : ''}
+      ${bdayTxt ? `<div class="ct-bday">${esc(bdayTxt)}</div>` : ''}
+      ${!sous && !coord.length && !bdayTxt ? `<div class="ct-sub">Renseignez le téléphone, l'email ou la société juste au-dessus pour les voir apparaître ici.</div>` : ''}
+    </div>
+    ${acts ? `<div class="ct-acts">${acts}</div>` : ''}
+  </div>`;
+
+  const today = ymd(new Date());
+  const evs = (state.events || []).filter(e => (e.people || []).includes(rec.id));
+  const aVenir = evs.filter(e => (e.date || '') >= today).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const passes = evs.filter(e => (e.date || '') < today).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const ligneEv = e => `<div class="ct-row" onclick="openPageFrom('events','${e.id}')">
+    <span class="pill-dot" style="background:${dotOf(catColor(e.catId) || e.color || '#eae8e4')}"></span>
+    <span class="ct-row-name">${esc(e.title || 'Sans titre')}</span>
+    <span class="ct-row-meta">${esc(fmtDateShort(e.date))}${e.start ? ' · ' + esc(e.start) : ''}</span></div>`;
+
+  const projs = (state.projects || []).filter(p => (p.people || []).includes(rec.id));
+  const ligneProj = p => {
+    const st = projStats(p);
+    return `<div class="ct-row" onclick="openPageFrom('projects','${p.id}')">
+      <span class="pill-dot" style="background:${dotOf(p.color)}"></span>
+      <span class="ct-row-name">${esc(p.name || 'Sans nom')}</span>
+      <span class="ct-row-meta">${st.total ? `${st.done}/${st.total} tâches` : 'aucune tâche'}</span></div>`;
+  };
+
+  return carte
+    + `<div class="page-section-title">Événements liés${evs.length ? ` <span class="grp-n">· ${evs.length}</span>` : ''}</div>`
+    + (evs.length
+        ? (aVenir.length ? `<div class="hint-txt">À venir</div>` + aVenir.slice(0, 12).map(ligneEv).join('') : '')
+          + (passes.length ? `<div class="hint-txt" style="margin-top:12px">Passés</div>` + passes.slice(0, 8).map(ligneEv).join('') : '')
+        : `<div class="hint-txt">Aucun événement pour ce contact. Ajoutez-le dans le champ Personnes d'un événement pour le voir ici.</div>`)
+    + `<div class="page-section-title">Projets liés${projs.length ? ` <span class="grp-n">· ${projs.length}</span>` : ''}</div>`
+    + (projs.length ? projs.map(ligneProj).join('')
+        : `<div class="hint-txt">Aucun projet pour ce contact. Ajoutez-le dans le champ Personnes d'un projet.</div>`);
+}
+window.contactPageExtra = contactPageExtra;
 
 /* Notes en rapport avec un projet : soit rattachées directement (note→projet),
    soit rangées dans un dossier lui-même lié à ce projet. */
