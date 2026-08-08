@@ -2904,8 +2904,8 @@
         <div id="healthPreview"></div>
       </div>
 
-      <!-- Étiquettes (ouvre une fenêtre : aucune section de navigation à router) -->
-      <button class="tags-nav-btn" id="tagsNavBtn" onclick="openTagsOverlay()" title="Étiquettes transversales">
+      <!-- Étiquettes : ouvre une section plein cadre (vue transversale de tous les domaines) -->
+      <button class="tags-nav-btn" id="tagsNavBtn" onclick="openTagsSpace()" title="Étiquettes transversales">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.8" cy="7.8" r="1.4"/></svg>
         <span>Étiquettes</span>
       </button>
@@ -3100,6 +3100,26 @@
     background: transparent; color: inherit; font: inherit; font-size: 13.5px; text-align: left;
     padding: 7px 10px; border-radius: 8px; }
   .tags-nav-btn:hover { background: var(--surface-2); }
+  /* Section Étiquettes plein cadre : liste à gauche, contenu transversal à droite */
+  .tgs-wrap { display: flex; gap: 20px; align-items: flex-start; }
+  .tgs-side { flex: 0 0 210px; display: flex; flex-direction: column; gap: 2px; }
+  .tgs-side-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13.5px; }
+  .tgs-side-item:hover { background: var(--surface-2); }
+  .tgs-side-item.on { background: var(--surface-2); font-weight: 600; }
+  .tgs-side-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tgs-main { flex: 1; min-width: 0; }
+  .tgs-main-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tgs-acts { margin-left: auto; display: flex; gap: 2px; }
+  .tgs-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; align-items: start; }
+  .tgs-col-t { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); margin-bottom: 6px; }
+  .tgs-row { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 4px; cursor: pointer; font-size: 13.5px; }
+  .tgs-row:hover { background: var(--surface-2); }
+  @media (max-width: 720px) {
+    .tgs-wrap { flex-direction: column; }
+    .tgs-side { flex: 1 1 auto; width: 100%; flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+    .tgs-side-item { flex: 0 0 auto; }
+    .tgs-cols { grid-template-columns: 1fr; }
+  }
   /* rubrique Étiquettes */
   .tg-line { display: flex; align-items: center; gap: 6px; padding: 7px 2px; border-bottom: 1px solid var(--border); }
   .tg-line .tag-chip { cursor: pointer; }
@@ -4341,6 +4361,7 @@ function render() {
   else if (state.view === 'projects') renderProjectsSpace();
   else if (state.view === 'notes') renderNotesSpace();
   else if (state.view === 'crm') renderCrmSpace();
+  else if (state.view === 'tags') renderTagsSpace();
   else if (state.view === 'health') renderHealthSpace();
   else if (state.view === 'habits') renderHabitsSpace();
   else if (state.view === 'bilan') renderBilanSpace();
@@ -4360,7 +4381,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan', 'mail'];
+const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan', 'mail', 'tags'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -5544,6 +5565,10 @@ function groupTasks(list, mode, all) {
     const prop = schemaOf('tasks').find(x => x.id === mode.slice(2));
     (prop.options || []).forEach(o => push(o.label, todoTop.filter(t => (t.props || {})[prop.id] === o.id), false, o.color || null, false, o.id));
     push('Sans ' + prop.name.toLowerCase(), todoTop.filter(t => { const v = (t.props || {})[prop.id]; return !v || !(prop.options || []).some(o => o.id === v); }), false, null, false, '');
+  } else if (mode === 'tags') {
+    // une tâche qui porte deux étiquettes apparaît dans les deux groupes : c'est voulu
+    tagAll().forEach(tg => push(tg.name, todoTop.filter(t => tagsOf(t).includes(tg.id)), false, tg.color, false, tg.id));
+    push('Sans étiquette', todoTop.filter(t => !tagsOf(t).length), false, null, false, '');
   } else if (mode === 'cat') {
     state.categories.forEach(c => push(catPath(c), todoTop.filter(t => t.catId === c.id), false, catColor(c), false, c.id));
     push('Sans agenda', todoTop.filter(t => !t.catId || !catById(t.catId)), false, null, false, '');
@@ -6601,7 +6626,13 @@ function applyGroupDrop(t, key) {
   if (key === 'done') setTaskDone(t, true);
   else {
     setTaskDone(t, false);
-    if (mode === 'project') t.projectId = key;
+    if (mode === 'tags') {
+      // déposer dans la colonne d'une étiquette la pose, dans la limite autorisée
+      const cur = tagsOf(t);
+      if (!key) t.tags = [];
+      else if (!cur.includes(key) && cur.length < TAG_MAX) t.tags = cur.concat(key);
+    }
+    else if (mode === 'project') t.projectId = key;
     else if (mode === 'prio') t.prio = key;
     else if (mode === 'cat') t.catId = key;
     else if (mode && mode.startsWith('p:')) { if (!t.props) t.props = {}; t.props[mode.slice(2)] = key || null; }
@@ -6655,6 +6686,7 @@ function kbGroupChoices() {
     { value: 'prio', label: 'Priorité' },
     { value: 'cat', label: 'Agenda' },
     { value: 'status', label: 'Statut (à faire / terminée)' },
+    { value: 'tags', label: 'Étiquette' },
   ];
   schemaOf('tasks').filter(p => p.type === 'select').forEach(p => items.push({ value: 'p:' + p.id, label: p.name }));
   return items;
@@ -6806,6 +6838,7 @@ function fltFields(kind) {
       { key: 'catId', label: 'Agenda', type: 'select', options: state.categories.map(c => ({ v: c.id, label: c.name })) },
       { key: 'projectId', label: 'Projet', type: 'select', options: state.projects.map(p => ({ v: p.id, label: p.name })) },
       { key: 'parentId', label: 'Tâche parente', type: 'select', options: state.tasks.filter(t => hasSubtasks(t.id)).map(t => ({ v: t.id, label: t.title })) },
+      { key: 'tags', label: 'Étiquettes', type: 'tags', options: tagAll().map(t => ({ v: t.id, label: t.name })) },
     ];
     schemaOf('tasks').filter(p => p.type === 'select').forEach(p => {
       f.push({ key: 'p:' + p.id, label: p.name, type: 'select', options: (p.options || []).map(o => ({ v: o.id, label: o.label })) });
@@ -6817,6 +6850,7 @@ function fltFields(kind) {
     { key: 'name', label: 'Nom', type: 'text' },
     { key: 'start', label: 'Début', type: 'date' },
     { key: 'end', label: 'Échéance', type: 'date' },
+    { key: 'tags', label: 'Étiquettes', type: 'tags', options: tagAll().map(t => ({ v: t.id, label: t.name })) },
   ];
   schemaOf('projects').filter(p => p.type === 'select').forEach(p => {
     f.push({ key: 'p:' + p.id, label: p.name, type: 'select', options: (p.options || []).map(o => ({ v: o.id, label: o.label })) });
@@ -6827,6 +6861,7 @@ function fltConds(type) {
   if (type === 'bool') return [{ v: 'true', label: 'est coché' }, { v: 'false', label: "n'est pas coché" }];
   if (type === 'text') return [{ v: 'contains', label: 'contient' }, { v: 'ncontains', label: 'ne contient pas' }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
   if (type === 'date') return [{ v: 'is', label: 'est le' }, { v: 'before', label: 'avant le' }, { v: 'after', label: 'après le' }, { v: 'overdue', label: 'en retard' }, { v: 'thisweek', label: 'cette semaine' }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
+  if (type === 'tags') return [{ v: 'has', label: 'contient' }, { v: 'hasnot', label: 'ne contient pas' }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
   return [{ v: 'is', label: 'est' }, { v: 'isnot', label: "n'est pas" }, { v: 'empty', label: 'est vide' }, { v: 'nempty', label: "n'est pas vide" }];
 }
 function fltCfg(kind) { return kind === 'tasks' ? tasksSpaceCfg() : projSpaceCfg(); }
@@ -6893,6 +6928,8 @@ function fltSetValueAndRender(kind, pathStr, value, e) {
   fltRerender(kind);
 }
 function fltFieldRaw(kind, field, item) {
+  // les étiquettes se lisent pareil quel que soit l'objet
+  if (field.key === 'tags') return tagsOf(item);
   if (kind === 'tasks') {
     if (field.key === 'done') return !!item.done;
     if (field.key.startsWith('p:')) return (item.props || {})[field.key.slice(2)] || '';
@@ -6908,6 +6945,15 @@ function fltMatchCond(kind, cond, item) {
   const field = fltFields(kind).find(f => f.key === cond.prop);
   if (!field) return true;
   const raw = fltFieldRaw(kind, field, item);
+  if (field.type === 'tags') {
+    const ids = Array.isArray(raw) ? raw : [];
+    if (cond.cond === 'empty') return !ids.length;
+    if (cond.cond === 'nempty') return !!ids.length;
+    if (!cond.value) return true;
+    if (cond.cond === 'has') return ids.includes(cond.value);
+    if (cond.cond === 'hasnot') return !ids.includes(cond.value);
+    return true;
+  }
   if (field.type === 'bool') return !!raw === (cond.cond === 'true');
   if (field.type === 'text') {
     const s = String(raw || '').toLowerCase();
@@ -10941,7 +10987,7 @@ function nbResolveHover(container, e) {
   }
   return blk;
 }
-// conteneur qui défile : la note elle-même en modale, le corps de la fenêtre en plein écran
+// conteneur qui d��file : la note elle-même en modale, le corps de la fenêtre en plein écran
 function nbScrollBox() {
   return $('noteOverlay').classList.contains('doc') ? $('noteOverlay').querySelector('.modal-body') : $('noteBody');
 }
@@ -11006,7 +11052,7 @@ const EMOJI_LIB = [
   ['ampoule', '💡'], ['cible', '🎯'], ['fusee', '🚀'], ['trophee', '🏆'], ['medaille', '🥇'],
   ['cadeau', '🎁'], ['ballon', '🎈'], ['musique', '🎵'], ['photo', '📷'], ['cinema', '🎬'],
   ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '🧘'], ['argent', '💰'],
-  ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '🛒'], ['sante', '🩺'],
+  ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '��'], ['sante', '🩺'],
   ['pilule', '💊'], ['cerveau', '🧠'], ['soin', '❤️‍🩹'], ['zen', '🧘‍♀️'], ['valide', '✅'],
   ['croix', '❌'], ['attention', '⚠️'], ['question', '❓'], ['exclamation', '❗'], ['interdit', '🚫'],
   ['etincelles', '✨'], ['eclair', '⚡'], ['yeux', '👀'], ['salut', '👋'], ['chat', '🐱'],
@@ -13552,6 +13598,8 @@ window.autoGrow = autoGrow;
 
 function pageFields(c) {
   const builtins = (PAGE_BUILTINS[c] || []).map(([key, label, kind]) => ({ key, label, kind }));
+  // une table étiquetable sans PAGE_BUILTINS (les contacts) reçoit quand même le champ Étiquettes
+  if (tagColls().some(([tc]) => tc === c) && !builtins.some(f => f.key === 'tags')) builtins.push({ key: 'tags', label: 'Étiquettes', kind: 'tags' });
   return builtins.concat(schemaOf(c).map(p => ({ key: p.id, label: p.name, kind: p.type, prop: p })));
 }
 // contrôle d'une propriété intégrée
@@ -14404,7 +14452,12 @@ function tagEnsure(name) {
   tagAll().push(t);
   return t;
 }
-function tagColls() { return TAG_NATIVE; }
+/* Domaines étiquetables. Les contacts vivent dans une table personnalisée (« Personnes »)
+   dont l'identifiant n'est connu qu'à l'exécution, d'où l'ajout dynamique. */
+function tagColls() {
+  const pid = peopleTableId();
+  return pid ? TAG_NATIVE.concat([[pid, 'Contacts']]) : TAG_NATIVE;
+}
 function tagUsage(id) {
   const out = [];
   tagColls().forEach(([c, label]) => {
@@ -14550,6 +14603,10 @@ function renderTagsOverlay() {
   const groups = tagUsage(t.id);
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
   body.innerHTML = `<div style="margin-bottom:4px">${tagChipHtml(t.id)} <span class="tg-count">${total} élément${total > 1 ? 's' : ''}</span></div>`
+    + `<div class="tag-row" style="margin:2px 0 12px">`
+      + `<button class="tags-nav-btn" style="width:auto" onclick="tagFilterSpace('tasks','${t.id}')" title="Ouvrir Mes tâches filtré sur cette étiquette">Voir mes tâches</button>`
+      + `<button class="tags-nav-btn" style="width:auto" onclick="tagFilterSpace('projects','${t.id}')" title="Ouvrir Projets filtré sur cette étiquette">Voir mes projets</button>`
+    + `</div>`
     + (groups.length
       ? groups.map(g => `<div class="tg-grp-title">${esc(g.label)} (${g.rows.length})</div>`
           + g.rows.map(r => `<div class="tg-item" onclick="tagOpenRec('${g.coll}','${r.id}')">`
@@ -14557,6 +14614,79 @@ function renderTagsOverlay() {
       : `<div class="sf-empty">Rien ne porte encore cette étiquette.</div>`);
 }
 window.renderTagsOverlay = renderTagsOverlay;
+
+/* ---- Section Étiquettes (plein cadre) ----
+   Une étiquette rassemble AU MÊME ENDROIT ses tâches, événements, notes, projets
+   et contacts, groupés par domaine. C'est la vue transversale que les espaces
+   Tâches et Projets ne peuvent pas donner, chacun étant limité à son domaine. */
+let tagSpaceSel = null;
+function openTagsSpace() {
+  closeDrawer();
+  state.view = 'tags';
+  tabbarPage = tabbarPageOf('tags');
+  save(); render();
+}
+window.openTagsSpace = openTagsSpace;
+function tagSpaceSelect(id) { tagSpaceSel = id; renderTagsSpace(); }
+window.tagSpaceSelect = tagSpaceSelect;
+function renderTagsSpace() {
+  const list = tagAll().slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  // l'étiquette sélectionnée peut avoir été supprimée ou fusionnée entre deux rendus
+  if (tagSpaceSel && !tagById(tagSpaceSel)) tagSpaceSel = null;
+  if (!tagSpaceSel && list.length) tagSpaceSel = list[0].id;
+  let html = `<div class="space">
+    <div class="space-head">
+      <span class="space-title">Étiquettes</span>
+      <span class="space-count">${list.length} étiquette${list.length > 1 ? 's' : ''}</span>
+    </div>`;
+  if (!list.length) {
+    canvas.innerHTML = html + `<div class="space-empty">Aucune étiquette pour l'instant. Ajoutes-en depuis une tâche, un événement, une note, un projet ou un contact.</div></div>`;
+    return;
+  }
+  html += `<div class="tgs-wrap"><div class="tgs-side">`
+    + list.map(t => {
+        const n = tagCount(t.id);
+        return `<div class="tgs-side-item ${t.id === tagSpaceSel ? 'on' : ''}" onclick="tagSpaceSelect('${t.id}')">`
+          + `<span class="tag-swatch" style="background:${t.color}${TAG_ALPHA}"></span>`
+          + `<span class="tgs-side-name">${esc(t.name)}</span>`
+          + `<span class="tg-count">${n}</span></div>`;
+      }).join('')
+    + `</div><div class="tgs-main">${tagSpaceDetailHtml(tagSpaceSel)}</div></div></div>`;
+  canvas.innerHTML = html;
+}
+window.renderTagsSpace = renderTagsSpace;
+function tagSpaceDetailHtml(id) {
+  const t = tagById(id);
+  if (!t) return '';
+  const groups = tagUsage(id);
+  const total = groups.reduce((n, g) => n + g.rows.length, 0);
+  let h = `<div class="tgs-main-head">`
+    + `<span class="tag-chip" style="background:${t.color}${TAG_ALPHA};color:${inkOn(t.color)}">${esc(t.name)}</span>`
+    + `<span class="tg-count">${total} élément${total > 1 ? 's' : ''}</span>`
+    + `<span class="tgs-acts">`
+      + `<button class="icon-btn" title="Renommer" onclick="tagRename('${t.id}')">✎</button>`
+      + `<button class="icon-btn" title="Changer la couleur" onclick="tagRecolor('${t.id}',this)">◧</button>`
+      + `<button class="icon-btn" title="Fusionner dans une autre" onclick="tagMerge('${t.id}',this)">⇢</button>`
+      + `<button class="icon-btn danger" title="Supprimer" onclick="tagDelete('${t.id}')">✕</button>`
+    + `</span></div>`;
+  if (!total) return h + `<div class="space-empty">Rien ne porte encore cette étiquette.</div>`;
+  h += `<div class="tgs-cols">`
+    + groups.map(g => `<div class="tgs-col"><div class="tgs-col-t">${esc(g.label)} <span class="tg-count">${g.rows.length}</span></div>`
+        + g.rows.map(r => `<div class="tgs-row" onclick="tagOpenRec('${g.coll}','${r.id}')" title="Ouvrir">`
+            + `<span class="tag-swatch" style="background:${t.color}${TAG_ALPHA}"></span>${esc(recLabel(g.coll, r) || 'Sans titre')}</div>`).join('')
+        + `</div>`).join('')
+    + `</div>`;
+  return h;
+}
+/* Depuis la page d'une étiquette : ouvre l'espace Tâches ou Projets déjà filtré sur elle.
+   Le filtre étant posé dans l'espace, « Vues enregistrées » permet ensuite de le garder. */
+function tagFilterSpace(kind, tagId) {
+  const cfg = kind === 'tasks' ? tasksSpaceCfg() : projSpaceCfg();
+  cfg.filterTree = { id: 'root', op: 'and', items: [{ id: fltUid(), prop: 'tags', cond: 'has', value: tagId }] };
+  closeModals();
+  goTab(kind);
+}
+window.tagFilterSpace = tagFilterSpace;
 function tagOpenRec(coll, id) {
   closeModals();
   if (coll === 'notes') openNote(id);
