@@ -1301,6 +1301,13 @@
   .dl-empty { font-size: 12.5px; color: var(--text-faint); padding: 2px 6px; }
   .dl-intention { width: 100%; min-height: 64px; resize: vertical; font-family: var(--font-sans); font-size: 13px; line-height: 1.4; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
   .dl-intention:focus { outline: none; border-color: var(--accent); }
+  /* --- Bouton « Ma journée santé » (colonne de gauche du Jour + accueil du téléphone) --- */
+  .dl-health-btn { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 11px; margin: 0 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; }
+  .dl-health-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .dl-health-btn .dlh-lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dl-health-btn .dlh-state { flex: none; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: var(--surface-2); color: var(--text-soft); }
+  .dl-health-btn .dlh-state.on { background: #2F9E5BBF; color: #fbfaf7; }
+  .home .dl-health-btn { margin: 16px 0 2px; }
   .tg-head { display: grid; position: sticky; top: -18px; background: var(--bg); z-index: 5; }
   .tg-head .corner { }
   .tg-col-head { text-align: center; padding: 8px 4px; border-left: 1px solid var(--border); }
@@ -3717,7 +3724,7 @@ const lighten = c => `color-mix(in oklab, ${c} 45%, white)`;
 
 /* ---------- Contraste texte / fond ----------
    Règle demandée : encre foncée sur un fond clair (pastel), encre claire sur un
-   fond foncé (couleur soutenue ou personnalisée). On calcule la luminance per��ue
+   fond foncé (couleur soutenue ou personnalisée). On calcule la luminance per����ue
    du fond ; les fonds non-hex (color-mix…) sont toujours clairs → encre foncée. */
 function hexRgb(h) {
   h = String(h).replace('#', '');
@@ -4595,7 +4602,8 @@ function renderHomeMobile() {
       ${tile(habDue ? `${habDone}/${habDue}` : '—', 'habitudes')}
       ${tile(evToday.length, evToday.length > 1 ? 'événements' : 'événement')}
       ${tile(overdue.length, 'en retard', overdue.length > 0)}
-    </div>`;
+    </div>
+    ${healthDayBtnHtml(tk)}`;
 
   html += quickAddHtml('qaHome') + overdueBarHtml() + inboxBlockHtml();
 
@@ -5383,7 +5391,7 @@ function dayLeftHtml() {
   }).join('') : `<div class="dl-empty">Aucune habitude ce jour-là.</div>`;
   // 4) intention du jour
   const intention = (state.dayIntention || {})[k] || '';
-  return `${overdueSec}
+  return `${healthDayBtnHtml(k)}${overdueSec}
     <div class="dl-sec">
       <div class="dl-sec-t">À faire</div>
       <div class="dl-tasks">${tasksHtml}</div>
@@ -8557,6 +8565,27 @@ window.setHealthCycle = setHealthCycle;
 function setHealthNote(v) { healthUpsert(healthEditDate, { note: v }); }
 window.setHealthNote = setHealthNote;
 function setHealthEditDate(v) { healthEditDate = v || ymd(new Date()); renderHealthSpace(); }
+/* Accès direct à la journée de suivi santé : on positionne le jour, puis on ouvre l'espace Santé.
+   goTab s'occupe déjà de fermer le tiroir du téléphone et de rafraîchir. */
+function openHealthDay(k) {
+  healthEditDate = k || ymd(new Date());
+  goTab('health');
+}
+window.openHealthDay = openHealthDay;
+/* Le même bouton sert à deux endroits : colonne de gauche de la vue Jour (ordinateur)
+   et accueil « Aujourd'hui » (téléphone). Un seul endroit à maintenir. */
+function healthDayBtnHtml(k) {
+  const j = k || ymd(new Date());
+  const log = (typeof healthLogFor === 'function' ? healthLogFor(j) : null) || {};
+  const rempli = log.moodVal != null || !!log.mood || log.energy != null || log.sleepHours != null || !!log.note || !!log.cycle;
+  const isToday = j === ymd(new Date());
+  return `<button class="dl-health-btn" onclick="openHealthDay('${j}')" title="Ouvrir ma journée de suivi santé">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 6.6a5 5 0 0 0-7.1 0L12 8.3l-1.7-1.7a5 5 0 0 0-7.1 7.1L12 21l8.8-7.3a5 5 0 0 0 0-7.1Z"/></svg>
+    <span class="dlh-lbl">Ma journée santé${isToday ? '' : ' · ' + esc(fmtDateShort(j))}</span>
+    <span class="dlh-state ${rempli ? 'on' : ''}">${rempli ? 'notée' : 'à remplir'}</span>
+  </button>`;
+}
+window.healthDayBtnHtml = healthDayBtnHtml;
 window.setHealthEditDate = setHealthEditDate;
 function healthGoToday() { setHealthEditDate(ymd(new Date())); }
 window.healthGoToday = healthGoToday;
@@ -14008,7 +14037,7 @@ async function createShare(kind, srcId) {
   const slug = newSlug();
   try {
     await sharesFetch('POST', { headers: { Prefer: 'return=minimal' }, body: { id: slug, owner: auth.user_id, kind, title: content.title, html: content.html, src_id: srcId } });
-  } catch (e) { alert('Le lien n’a pas pu être créé. Vérifie que la table « shares » est bien configurée dans Supabase (voir les étapes que je t’ai données).'); return null; }
+  } catch (e) { alert('Le lien n���a pas pu être créé. Vérifie que la table « shares » est bien configurée dans Supabase (voir les étapes que je t’ai données).'); return null; }
   return slug;
 }
 async function updateShare(kind, srcId, slug) {
