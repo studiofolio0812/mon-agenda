@@ -2157,6 +2157,20 @@
   table.data-table input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; cursor: pointer; }
   /* champs couleur : coins arrondis (DA de l'app) */
   input[type="color"] { border-radius: 7px; overflow: hidden; }
+  /* pipette libre pour les étiquettes, à côté du nuancier */
+  .tag-color-pick { width: 26px; height: 24px; min-width: 26px; padding: 1px; cursor: pointer; vertical-align: middle; flex: none; }
+  /* anniversaire : champ date natif + liste d'années pour éviter les flèches */
+  .bday-cell { display: inline-flex; gap: 6px; align-items: center; }
+  .bday-year { padding: 4px 6px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 12.5px; }
+  /* bandeau haut du CRM : anniversaires du mois et contacts à relancer */
+  .crm-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 2px 0 16px; }
+  .crm-band-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+  .crm-band-t { font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
+  .crm-band-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; cursor: pointer; font-size: 13px; }
+  .crm-band-row:hover { color: var(--accent); }
+  .crm-band-meta { margin-left: auto; font-size: 11.5px; color: var(--text-faint); }
+  .crm-band-empty { font-size: 12.5px; color: var(--text-faint); }
+  .crm-grp-head { display: flex; gap: 8px; align-items: center; margin: 20px 0 8px; font-size: 13px; font-weight: 600; }
   input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
   input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 6px; }
   /* on masque le petit calendrier natif du navigateur : le sélecteur maison prend le relais (fini le doublon) */
@@ -5894,7 +5908,7 @@ function homeCfg() {
   return c;
 }
 const homeVisibleOrder = () => { const c = homeCfg(); return c.order.filter(k => !c.hidden.includes(k)); };
-// définition d'un widget par sa clé : soit un widget intégré, soit un « feed » (note du jour)
+// définition d'un widget par sa clé : soit un widget intégré, soit un « feed �� (note du jour)
 function homeW(key) {
   if (HOME_WIDGETS[key]) return HOME_WIDGETS[key];
   if (typeof key === 'string' && key.startsWith('feed:')) {
@@ -8529,7 +8543,91 @@ window.createCrmContact = createCrmContact;
 function crmSpaceCfg() {
   if (!state.crmSpace) state.crmSpace = { filter: 'tous', rel: 'tous' };
   if (state.crmSpace.rel === undefined) state.crmSpace.rel = 'tous';
+  if (state.crmSpace.sort === undefined) state.crmSpace.sort = 'name';
+  if (state.crmSpace.groupBy === undefined) state.crmSpace.groupBy = 'none';
   return state.crmSpace;
+}
+function setCrmSort(v) { crmSpaceCfg().sort = v; save(); renderCrmSpace(); }
+window.setCrmSort = setCrmSort;
+function setCrmGroup(v) { crmSpaceCfg().groupBy = v; save(); renderCrmSpace(); }
+window.setCrmGroup = setCrmGroup;
+const CRM_SORTS = [['name', 'Nom A → Z'], ['last', 'À relancer en premier'], ['bday', 'Anniversaire le plus proche']];
+const CRM_GROUPS = [['none', 'Sans groupement'], ['rel', 'Par type de relation'], ['statut', 'Par statut'], ['tag', 'Par étiquette'], ['alpha', 'Par initiale']];
+const crmSortOpts = cur => CRM_SORTS.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('');
+const crmGroupOpts = cur => CRM_GROUPS.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('');
+/* Anniversaire brut du contact, sous la forme AAAA-MM-JJ (ou '' si non renseigné). */
+const crmBday = rec => String(((rec.props || {})[(state.crmProps || {}).birthday]) || '');
+/* Nombre de jours avant le prochain anniversaire, 999 si pas de date. */
+function crmBdayIn(rec) {
+  const b = crmBday(rec);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b)) return 999;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let next = new Date(today.getFullYear(), Number(b.slice(5, 7)) - 1, Number(b.slice(8, 10)));
+  if (next < today) next = new Date(today.getFullYear() + 1, Number(b.slice(5, 7)) - 1, Number(b.slice(8, 10)));
+  return Math.round((next - today) / 86400000);
+}
+/* Jours depuis le dernier contact, 9999 si jamais renseigné (donc à relancer en priorité). */
+function crmSinceLast(rec) {
+  const d = String(((rec.props || {})[state.crmDateProp]) || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return 9999;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((today - new Date(d + 'T00:00:00')) / 86400000);
+}
+function crmSortList(list, mode) {
+  const arr = list.slice();
+  if (mode === 'last') arr.sort((a, b) => crmSinceLast(b) - crmSinceLast(a));
+  else if (mode === 'bday') arr.sort((a, b) => crmBdayIn(a) - crmBdayIn(b));
+  else arr.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fr'));
+  return arr;
+}
+/* Groupement du CRM. Un contact peut porter plusieurs étiquettes, il apparaît donc
+   dans chaque groupe concerné quand on groupe par étiquette. */
+function crmGroupList(list, mode, relProp) {
+  if (mode === 'none') return [{ label: '', rows: list }];
+  const out = [], key = new Map();
+  const push = (k, label, r) => {
+    if (!key.has(k)) { key.set(k, { label, rows: [] }); out.push(key.get(k)); }
+    key.get(k).rows.push(r);
+  };
+  list.forEach(r => {
+    if (mode === 'rel') {
+      const i = relProp ? crmRelationInfo(crmRelationOf(r)) : null;
+      push(i && i.label ? i.label : '_', i && i.label ? i.label : 'Sans type de relation', r);
+    } else if (mode === 'statut') {
+      const i = crmStatutInfo(crmStatutOf(r));
+      push(i.label || '_', i.label || 'Sans statut', r);
+    } else if (mode === 'alpha') {
+      const l = (r.title || '?').trim().charAt(0).toUpperCase() || '?';
+      push(l, l, r);
+    } else if (mode === 'tag') {
+      const tg = tagsOf(r);
+      if (!tg.length) push('_none', 'Sans étiquette', r);
+      else tg.forEach(id => { const t = tagById(id); if (t) push(t.id, t.name, r); });
+    }
+  });
+  out.sort((a, b) => (a.label === 'Sans étiquette' || a.label.startsWith('Sans')) - (b.label === 'Sans étiquette' || b.label.startsWith('Sans')) || a.label.localeCompare(b.label, 'fr'));
+  return out;
+}
+/* Bandeau du haut : ce qui demande une action aujourd'hui, plutôt qu'un simple répertoire. */
+function crmBandHtml(tid) {
+  const all = crmRecords();
+  const bdays = all.filter(r => crmBdayIn(r) <= 45).sort((a, b) => crmBdayIn(a) - crmBdayIn(b)).slice(0, 6);
+  const relance = all.filter(r => crmSinceLast(r) >= 90).sort((a, b) => crmSinceLast(b) - crmSinceLast(a)).slice(0, 6);
+  const row = (r, meta) => `<div class="crm-band-row" onclick="openPage('${tid}','${r.id}')">`
+    + `<span class="person-av">${esc(initials(r.title))}</span>${esc(r.title || 'Sans nom')}`
+    + `<span class="crm-band-meta">${esc(meta)}</span></div>`;
+  const jours = n => n === 0 ? "aujourd'hui" : n === 1 ? 'demain' : 'dans ' + n + ' jours';
+  const depuis = n => n >= 9999 ? 'jamais contacté' : n >= 365 ? 'il y a plus d’un an' : 'il y a ' + n + ' jours';
+  return `<div class="crm-band">
+    <div class="crm-band-card"><div class="crm-band-t">Anniversaires à venir</div>`
+    + (bdays.length ? bdays.map(r => row(r, jours(crmBdayIn(r)))).join('')
+        : `<div class="crm-band-empty">Aucun anniversaire dans les six prochaines semaines. Renseignez le champ Anniversaire d’une fiche pour les voir ici.</div>`)
+    + `</div>
+    <div class="crm-band-card"><div class="crm-band-t">À relancer</div>`
+    + (relance.length ? relance.map(r => row(r, depuis(crmSinceLast(r)))).join('')
+        : `<div class="crm-band-empty">Personne à relancer. Le champ Dernier contact de chaque fiche alimente cette liste.</div>`)
+    + `</div>
+  </div>`;
 }
 function setCrmFilter(f) { crmSpaceCfg().filter = f; save(); renderCrmSpace(); }
 window.setCrmFilter = setCrmFilter;
@@ -8571,7 +8669,7 @@ function renderCrmSpace() {
     ? `<span class="space-tabs">${relTab('tous', 'Tout')}${(relProp.options || []).map(o => relTab(o.id, o.label)).join('')}</span>`
     : '';
 
-  let html = `<div class="space">
+  let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">CRM</span>
       <span class="space-count">${all.length} contact${all.length > 1 ? 's' : ''}</span>
@@ -8580,14 +8678,18 @@ function renderCrmSpace() {
     ${relTabsHtml ? `<div class="space-head" style="margin-top:-6px">${relTabsHtml}</div>` : ''}
     <div class="space-bar">
       <span class="space-add" onclick="createCrmContact()">${ICON_PLUS} Nouveau contact</span>
-    </div>`;
+      <span class="space-sep">·</span>
+      <select class="pill-select" title="Trier" onchange="setCrmSort(this.value)">${crmSortOpts(cfg.sort)}</select>
+      <select class="pill-select" title="Grouper" onchange="setCrmGroup(this.value)">${crmGroupOpts(cfg.groupBy)}</select>
+    </div>
+    ${crmBandHtml(tid)}`;
 
   if (!list.length) {
     canvas.innerHTML = html + `<div class="space-empty">Aucun contact ne correspond à ces filtres pour l'instant.</div></div>`;
     return;
   }
 
-  html += `<div class="pcards">` + list.map(r => {
+  const crmCard = r => {
     const st = crmStatutInfo(crmStatutOf(r));
     const rel = relProp ? crmRelationInfo(crmRelationOf(r)) : null;
     const last = (r.props || {})[dateProp];
@@ -8598,9 +8700,12 @@ function renderCrmSpace() {
       <div class="pcard-name"><span class="person-av">${esc(initials(r.title))}</span>${esc(r.title || 'Sans nom')}</div>
       ${sub ? `<div class="pcard-dates">${esc(sub)}</div>` : ''}
       <div class="pcard-foot">${rel ? `<span class="grp-pill" style="background:${rel.color};color:${inkOn(rel.color)}">${esc(rel.label)}</span>` : ''}<span class="grp-pill" style="background:${st.color};color:${inkOn(st.color)}">${esc(st.label)}</span>${last ? `<span>dernier contact : ${esc(fmtDateShort(last))}</span>` : ''}</div>
-      ${tags ? `<div class="pcard-phase">${esc(tags)}</div>` : ''}
+      ${tagsOf(r).length ? `<div class="pcard-phase">${tagsOf(r).map(id => tagChipHtml(id)).join('')}</div>` : (tags ? `<div class="pcard-phase">${esc(tags)}</div>` : '')}
     </div>`;
-  }).join('') + '</div></div>';
+  };
+  html += crmGroupList(crmSortList(list, cfg.sort), cfg.groupBy, relProp).map(g =>
+      (g.label ? `<div class="crm-grp-head">${esc(g.label)} <span class="tg-count">${g.rows.length}</span></div>` : '')
+      + `<div class="pcards">` + g.rows.map(crmCard).join('') + `</div>`).join('') + '</div>';
   canvas.innerHTML = html;
 }
 
@@ -10165,7 +10270,7 @@ function applyNoteMode() {
   nbBuildToc();
 }
 function toggleNoteDoc() { state.noteDoc = !state.noteDoc; save(); applyNoteMode(); }
-// largeur portrait/paysage : propre à la note ouverte (persistée sur la note)
+// largeur portrait/paysage : propre �� la note ouverte (persistée sur la note)
 function toggleNoteWide() { noteDraftWide = !noteDraftWide; applyNoteMode(); noteAutosave(true); }
 function toggleNoteRead() {
   state.noteRead = !state.noteRead;
@@ -11088,7 +11193,7 @@ const EMOJI_LIB = [
   ['pilule', '💊'], ['cerveau', '🧠'], ['soin', '❤️‍🩹'], ['zen', '🧘‍♀️'], ['valide', '✅'],
   ['croix', '❌'], ['attention', '⚠️'], ['question', '❓'], ['exclamation', '❗'], ['interdit', '🚫'],
   ['etincelles', '✨'], ['eclair', '⚡'], ['yeux', '👀'], ['salut', '👋'], ['chat', '🐱'],
-  ['chien', '🐶'], ['papillon', '🦋'], ['drapeau rouge', '🚩'],
+  ['chien', '🐶'], ['papillon', '����'], ['drapeau rouge', '🚩'],
 ];
 let emojiIdx = 0, emojiItems = [];
 function svgNoteIco(name) {
@@ -14705,6 +14810,7 @@ function renderTagsOverlay() {
             + `<span class="tg-count">${n} élément${n > 1 ? 's' : ''}</span>`
             + `<button class="icon-btn" title="Renommer" onclick="tagRename('${t.id}')">✎</button>`
             + `<button class="icon-btn" title="Changer la couleur" onclick="tagRecolor('${t.id}',this)">◧</button>`
+      + `<input type="color" class="tag-color-pick" value="${t.color}" title="Couleur libre à la pipette" onclick="event.stopPropagation()" onchange="tagSetColor('${t.id}',this.value)">`
             + `<button class="icon-btn" title="Fusionner dans une autre" onclick="tagMerge('${t.id}',this)">⇢</button>`
             + `<button class="icon-btn danger" title="Supprimer" onclick="tagDelete('${t.id}')">✕</button>`
             + `</div>`;
@@ -14749,7 +14855,7 @@ function renderTagsSpace() {
   // l'étiquette sélectionnée peut avoir été supprimée ou fusionnée entre deux rendus
   if (tagSpaceSel && !tagById(tagSpaceSel)) tagSpaceSel = null;
   if (!tagSpaceSel && list.length) tagSpaceSel = list[0].id;
-  let html = `<div class="space">
+  let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Étiquettes</span>
       <span class="space-count">${list.length} étiquette${list.length > 1 ? 's' : ''}</span>
@@ -14781,6 +14887,7 @@ function tagSpaceDetailHtml(id) {
     + `<span class="tgs-acts">`
       + `<button class="icon-btn" title="Renommer" onclick="tagRename('${t.id}')">✎</button>`
       + `<button class="icon-btn" title="Changer la couleur" onclick="tagRecolor('${t.id}',this)">◧</button>`
+      + `<input type="color" class="tag-color-pick" value="${t.color}" title="Couleur libre à la pipette" onclick="event.stopPropagation()" onchange="tagSetColor('${t.id}',this.value)">`
       + `<button class="icon-btn" title="Fusionner dans une autre" onclick="tagMerge('${t.id}',this)">⇢</button>`
       + `<button class="icon-btn danger" title="Supprimer" onclick="tagDelete('${t.id}')">✕</button>`
     + `</span></div>`;
@@ -14846,6 +14953,13 @@ function tagDelete(id) {
   state.tags = tagAll().filter(x => x.id !== id);
   save(); tagView = null; renderTagsOverlay(); render();
 }
+/* Couleur libre choisie à la pipette. Le nuancier reste là pour aller vite,
+   la pipette sert quand aucune des neuf teintes ne convient. */
+function tagSetColor(id, c) {
+  const t = tagById(id); if (!t || !c) return;
+  t.color = c; save(); renderTagsOverlay(); render();
+}
+window.tagSetColor = tagSetColor;
 window.tagRename = tagRename; window.tagRecolor = tagRecolor;
 window.tagMerge = tagMerge; window.tagDelete = tagDelete;
 
@@ -15144,6 +15258,15 @@ function openPropMenu(e, c, id, propId) {
 window.openPropMenu = openPropMenu;
 
 // édite une propriété personnalisée
+/* Change seulement l'année d'une date, en gardant le jour et le mois déjà saisis. */
+function setBirthYear(c, id, pid, y) {
+  const rec = (collArr(c) || []).find(r => r.id === id);
+  const cur = String(((rec && rec.props) || {})[pid] || '');
+  const md = /^\d{4}-\d{2}-\d{2}$/.test(cur) ? cur.slice(5) : '01-01';
+  updProp(c, id, pid, y ? y + '-' + md : '');
+  if (typeof renderPage === 'function') renderPage();
+}
+window.setBirthYear = setBirthYear;
 function updProp(c, id, pid, value) {
   const rec = collArr(c).find(x => x.id === id);
   if (!rec) return;
@@ -15179,8 +15302,16 @@ function customField(c, rec, prop) {
     return `<input type="checkbox" ${v?'checked':''} onchange="updProp(${base},this.checked)">`;
   if (prop.type === 'number')
     return `<input type="number" value="${v??''}" onchange="updProp(${base}, this.value===''?null:Number(this.value))">`;
-  if (prop.type === 'date')
-    return `<input type="date" value="${v||''}" onchange="updProp(${base},this.value)">`;
+  if (prop.type === 'date') {
+    const inp = `<input type="date" value="${v||''}" onchange="updProp(${base},this.value)">`;
+    // Anniversaire : le calendrier du navigateur oblige à cliquer mois par mois pour changer
+    // d'année, on ajoute donc une liste d'années à côté. Le jour et le mois sont conservés.
+    if (!(state.crmProps && prop.id === state.crmProps.birthday)) return inp;
+    const yr = String(v || '').slice(0, 4), nowY = new Date().getFullYear();
+    let opts = `<option value="">Année…</option>`;
+    for (let y = nowY; y >= nowY - 100; y--) opts += `<option value="${y}" ${String(y) === yr ? 'selected' : ''}>${y}</option>`;
+    return `<span class="bday-cell">${inp}<select class="bday-year" title="Année de naissance" onchange="setBirthYear(${base},this.value)">${opts}</select></span>`;
+  }
   if (prop.type === 'select') {
     const cur = (prop.options || []).find(o => o.id === v);
     return dotMenuCell(cur ? cur.color : '', cur ? cur.label : '—', `openPropMenu(event,'${c}','${rec.id}','${prop.id}')`);
