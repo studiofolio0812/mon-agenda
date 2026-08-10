@@ -4457,7 +4457,7 @@ function renderPeriodTitle() {
     const s = state.view === 'week' ? startOfWeek(cursor) : new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
     const e = addDays(s, viewDayCount() - 1);
     t = s.getFullYear() !== e.getFullYear()
-      ? `${s.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
+      ? `${s.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()} �� ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
       : s.getMonth() === e.getMonth()
         ? `${s.getDate()} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
         : `${s.getDate()} ${MONTHS[s.getMonth()]} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
@@ -8438,7 +8438,7 @@ function personSub(tableId, rec) {
 const initials = name => (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 function peopleMenuGroups(exclude) {
   const groups = [];
-  (state.customTables || []).forEach(t => {
+  (state.customTables || []).filter(t => !t.ownerNoteId).forEach(t => {
     const recs = (state.customRecords[t.id] || []).filter(r => !exclude.includes(r.id));
     if (recs.length) groups.push({ label: t.name, items: recs.map(r => ({ value: r.id, label: r.title || 'Sans nom', dot: '', sub: personSub(t.id, r) })) });
   });
@@ -14195,8 +14195,7 @@ function contactPageExtra(coll, rec) {
         : `<div class="hint-txt">Aucun événement pour ce contact. Ajoutez-le dans le champ Personnes d'un événement pour le voir ici.</div>`)
     + `<div class="page-section-title">Projets liés${projs.length ? ` <span class="grp-n">· ${projs.length}</span>` : ''}</div>`
     + (projs.length ? projs.map(ligneProj).join('')
-        : `<div class="hint-txt">Aucun projet pour ce contact. Ajoutez-le dans le champ Personnes d'un projet.</div>`)
-    + linksSectionHtml(coll, rec.id);
+        : `<div class="hint-txt">Aucun projet pour ce contact. Ajoutez-le dans le champ Personnes d'un projet.</div>`);
 }
 window.contactPageExtra = contactPageExtra;
 
@@ -14257,9 +14256,15 @@ function refResolve(key) {
   return rec && { coll, id, title: rec.title || 'Sans titre', color: '#c8c6c0', open: () => openPage(coll, id) };
 }
 // tables proposées comme cibles d'un lien
-function linkTargetColls() {
+/* Relations déjà intégrées ailleurs (bouton dédié + affichage sur la fiche) : on ne
+   les propose pas en lien libre, pour éviter le doublon. */
+const BUILTIN_REL = { projects: ['tasks', 'events', 'notes'], tasks: ['projects', 'notes'], events: ['projects', 'notes'], notes: ['projects', 'tasks', 'events'] };
+function linkTargetColls(srcColl) {
+  const pid = state.crmTableId || peopleTableId();
+  const excl = BUILTIN_REL[srcColl] || [];
   return [['events', 'Événements'], ['tasks', 'Tâches'], ['projects', 'Projets'], ['notes', 'Notes']]
-    .concat((state.customTables || []).filter(t => !t.ownerNoteId).map(t => [t.id, t.name]));
+    .filter(([c]) => !excl.includes(c))
+    .concat((state.customTables || []).filter(t => !t.ownerNoteId && t.id !== pid).map(t => [t.id, t.name]));
 }
 function linkTargetTitle(coll, rec) { return coll === 'projects' ? (rec.name || 'Sans titre') : (rec.title || 'Sans titre'); }
 function openLinkPicker(coll, id, ev) {
@@ -14267,7 +14272,7 @@ function openLinkPicker(coll, id, ev) {
   const selfKey = refKey(coll, id);
   const dejaLies = new Set(linksOf(coll, id));
   const groups = [];
-  linkTargetColls().forEach(([c, label]) => {
+  linkTargetColls(coll).forEach(([c, label]) => {
     const arr = (c === 'events' ? state.events : c === 'tasks' ? state.tasks : c === 'projects' ? state.projects : c === 'notes' ? state.notes : collArr(c)) || [];
     const items = arr.filter(r => refKey(c, r.id) !== selfKey && !dejaLies.has(refKey(c, r.id)))
       .slice(0, 40)
