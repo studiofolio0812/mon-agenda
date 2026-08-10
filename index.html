@@ -440,6 +440,10 @@
   .styled-menu { position: fixed; z-index: 70; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
     box-shadow: 0 8px 28px rgba(0,0,0,.16); padding: 5px; max-height: 320px; overflow-y: auto; min-width: 180px; }
   .sm-group { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); padding: 8px 10px 3px; }
+  .sm-search { width: 100%; box-sizing: border-box; margin: 1px 0 5px; padding: 6px 9px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface-2); font-size: 13px; color: var(--text); outline: none; }
+  .sm-search:focus { border-color: var(--accent); }
+  .styled-menu.has-search { display: flex; flex-direction: column; overflow: hidden; }
+  .styled-menu.has-search #smBody { overflow-y: auto; }
   .sm-item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
   .sm-item:hover { background: var(--surface-2); }
   .sm-item.on { background: var(--accent-soft); color: var(--accent); }
@@ -6181,7 +6185,8 @@ function hwHabits() {
 function hwHealth() {
   const tk = ymd(new Date());
   const log = healthLogFor(tk);
-  const m = log && log.mood != null ? moodInfo(log.mood) : null;
+  const m = log && log.moodVal != null ? { color: humeurColor(log.moodVal), label: humeurWord(log.moodVal) }
+          : (log && log.mood != null ? moodInfo(log.mood) : null);
   const dernierSommeil = (state.healthLogs || []).filter(l => l.sleepHours != null)
     .sort((a, b) => b.date.localeCompare(a.date))[0];
   if (!m && !dernierSommeil)
@@ -8227,20 +8232,41 @@ let noteDraftFolder = '', noteDraftLink = '', noteDraftFav = false;
    Remplace les <select> natifs par un panneau flottant cohérent avec l'app :
    sections, pastilles de couleur, coche sur l'option courante. */
 let styledMenuCb = null, styledMenuAnchor = null;
-function openStyledMenu(anchor, groups, current, onPick) {
+function openStyledMenu(anchor, groups, current, onPick, opts) {
+  opts = opts || {};
   const menu = $('styledMenu');
-  menu.innerHTML = groups.map(g =>
+  const body = groups.map(g =>
+    `<div class="sm-grp-wrap">` +
     (g.label ? `<div class="sm-group">${esc(g.label)}</div>` : '') +
-    g.items.map(it => `<div class="sm-item ${it.value === current ? 'on' : ''} ${it.action ? 'sm-action' : ''}" data-v="${esc(it.value)}">
+    g.items.map(it => `<div class="sm-item ${it.value === current ? 'on' : ''} ${it.action ? 'sm-action' : ''}" data-v="${esc(it.value)}" data-lbl="${esc(((it.label || '') + ' ' + (it.sub || '')).toLowerCase())}">
       ${it.icon || (it.dot !== undefined ? `<span class="sm-dot" style="background:${it.dot || 'transparent'};${it.dot ? '' : 'border:1.5px solid var(--border-strong)'}"></span>` : '<span class="sm-dot" style="background:transparent"></span>')}
       <span class="sm-lbl">${esc(it.label)}${it.sub ? `<span class="sm-sub">${esc(it.sub)}</span>` : ''}</span>${it.value === current ? '<span class="sm-check">✓</span>' : ''}
-    </div>`).join('')).join('');
+    </div>`).join('') + `</div>`).join('');
+  menu.innerHTML = (opts.search ? `<input id="smSearch" class="sm-search" placeholder="${esc(opts.placeholder || 'Rechercher…')}" autocomplete="off">` : '') + `<div id="smBody">${body}</div>`;
+  menu.classList.toggle('has-search', !!opts.search);
   const r = anchor.getBoundingClientRect();
   menu.style.left = r.left + 'px';
   menu.style.top = (r.bottom + 4) + 'px';
   menu.style.minWidth = r.width + 'px';
   menu.classList.remove('hidden');
   styledMenuCb = onPick; styledMenuAnchor = anchor;
+  if (opts.search) {
+    const inp = $('smSearch');
+    inp.oninput = () => {
+      const q = inp.value.trim().toLowerCase();
+      menu.querySelectorAll('.sm-grp-wrap').forEach(w => {
+        let any = false;
+        w.querySelectorAll('.sm-item').forEach(it => {
+          const keep = it.classList.contains('sm-action') || !q || (it.dataset.lbl || '').includes(q);
+          it.style.display = keep ? '' : 'none';
+          if (keep && !it.classList.contains('sm-action')) any = true;
+        });
+        const hasReal = !!w.querySelector('.sm-item:not(.sm-action)');
+        w.style.display = (q && hasReal && !any) ? 'none' : '';
+      });
+    };
+    requestAnimationFrame(() => inp.focus());
+  }
   requestAnimationFrame(() => {
     const mr = menu.getBoundingClientRect();
     if (mr.bottom > innerHeight - 8) menu.style.top = Math.max(8, r.top - mr.height - 4) + 'px';
@@ -14120,6 +14146,18 @@ function projectPageExtra(p) {
       }).join('')
       : `<div class="hint-txt">Aucune tâche dans ce projet pour l'instant.</div>`}
     <button class="btn-ghost" style="margin-top:14px" onclick="addTaskToProject('${p.id}')">${ICON_PLUS} Ajouter une tâche</button>
+    <div class="page-section-title">Événements</div>
+    ${(() => {
+      const evs = state.events.filter(e => e.projectId === p.id).slice().sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+      return evs.length ? evs.map(e => `<div class="pd-note" onclick="openPageFrom('events','${e.id}')">
+        <span class="pd-note-ico"><span class="pill-dot" style="background:${dotOf(catColor(e.catId) || e.color || '#eae8e4')}"></span></span>
+        <div class="pd-note-body">
+          <div class="pd-note-title">${esc(e.title || 'Sans titre')}</div>
+          <div class="pd-note-preview">${e.date ? esc(fmtDateLong(e.date)) : 'Sans date'}${e.start ? ' · ' + esc(e.start) : ''}</div>
+        </div>
+      </div>`).join('') : `<div class="hint-txt">Aucun événement rattaché à ce projet.</div>`;
+    })()}
+    <button class="btn-ghost" style="margin-top:14px" onclick="addEventToProject('${p.id}',event)">${ICON_PLUS} Ajouter un événement</button>
     ${imagesSectionHtml('projects', p)}
     ${notesSectionHtml('p', p.id)}
     ${linksSectionHtml('projects', p.id)}`;
@@ -14273,10 +14311,18 @@ function openLinkPicker(coll, id, ev) {
   const dejaLies = new Set(linksOf(coll, id));
   const groups = [];
   linkTargetColls(coll).forEach(([c, label]) => {
-    const arr = (c === 'events' ? state.events : c === 'tasks' ? state.tasks : c === 'projects' ? state.projects : c === 'notes' ? state.notes : collArr(c)) || [];
-    const items = arr.filter(r => refKey(c, r.id) !== selfKey && !dejaLies.has(refKey(c, r.id)))
-      .slice(0, 40)
-      .map(r => ({ value: c + '::' + r.id, label: linkTargetTitle(c, r), dot: dotOf(c === 'projects' ? (r.color || '#eae8e4') : c === 'events' ? (catColor(r.catId) || r.color || '#eae8e4') : '#c8c6c0') }));
+    let arr = (c === 'events' ? state.events : c === 'tasks' ? state.tasks : c === 'projects' ? state.projects : c === 'notes' ? state.notes : collArr(c)) || [];
+    arr = arr.filter(r => refKey(c, r.id) !== selfKey && !dejaLies.has(refKey(c, r.id)));
+    // tri : événements/tâches par date décroissante, notes par édition récente
+    if (c === 'events') arr = arr.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    else if (c === 'tasks') arr = arr.slice().sort((a, b) => (b.due || '').localeCompare(a.due || ''));
+    else if (c === 'notes') arr = arr.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    const items = arr.slice(0, 300).map(r => ({
+      value: c + '::' + r.id,
+      label: linkTargetTitle(c, r),
+      sub: c === 'events' ? fmtDateShort(r.date) : c === 'tasks' ? fmtDateShort(r.due) : '',
+      dot: dotOf(c === 'projects' ? (r.color || '#eae8e4') : c === 'events' ? (catColor(r.catId) || r.color || '#eae8e4') : '#c8c6c0')
+    }));
     if (items.length) groups.push({ label, items });
   });
   if (!groups.length) { showToast("Rien à relier pour l'instant"); return; }
@@ -14286,7 +14332,7 @@ function openLinkPicker(coll, id, ev) {
     addLink(coll, id, c, i);
     if ($('pageOverlay') && $('pageOverlay').classList.contains('show')) renderPage();
     if ($('noteOverlay') && $('noteOverlay').classList.contains('show')) renderNoteLinks();
-  });
+  }, { search: true, placeholder: 'Rechercher…' });
 }
 function unlinkFromPage(coll, id, c2, i2, ev) {
   if (ev) ev.stopPropagation();
@@ -14878,6 +14924,38 @@ function addTaskToProject(projId) {
   syncDotSelects();
 }
 window.addTaskToProject = addTaskToProject;
+
+// « Ajouter un événement » sur la fiche projet : même logique que les tâches et les notes.
+// On rattache via le champ « Projet » (projectId) déjà existant de l'événement, donc
+// pas de doublon avec les liens libres (les événements en sont d'ailleurs exclus).
+function addEventToProject(projId, ev) {
+  if (ev) ev.stopPropagation();
+  const dispo = state.events.filter(e => e.projectId !== projId)
+    .slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const groups = [{ label: '', items: [{ value: '__new__', label: 'Créer un événement', icon: ICON_PLUS, action: true }] }];
+  if (dispo.length) groups.push({
+    label: 'Rattacher un événement existant',
+    items: dispo.slice(0, 300).map(e => ({
+      value: e.id,
+      label: e.title || 'Sans titre',
+      sub: fmtDateShort(e.date),
+      dot: dotOf(catColor(e.catId) || e.color || '#eae8e4')
+    }))
+  });
+  const anchor = (ev && ev.currentTarget) || document.body;
+  openStyledMenu(anchor, groups, null, v => {
+    if (v === '__new__') {
+      reopenPage = { coll: 'projects', id: projId };
+      openModal('event');
+      $('fProj').value = projId;
+      syncDotSelects();
+      return;
+    }
+    const e = state.events.find(x => x.id === v);
+    if (e) { e.projectId = projId; if (typeof applyAutomations === 'function') applyAutomations('events', e); save(); render(); renderPage(); }
+  }, { search: true, placeholder: 'Rechercher un événement…' });
+}
+window.addEventToProject = addEventToProject;
 
 /* ============================================================
    PANNEAU BASE DE DONNÉES (back-office : tables éditables)
