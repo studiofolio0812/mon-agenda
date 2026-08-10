@@ -411,6 +411,24 @@
   .note-card-link { margin-top: 8px; font-size: 11px; color: var(--text-soft); display: flex; align-items: center; gap: 5px; }
   .note-card-link .pill-dot { width: 8px; height: 8px; border-radius: 50%; }
   .note-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+  .dl-task .tag-row, .kb-card .tag-row, .pd-task-body .tag-row, .note-card .tag-row { display: flex; margin-top: 5px; }
+  .dl-task { flex-wrap: wrap; }
+  .dl-task .tag-row { flex: 0 0 100%; padding-left: 22px; }
+  .np-wide { grid-column: 1 / -1; }
+  .lk-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .lk-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; background: var(--surface-2); cursor: pointer; }
+  .lk-item:hover { background: var(--surface); }
+  .lk-type { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); flex: none; }
+  .lk-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+  .lk-x { border: none; background: none; color: var(--text-faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; flex: none; }
+  .lk-x:hover { color: #b4544f; }
+  .radar-band { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px; }
+  .radar-band-t { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); margin-bottom: 8px; display: flex; align-items: center; gap: 7px; }
+  .radar-row { display: flex; align-items: center; gap: 9px; padding: 7px 4px; border-top: 1px solid var(--border); cursor: pointer; }
+  .radar-row:first-of-type { border-top: none; }
+  .radar-row:hover { background: var(--surface); border-radius: 7px; }
+  .radar-name { font-size: 13.5px; flex: none; max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .radar-why { font-size: 12px; color: #b4544f; flex: 1; min-width: 0; }
   .note-card-date { font-size: 11px; color: var(--text-faint); flex: none; }
   .grp-edit { background: none; border: none; color: var(--text-faint); cursor: pointer; margin-left: 6px; display: inline-flex; }
   .grp-edit:hover { color: var(--accent); }
@@ -1299,8 +1317,12 @@
   .dl-hab.done .dl-hab-name { color: var(--text-faint); }
   .dl-hab-streak { font-size: 11.5px; flex: none; }
   .dl-empty { font-size: 12.5px; color: var(--text-faint); padding: 2px 6px; }
-  .dl-intention { width: 100%; min-height: 64px; resize: vertical; font-family: var(--font-sans); font-size: 13px; line-height: 1.4; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .dl-intention { width: 100%; min-height: 64px; max-height: 240px; overflow-y: auto; font-family: var(--font-sans); font-size: 13px; line-height: 1.45; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); white-space: pre-wrap; word-break: break-word; }
   .dl-intention:focus { outline: none; border-color: var(--accent); }
+  .dl-intention:empty:before { content: attr(data-ph); color: var(--text-faint); }
+  .dl-int-bar { display: flex; gap: 4px; margin-bottom: 5px; }
+  .dl-int-b { width: 24px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; line-height: 1; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text-soft); cursor: pointer; }
+  .dl-int-b:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
   /* --- Bouton « Ma journée santé » (colonne de gauche du Jour + accueil du téléphone) --- */
   .dl-health-btn { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 11px; margin: 0 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: var(--font-sans); font-size: 13px; font-weight: 500; cursor: pointer; text-align: left; }
   .dl-health-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -3108,7 +3130,7 @@
 
 <style id="tagsStyle">
   /* Étiquettes transversales : rectangle légèrement arrondi, teinte choisie posée à 75 % d'opacité
-     (les pilules d'agenda et d'événement restent en couleur pleine, la différence est nette). */
+     (les pilules d'agenda et d'��vénement restent en couleur pleine, la différence est nette). */
   .tag-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 170px; padding: 2px 7px;
     border-radius: 4px; font-size: 11.5px; font-weight: 600; line-height: 1.5; vertical-align: middle; }
   .tag-chip .tc-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3189,7 +3211,7 @@
 </div>
 
 <!-- ============ MODAL: PORTÉE D'UNE SÉRIE ============
-     Un choix à trois issues (celle-ci / toute la série / annuler) : une fenêtre
+     Un choix à trois issues (celle-ci / toute la série / annuler) : une fen��tre
      dédiée, parce qu'un confirm() natif n'offre que deux boutons. -->
 <div class="overlay" id="seriesOverlay">
   <div class="modal" style="max-width:400px;">
@@ -3254,6 +3276,7 @@
         <div><label>Dossier</label><button type="button" class="styled-select" id="noteFolderBtn"></button></div>
         <div><label>Rattacher à</label><button type="button" class="styled-select" id="noteLinkBtn"></button></div>
         <div><label>Étiquettes</label><div id="noteTagsBox"></div></div>
+        <div class="np-wide"><label>Lié à</label><div id="noteLinksBox"></div></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -5419,6 +5442,7 @@ function dayLeftHtml() {
           <span class="task-check" style="border-color:${pc}" onclick="toggleTask('${t.id}',event)" title="Cocher"></span>
           <span class="dl-task-title" onclick="openEdit('task','${t.id}',event)">${esc(t.title)} <span class="dl-late-when">${esc(friendlyDate(t.due))}</span></span>
           <button class="dl-pull" onclick="rescheduleTaskToDay('${t.id}','${k}',event)" title="Amener à ce jour">→</button>
+          ${tagRowHtml(t)}
         </div>`;
       }).join('')}</div>
     </div>` : '';
@@ -5431,6 +5455,7 @@ function dayLeftHtml() {
     return `<div class="dl-task dl-drag ${t.done ? 'done' : ''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${t.id}">
       <span class="task-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
       <span class="dl-task-title" onclick="openEdit('task','${t.id}',event)">${t.dueTime ? `<span class="dl-task-time">${t.dueTime}</span> ` : ''}${esc(t.title)}</span>
+      ${tagRowHtml(t)}
     </div>`;
   }).join('') : `<div class="dl-empty">Rien de prévu ${isTodayD ? "aujourd'hui" : 'ce jour-là'}.</div>`;
   // 3) habitudes du jour
@@ -5456,16 +5481,56 @@ function dayLeftHtml() {
     </div>
     <div class="dl-sec">
       <div class="dl-sec-t">Intention du jour</div>
-      <textarea class="dl-intention" placeholder="Ma priorité, mon intention…" onchange="setDayIntention('${k}', this.value)">${esc(intention)}</textarea>
+      <div class="dl-int-bar">
+        <button type="button" class="dl-int-b" title="Gras (Ctrl+B)" onmousedown="intCmd(event,'bold')"><b>G</b></button>
+        <button type="button" class="dl-int-b" title="Italique (Ctrl+I)" onmousedown="intCmd(event,'italic')"><i>I</i></button>
+        <button type="button" class="dl-int-b" title="Souligné (Ctrl+U)" onmousedown="intCmd(event,'underline')"><u>S</u></button>
+      </div>
+      <div class="dl-intention" contenteditable="true" data-ph="Ma priorité, mon intention…" onblur="setDayIntention('${k}', this.innerHTML)">${intentionRich(intention)}</div>
     </div>
     <button class="dl-review-btn" onclick="openCurrentWeekReview()" title="Compléter ta revue de la semaine au fil des jours">
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
       Ma revue de la semaine
     </button>`;
 }
+/* Intention du jour : petit texte enrichi (gras, italique, souligné, sauts de
+   ligne). On ne garde que ces balises, ce qui laisse le bloc de la revue
+   hebdo inchangé côté structure. Les anciennes intentions en texte brut sont
+   converties à la volée par intentionRich(). */
+const INT_TAGS = /<(?!\/?(b|strong|i|em|u|br)\b)[^>]*>/gi;
+function intClean(html) {
+  return String(html || '')
+    .replace(/<(div|p)[^>]*>/gi, '<br>')
+    .replace(/<\/(div|p)>/gi, '')
+    .replace(/<span[^>]*font-weight:\s*(?:bold|[6-9]00)[^>]*>([\s\S]*?)<\/span>/gi, '<b>$1</b>')
+    .replace(/<span[^>]*font-style:\s*italic[^>]*>([\s\S]*?)<\/span>/gi, '<i>$1</i>')
+    .replace(/<span[^>]*text-decoration[^>]*underline[^>]*>([\s\S]*?)<\/span>/gi, '<u>$1</u>')
+    .replace(INT_TAGS, '')
+    .replace(/^(\s|<br>|&nbsp;)+/i, '')
+    .replace(/(\s|<br>|&nbsp;)+$/i, '')
+    .trim();
+}
+function intPlain(html) {
+  return String(html || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+}
+function intentionRich(raw) {
+  const s = String(raw || '');
+  return /<(b|strong|i|em|u|br)\b/i.test(s) ? s : esc(s).replace(/\n/g, '<br>');
+}
+function intCmd(ev, cmd) {
+  ev.preventDefault();
+  const sec = ev.currentTarget.closest('.dl-sec');
+  const box = sec && sec.querySelector('.dl-intention');
+  if (!box) return;
+  if (document.activeElement !== box) box.focus();
+  try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+  document.execCommand(cmd, false, null);
+}
+window.intCmd = intCmd;
 function setDayIntention(k, v) {
   if (!state.dayIntention) state.dayIntention = {};
-  if (v && v.trim()) state.dayIntention[k] = v; else delete state.dayIntention[k];
+  const html = intClean(v);
+  if (intPlain(html)) state.dayIntention[k] = html; else delete state.dayIntention[k];
   save();
   syncIntentionsInReviewNote(startOfWeek(parseYmd(k)));
 }
@@ -6010,7 +6075,7 @@ function homeFocusTasks(limit) {
   const liste = [...retard, ...jour, ...suite];
   return limit ? liste.slice(0, limit) : liste;
 }
-// ce qui « reste à faire aujourd'hui » : sert à la petite gratification de fin de journée
+// ce qui « reste à faire aujourd'hui �� : sert à la petite gratification de fin de journée
 const homeDueTodayCount = () => { const tk = ymd(new Date()); return (state.tasks || []).filter(t => !t.done && t.due && t.due <= tk && catVisible(t.catId)).length; };
 
 function homeToggleTask(id, ev) {
@@ -6430,6 +6495,7 @@ function renderTasksSpace() {
         const pr = subtasksOf(t.id).length ? subProgress(t.id) : null;
         return `<div class="kb-card ${t.done ? 'is-done' : ''}" draggable="true" ondragstart="kbDragStart(event,'${t.id}')">
           <div class="kb-title" onclick="openPage('tasks','${t.id}')">${repIco(t)}${esc(t.title)}</div>
+          ${tagRowHtml(t)}
           <div class="kb-meta">
             ${(cfg.cardProps.prio && cfg.groupBy !== 'prio') ? `<span class="prio-dot" style="background:${prioCol(t.prio)}" title="Priorité ${(PRIO_LABEL[t.prio] || 'moyenne').toLowerCase()}"></span>` : ''}
             ${(cfg.cardProps.project && p && cfg.groupBy !== 'project') ? `<span class="proj-pill" style="background:${p.color};color:${inkOn(p.color)}"><span class="pill-dot" style="background:${dotOf(p.color)}"></span>${esc(p.name)}</span>` : ''}
@@ -7389,6 +7455,7 @@ function renderProjectsSpace() {
       <span style="flex:1"></span>
       <button class="space-head-btn" onclick="openTplManager('project')" title="Modèles de projet">${ICON_TPL} Modèles</button>
     </div>
+    ${radarBandHtml()}
     ${filtered.length ? projKpisHtml(filtered) : ''}
     <div class="space-bar">
       <span class="space-add" onclick="openProjModal()">${ICON_PLUS} Ajouter un projet</span>
@@ -7562,7 +7629,7 @@ function projTimelineHtml(list) {
   // Passage par les millisecondes pour accepter un décalage fractionnaire (molette fine).
   if (tlPan) { min = new Date(min.getTime() + tlPan * 86400000); max = new Date(max.getTime() + tlPan * 86400000); }
   const span = (max - min) / 86400000;
-  tlSpan = span;   // mémorisé pour convertir les pixels de molette en jours
+  tlSpan = span;   // m��morisé pour convertir les pixels de molette en jours
   const pct = d => ((parseYmd(typeof d === 'string' ? d : ymd(d)) - min) / 86400000 / span) * 100;
 
   /* Deux niveaux de graduation : les mois en haut, puis un niveau plus fin dessous
@@ -8451,9 +8518,9 @@ const ICON_PEOPLE = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none"
    Pas de nouvelle notion de données : on enrichit la table personnalisée
    « Personnes » (celle qui sert déjà aux contacts liés aux événements/projets,
    voir peopleTableId ci-dessus) de 3 colonnes utiles à un suivi commercial —
-   Statut, Dernier contact, Tags — plutôt que de dupliquer les contacts dans
+   Statut, Dernier contact — plutôt que de dupliquer les contacts dans
    un système parallèle. Les id de colonnes/options sont mémorisés dans state
-   (crmTableId/crmStatutProp/crmDateProp/crmTagsProp/crmStatutOpts) pour rester
+   (crmTableId/crmStatutProp/crmDateProp/crmStatutOpts) pour rester
    valables même si elle renomme la table ou les colonnes ensuite.
    ============================================================ */
 const CRM_STATUTS = { prospect: ['Prospect', '#eae8e4'], actif: ['Client actif', '#d3e8cf'], inactif: ['Inactif', '#f2d3d0'] };
@@ -8487,10 +8554,13 @@ function ensureCrmSchema() {
     schema.push(prop);
     state.crmDateProp = prop.id;
   }
-  if (!schema.find(p => p.id === state.crmTagsProp)) {
-    const prop = { id: uid(), name: 'Tags', type: 'text' };
-    schema.push(prop);
-    state.crmTagsProp = prop.id;
+  // Ancienne colonne « Tags » en texte simple : remplacée par le vrai système
+  // d'étiquettes transversales. On la retire du schéma si elle existe encore,
+  // sans toucher aux vraies étiquettes (rec.tags) portées par chaque fiche.
+  if (state.crmTagsProp) {
+    const i = schema.findIndex(p => p.id === state.crmTagsProp);
+    if (i >= 0) schema.splice(i, 1);
+    delete state.crmTagsProp;
   }
   // champs de la fiche contact : créés une seule fois, repérés par nom pour ne jamais doublonner
   // une colonne qu'elle aurait déjà créée à la main (Téléphone, Email…)
@@ -8655,7 +8725,7 @@ function renderCrmSpace() {
   const tid = ensureCrmSchema();
   const cfg = crmSpaceCfg();
   const all = crmRecords();
-  const dateProp = state.crmDateProp, tagsProp = state.crmTagsProp;
+  const dateProp = state.crmDateProp;
   const relProp = crmRelationProp();
   const tab = (v, label) => `<span class="space-tab ${cfg.filter === v ? 'on' : ''}" onclick="setCrmFilter('${v}')">${label}</span>`;
   const relTab = (v, label) => `<span class="space-tab ${cfg.rel === v ? 'on' : ''}" onclick="setCrmRel('${v}')">${label}</span>`;
@@ -8693,14 +8763,13 @@ function renderCrmSpace() {
     const st = crmStatutInfo(crmStatutOf(r));
     const rel = relProp ? crmRelationInfo(crmRelationOf(r)) : null;
     const last = (r.props || {})[dateProp];
-    const tags = (r.props || {})[tagsProp];
     const sub = personSub(tid, r);
     const bord = rel && rel.color ? rel.color : st.color;
     return `<div class="pcard crm-card" style="border-left-color:${dotOf(bord)}" onclick="openPage('${tid}','${r.id}')">
       <div class="pcard-name"><span class="person-av">${esc(initials(r.title))}</span>${esc(r.title || 'Sans nom')}</div>
       ${sub ? `<div class="pcard-dates">${esc(sub)}</div>` : ''}
       <div class="pcard-foot">${rel ? `<span class="grp-pill" style="background:${rel.color};color:${inkOn(rel.color)}">${esc(rel.label)}</span>` : ''}<span class="grp-pill" style="background:${st.color};color:${inkOn(st.color)}">${esc(st.label)}</span>${last ? `<span>dernier contact : ${esc(fmtDateShort(last))}</span>` : ''}</div>
-      ${tagsOf(r).length ? `<div class="pcard-phase">${tagsOf(r).map(id => tagChipHtml(id)).join('')}</div>` : (tags ? `<div class="pcard-phase">${esc(tags)}</div>` : '')}
+      ${tagsOf(r).length ? `<div class="pcard-phase">${tagsOf(r).map(id => tagChipHtml(id)).join('')}</div>` : ''}
     </div>`;
   };
   html += crmGroupList(crmSortList(list, cfg.sort), cfg.groupBy, relProp).map(g =>
@@ -9421,6 +9490,7 @@ function noteCardHtml(n) {
       ${cover}
       <div class="note-card-title"><button class="nc-icon-btn" onclick="openNoteIconMenu('${n.id}',event,this)" title="Changer l'icône">${ico}</button><span class="nct-txt">${esc(n.title || 'Sans titre')}</span></div>
       ${body}
+      ${tagRowHtml(n)}
       <div class="note-card-foot">${link ? `<span class="note-card-link"><span class="pill-dot" style="background:${dotOf(link.color)}"></span>${esc(link.txt)}</span>` : '<span></span>'}<span class="ncf-right"><span class="note-card-date">${esc(noteDateLabel(n))}</span><span class="note-card-tools">
         <button class="note-card-fav ${n.fav ? 'on' : ''}" onclick="toggleNoteFav('${n.id}',event)" title="${n.fav ? 'Retirer des favoris' : 'Mettre en favori'}">${n.fav ? '★' : '☆'}</button>
         <button class="nc-btn" onclick="openNoteCoverMenu('${n.id}',event,this)" title="Image de couverture">${ICON_IMAGE}</button>
@@ -9992,11 +10062,11 @@ function buildIntentionsBlockHtml(ws) {
   const lignes = [];
   for (let i = 0; i < 7; i++) {
     const d = addDays(ws, i);
-    const txt = (map[ymd(d)] || '').trim();
-    if (!txt) continue;
+    const txt = intentionRich(map[ymd(d)] || '');
+    if (!intPlain(txt)) continue;
     const jour = DOW_LONG[d.getDay()];
     const label = jour.charAt(0).toUpperCase() + jour.slice(1) + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
-    lignes.push('<p><strong>' + esc(label) + '</strong> : ' + esc(txt) + '</p>');
+    lignes.push('<p><strong>' + esc(label) + '</strong></p><p>' + txt + '</p>');
   }
   if (!lignes.length) return '';
   return '<div class="' + REV_INT_MARK + '" data-auto="1">'
@@ -10343,6 +10413,7 @@ function openNote(id, presetFolder) {
   upgradeNoteImages();
   upgradeNoteCols();
   tagFieldOpen('noteTagsBox', tagsOf(n));
+  renderNoteLinks();
   hydrateNoteDbBlocks();   // remplit les blocs « base de données » avec leur table (jamais persistée)
   noteDraftColor = n ? (n.color || PALETTE[2]) : PALETTE[2];
   noteDraftFolder = n ? (n.folderId || '') : (presetFolder || '');
@@ -11421,7 +11492,7 @@ function renderNoteDbContent(id, cfg, rows) {
   if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy, cardProps: cp })}</div>`;
   if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cp, cfg.groupBy) : emptyMsg;
   if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cp, cfg.groupBy) : emptyMsg;
-  // table (par défaut) — masquage + ORDRE des colonnes via le panneau « Paramètres › Propriétés »,
+  // table (par défaut) — masquage + ORDRE des colonnes via le panneau « Paramètres › Propriétés ��,
   // largeur ajustable en glissant le bord d'un en-tête (mémorisée par bloc dans cfg.colWidths)
   const hidden = cfg.hiddenCols || [];
   const titleKey = titleFieldOf(coll);
@@ -11472,7 +11543,7 @@ function renderNoteDbCards(coll, rows, cfg) {
     </div>`;
   }).join('')}</div>`;
 }
-// pour le Kanban : de quoi grouper par défaut (priorité pour les tâches, sinon 1re colonne « Sélection »)
+// pour le Kanban : de quoi grouper par défaut (priorité pour les t��ches, sinon 1re colonne « Sélection »)
 function defaultGroupBy(coll) {
   if (coll === 'tasks') return 'prio';
   const sel = schemaOf(coll).find(p => p.type === 'select');
@@ -12861,7 +12932,7 @@ function syncRecurField() {
   }
   const start = $('fDate').value;
   const hint = $('recurHint');
-  if (!start) { hint.textContent = "Choisis d'abord une date de départ."; return; }
+  if (!start) { hint.textContent = "Choisis d'abord une date de d��part."; return; }
 
   const rule = readRecurRule();
   const dates = recurDates(start, rule);
@@ -13446,7 +13517,7 @@ window.doInstall = doInstall;
 /* ============================================================
    Notifications (rappels de traitement, façon Web Push)
    ------------------------------------------------------------
-   La clé publique ci-dessous est sans danger à exposer (comme la clé
+   La clé publique ci-dessous est sans danger �� exposer (comme la clé
    Supabase) : seule la clé PRIVÉE, gardée côté serveur, sait signer les
    envois. L'abonnement de CET appareil est stocké dans
    `state.pushSubscriptions` et suit la synchro habituelle — c'est ainsi
@@ -14021,6 +14092,7 @@ function projectPageExtra(p) {
       <div class="pd-task-body" onclick="openPageFrom('tasks','${t.id}')">
         <div class="pd-task-name">${repIco(t)}${esc(t.title)}${pr?` <span class="sub-prog">${pr.done}/${pr.total}</span>`:''}</div>
         ${dueTxt?`<div class="pd-task-due" ${late?'style="color:#b4544f"':''}>${ICON_CAL} ${dueTxt}</div>`:''}
+        ${tagRowHtml(t)}
       </div>
     </div>` + enfants.map(x => tache(x, true)).join('');
   };
@@ -14049,10 +14121,11 @@ function projectPageExtra(p) {
       : `<div class="hint-txt">Aucune tâche dans ce projet pour l'instant.</div>`}
     <button class="btn-ghost" style="margin-top:14px" onclick="addTaskToProject('${p.id}')">${ICON_PLUS} Ajouter une tâche</button>
     ${imagesSectionHtml('projects', p)}
-    ${notesSectionHtml('p', p.id)}`;
+    ${notesSectionHtml('p', p.id)}
+    ${linksSectionHtml('projects', p.id)}`;
 }
 // un événement n'a pas de sous-éléments : sa page se prolonge juste de ses notes
-function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectionHtml('e', e.id); }
+function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectionHtml('e', e.id) + linksSectionHtml('events', e.id); }
 
 /* Fiche contact : une carte d'identité en tête (coordonnées cliquables) puis tout ce qui
    relie ce contact au reste de l'application. Les liens ne sont pas de nouvelles données :
@@ -14122,7 +14195,8 @@ function contactPageExtra(coll, rec) {
         : `<div class="hint-txt">Aucun événement pour ce contact. Ajoutez-le dans le champ Personnes d'un événement pour le voir ici.</div>`)
     + `<div class="page-section-title">Projets liés${projs.length ? ` <span class="grp-n">· ${projs.length}</span>` : ''}</div>`
     + (projs.length ? projs.map(ligneProj).join('')
-        : `<div class="hint-txt">Aucun projet pour ce contact. Ajoutez-le dans le champ Personnes d'un projet.</div>`);
+        : `<div class="hint-txt">Aucun projet pour ce contact. Ajoutez-le dans le champ Personnes d'un projet.</div>`)
+    + linksSectionHtml(coll, rec.id);
 }
 window.contactPageExtra = contactPageExtra;
 
@@ -14139,6 +14213,170 @@ const notesForEvent = eid => (state.notes || []).filter(n => n.eventId === eid)
 const notesForTask = tid => (state.notes || []).filter(n => n.taskId === tid)
   .sort((a, b) => (b.updated || 0) - (a.updated || 0));
 // `cible` : 'p' pour un projet, 'e' pour un événement, 't' pour une tâche
+/* ============================================================
+   LIENS LIBRES ENTRE OBJETS
+   ------------------------------------------------------------
+   Relie n'importe quel objet à n'importe quel autre, à la main. Le lien est
+   bidirectionnel : stocké une seule fois dans state.links = [[cléA, cléB]],
+   il s'affiche des deux côtés. Aucune donnée dupliquée, aucun champ ajouté aux
+   objets : on résout la clé « coll::id » au moment de l'affichage.
+   ============================================================ */
+function refKey(coll, id) { return coll + '::' + id; }
+function splitRef(key) { const i = key.indexOf('::'); return [key.slice(0, i), key.slice(i + 2)]; }
+function linkStore() { return state.links || (state.links = []); }
+function linksOf(coll, id) {
+  const k = refKey(coll, id), out = [];
+  linkStore().forEach(p => { if (p[0] === k) out.push(p[1]); else if (p[1] === k) out.push(p[0]); });
+  return out;
+}
+function addLink(cA, iA, cB, iB) {
+  const a = refKey(cA, iA), b = refKey(cB, iB);
+  if (a === b) return;
+  const s = linkStore();
+  if (!s.some(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a))) { s.push([a, b]); save(); }
+}
+function removeLink(cA, iA, cB, iB) {
+  const a = refKey(cA, iA), b = refKey(cB, iB);
+  state.links = linkStore().filter(p => !((p[0] === a && p[1] === b) || (p[0] === b && p[1] === a)));
+  save();
+}
+const LINK_COLL_LABELS = { events: 'Événement', tasks: 'Tâche', projects: 'Projet', notes: 'Note', habits: 'Habitude', health: 'Suivi santé', cats: 'Agenda' };
+function collLabel(coll) {
+  if (LINK_COLL_LABELS[coll]) return LINK_COLL_LABELS[coll];
+  const t = (state.customTables || []).find(x => x.id === coll);
+  return t ? t.name : 'Élément';
+}
+// résout une clé « coll::id » en objet affichable, ou null si l'objet n'existe plus
+function refResolve(key) {
+  const [coll, id] = splitRef(key);
+  if (coll === 'notes')    { const n = (state.notes || []).find(x => x.id === id); return n && { coll, id, title: n.title || 'Sans titre', color: n.color || '#eae8e4', open: () => openNote(id) }; }
+  if (coll === 'events')   { const e = (state.events || []).find(x => x.id === id); return e && { coll, id, title: e.title || 'Sans titre', color: catColor(e.catId) || e.color || '#eae8e4', open: () => openPage('events', id) }; }
+  if (coll === 'tasks')    { const t = (state.tasks || []).find(x => x.id === id); return t && { coll, id, title: t.title || 'Sans titre', color: '#c8c6c0', open: () => openPage('tasks', id) }; }
+  if (coll === 'projects') { const p = projById(id); return p && { coll, id, title: p.name || 'Sans titre', color: p.color || '#eae8e4', open: () => openPage('projects', id) }; }
+  const rec = (collArr(coll) || []).find(x => x.id === id);
+  return rec && { coll, id, title: rec.title || 'Sans titre', color: '#c8c6c0', open: () => openPage(coll, id) };
+}
+// tables proposées comme cibles d'un lien
+function linkTargetColls() {
+  return [['events', 'Événements'], ['tasks', 'Tâches'], ['projects', 'Projets'], ['notes', 'Notes']]
+    .concat((state.customTables || []).filter(t => !t.ownerNoteId).map(t => [t.id, t.name]));
+}
+function linkTargetTitle(coll, rec) { return coll === 'projects' ? (rec.name || 'Sans titre') : (rec.title || 'Sans titre'); }
+function openLinkPicker(coll, id, ev) {
+  if (ev) ev.stopPropagation();
+  const selfKey = refKey(coll, id);
+  const dejaLies = new Set(linksOf(coll, id));
+  const groups = [];
+  linkTargetColls().forEach(([c, label]) => {
+    const arr = (c === 'events' ? state.events : c === 'tasks' ? state.tasks : c === 'projects' ? state.projects : c === 'notes' ? state.notes : collArr(c)) || [];
+    const items = arr.filter(r => refKey(c, r.id) !== selfKey && !dejaLies.has(refKey(c, r.id)))
+      .slice(0, 40)
+      .map(r => ({ value: c + '::' + r.id, label: linkTargetTitle(c, r), dot: dotOf(c === 'projects' ? (r.color || '#eae8e4') : c === 'events' ? (catColor(r.catId) || r.color || '#eae8e4') : '#c8c6c0') }));
+    if (items.length) groups.push({ label, items });
+  });
+  if (!groups.length) { showToast("Rien à relier pour l'instant"); return; }
+  const anchor = (ev && ev.currentTarget) || document.body;
+  openStyledMenu(anchor, groups, null, v => {
+    const [c, i] = splitRef(v);
+    addLink(coll, id, c, i);
+    if ($('pageOverlay') && $('pageOverlay').classList.contains('show')) renderPage();
+    if ($('noteOverlay') && $('noteOverlay').classList.contains('show')) renderNoteLinks();
+  });
+}
+function unlinkFromPage(coll, id, c2, i2, ev) {
+  if (ev) ev.stopPropagation();
+  removeLink(coll, id, c2, i2);
+  renderPage();
+}
+function openLinkRef(coll, id) { const r = refResolve(refKey(coll, id)); if (r) r.open(); }
+window.openLinkPicker = openLinkPicker;
+window.unlinkFromPage = unlinkFromPage;
+window.openLinkRef = openLinkRef;
+// section « Lié à » posée au bas de chaque fiche
+function linksSectionHtml(coll, id) {
+  const refs = linksOf(coll, id).map(refResolve).filter(Boolean);
+  return `<div class="page-section-title">Lié à</div>`
+    + (refs.length ? `<div class="lk-list">` + refs.map(r =>
+        `<div class="lk-item" onclick="openLinkRef('${r.coll}','${r.id}')">
+          <span class="pill-dot" style="background:${dotOf(r.color)}"></span>
+          <span class="lk-type">${esc(collLabel(r.coll))}</span>
+          <span class="lk-title">${esc(r.title)}</span>
+          <button class="lk-x" onclick="unlinkFromPage('${coll}','${id}','${r.coll}','${r.id}',event)" title="Retirer ce lien">×</button>
+        </div>`).join('') + `</div>`
+      : `<div class="hint-txt">Aucun lien pour l'instant.</div>`)
+    + `<button class="btn-ghost" style="margin-top:14px" onclick="openLinkPicker('${coll}','${id}',event)">${ICON_PLUS} Ajouter un lien</button>`;
+}
+// liens dans l'éditeur de note (le seul objet qui n'utilise pas la fiche générique)
+function renderNoteLinks() {
+  const box = $('noteLinksBox'); if (!box) return;
+  if (!editingNote) { box.innerHTML = `<span class="hint-txt">Enregistre la note pour pouvoir la relier.</span>`; return; }
+  const refs = linksOf('notes', editingNote).map(refResolve).filter(Boolean);
+  box.innerHTML = (refs.length ? `<div class="lk-list">` + refs.map(r =>
+      `<div class="lk-item" onclick="openNoteLinkRef('${r.coll}','${r.id}')">
+        <span class="pill-dot" style="background:${dotOf(r.color)}"></span>
+        <span class="lk-type">${esc(collLabel(r.coll))}</span>
+        <span class="lk-title">${esc(r.title)}</span>
+        <button class="lk-x" onclick="unlinkNote('${r.coll}','${r.id}',event)" title="Retirer ce lien">×</button>
+      </div>`).join('') + `</div>` : '')
+    + `<button class="btn-ghost" style="margin-top:8px" onclick="openLinkPicker('notes','${editingNote}',event)">${ICON_PLUS} Ajouter un lien</button>`;
+}
+function openNoteLinkRef(coll, id) {
+  const title = $('noteTitle').value.trim();
+  const body = sanitizeNoteHtml($('noteBody').innerHTML);
+  if (editingNote || title || notePreview(body)) { noteRecordFromForm(title, body); save(); }
+  const r = refResolve(refKey(coll, id));
+  if (r) { $('noteOverlay').classList.remove('show'); r.open(); }
+}
+function unlinkNote(coll, id, ev) {
+  if (ev) ev.stopPropagation();
+  removeLink('notes', editingNote, coll, id);
+  renderNoteLinks();
+}
+window.renderNoteLinks = renderNoteLinks;
+window.openNoteLinkRef = openNoteLinkRef;
+window.unlinkNote = unlinkNote;
+
+/* ============================================================
+   RADAR DES PROJETS À SURVEILLER
+   ------------------------------------------------------------
+   Remonte tout seul les projets qui décrochent, avec la raison. On ignore les
+   projets terminés. Règles, la plus parlante d'abord :
+   - échéance dépassée : la date de fin est passée mais le projet n'est pas terminé ;
+   - tâches en retard : au moins une tâche du projet a une échéance dépassée ;
+   - fin proche peu avancée : fin dans 7 jours et moins de la moitié des tâches faites ;
+   - projet vide : une date est posée mais aucune tâche n'existe encore.
+   ============================================================ */
+const RADAR_FIN_PROCHE = 7;
+function projectRadar() {
+  const today = ymd(new Date());
+  const finProche = ymd(addDays(new Date(), RADAR_FIN_PROCHE));
+  const out = [];
+  (state.projects || []).forEach(p => {
+    const st = projStats(p);
+    if (st.total && st.done === st.total) return;
+    let why = null;
+    if (projScheduled(p) && projEnd(p) < today) why = 'échéance dépassée le ' + fmtDateShort(projEnd(p));
+    else if (st.late) why = st.late + ' tâche' + (st.late > 1 ? 's' : '') + ' en retard';
+    else if (projScheduled(p) && projEnd(p) <= finProche && st.pct < 50) why = 'fin proche, ' + st.pct + ' % fait';
+    else if (projScheduled(p) && !st.total) why = 'aucune tâche pour un projet daté';
+    if (why) out.push({ p, why, end: projEnd(p) || '9999' });
+  });
+  return out.sort((a, b) => a.end.localeCompare(b.end)).slice(0, 6);
+}
+function radarBandHtml() {
+  const items = projectRadar();
+  if (!items.length) return '';
+  return `<div class="radar-band">
+    <div class="radar-band-t">⚠ Projets à surveiller <span class="grp-n">· ${items.length}</span></div>
+    ${items.map(({ p, why }) => `<div class="radar-row" onclick="openPage('projects','${p.id}')">
+      <span class="pill-dot" style="background:${dotOf(p.color)}"></span>
+      <span class="radar-name">${esc(p.name || 'Sans nom')}</span>
+      <span class="radar-why">${esc(why)}</span>
+    </div>`).join('')}
+  </div>`;
+}
+window.projectRadar = projectRadar;
+
 function notesSectionHtml(cible, id) {
   const notes = cible === 'e' ? notesForEvent(id) : cible === 't' ? notesForTask(id) : notesForProject(id);
   const vide = cible === 'e' ? 'Aucune note rattachée à cet événement.' : cible === 't' ? 'Aucune note rattachée à cette tâche.' : 'Aucune note rattachée à ce projet.';
@@ -14597,7 +14835,8 @@ function taskPageExtra(t) {
       }).join('')
       : `<div class="hint-txt">Aucune sous-tâche. Découpe cette tâche en étapes si elle est trop grosse.</div>`)
     + `<button class="btn-ghost" style="margin-top:14px" onclick="addSubtask('${t.id}')">${ICON_PLUS} Ajouter une sous-tâche</button>`
-    + notesSectionHtml('t', t.id);
+    + notesSectionHtml('t', t.id)
+    + linksSectionHtml('tasks', t.id);
 }
 
 /* Crée une sous-tâche : on rouvrira la fiche du parent après l'ajout. */
@@ -14643,7 +14882,7 @@ let reopenData = false;  // rouvrir le panneau base de données après un sous-f
 const BUILTIN_TABLES = ['events', 'tasks', 'projects', 'cats', 'habits', 'health', 'notes'];
 const isBuiltinTable = c => BUILTIN_TABLES.includes(c);
 /* ============================================================
-   ÉTIQUETTES TRANSVERSALES
+   ��TIQUETTES TRANSVERSALES
    ------------------------------------------------------------
    • Registre unique : state.tags = [{ id, name, color }]
    • Sur chaque enregistrement : rec.tags = [idÉtiquette, …], 3 au maximum.
