@@ -3791,7 +3791,11 @@
 // glisser-déposer HTML5 (draggable) n'est pas pensé pour le tactile : sur certains
 // mobiles, sa seule présence peut avaler le tap et empêcher l'ouverture de la fiche.
 const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-const DRAG_ATTR = IS_TOUCH ? 'draggable="false"' : 'draggable="true"';
+// Beaucoup d'ordinateurs (portables tactiles, 2-en-1) sont « tactiles » tout en
+// étant pilotés à la souris ou au trackpad. On ne coupe le glisser-déposer HTML5
+// que sur les appareils SANS pointeur fin (téléphone, tablette pur tactile).
+const HAS_FINE_POINTER = !!(window.matchMedia && window.matchMedia('(any-pointer: fine)').matches);
+const DRAG_ATTR = (IS_TOUCH && !HAS_FINE_POINTER) ? 'draggable="false"' : 'draggable="true"';
 const PALETTE = ['#cfe2f2','#d3e8cf','#f6dfb5','#f2d3d0','#e3daf2','#eae8e4'];
 // version « pastille » plus soutenue de chaque teinte (pour les points de couleur)
 const TAG_DOT = {
@@ -12336,6 +12340,7 @@ function wireDayDrop() {
     cell.addEventListener('drop', e => {
       e.preventDefault(); cell.classList.remove('drop-hover');
       if (!dragItem) return;
+      let _movedEv = null, _movedOldDate = null, _movedOldStart = null;
       const date = cell.dataset.date;
       // déposé dans le bandeau « toute la journée » → l'élément perd son créneau horaire
       const toAllDay = cell.classList.contains('ad-cell');
@@ -12373,6 +12378,7 @@ function wireDayDrop() {
       } else {
         const ev = state.events.find(x => x.id === workId);
         if (ev) {
+          _movedEv = ev; _movedOldDate = ev.date; _movedOldStart = ev.start;
           // on déplace l'événement en conservant sa durée en jours
           const spanDays = Math.round((parseYmd(evEnd(ev)) - parseYmd(evStart(ev))) / 86400000);
           ev.date = date;
@@ -12388,8 +12394,43 @@ function wireDayDrop() {
         }
       }
       save(); render();
+      if (_movedEv && !dragItem.copy) shiftLinkedTasksOnEventMove(_movedEv, _movedOldDate, _movedOldStart);
     });
   });
+}
+
+/* ---------- Décaler les tâches liées quand on déplace un événement ----------
+   Quand on glisse un événement, on propose de déplacer avec lui les tâches qui
+   lui sont liées, en conservant leur écart (jours + heure). On demande à chaque
+   fois, et on ne touche jamais aux tâches déplacées seules. */
+function shiftLinkedTasksOnEventMove(ev, oldDate, oldStart) {
+  if (!ev || !oldDate) return;
+  const linked = linksOf('events', ev.id).map(splitRef)
+    .filter(r => r[0] === 'tasks')
+    .map(r => state.tasks.find(t => t.id === r[1]))
+    .filter(t => t && t.due);
+  if (!linked.length) return;
+  const dayDelta = Math.round((parseYmd(ev.date) - parseYmd(oldDate)) / 86400000);
+  const bothTimed = !!oldStart && !!ev.start;
+  const minDelta = bothTimed ? (timeToMin(ev.start) - timeToMin(oldStart)) : 0;
+  if (dayDelta === 0 && minDelta === 0) return;
+  const n = linked.length;
+  if (!confirm(`Déplacer aussi ${n} tâche${n > 1 ? 's' : ''} liée${n > 1 ? 's' : ''} avec cet événement ?`)) return;
+  linked.forEach(t => {
+    if (t.dueTime) {
+      const base = timeToMin(t.dueTime) + minDelta;
+      const carry = Math.floor(base / 1440);
+      const mn = base - carry * 1440;
+      const dur = t.dueEnd ? Math.max(15, timeToMin(t.dueEnd) - timeToMin(t.dueTime)) : 0;
+      t.due = ymd(addDays(parseYmd(t.due), dayDelta + carry));
+      t.dueTime = fmtMin(mn);
+      if (t.dueEnd) t.dueEnd = fmtMin(Math.min(1440, mn + dur));
+    } else if (dayDelta !== 0) {
+      t.due = ymd(addDays(parseYmd(t.due), dayDelta));
+    }
+  });
+  save(); render();
+  showToast(`${n} tâche${n > 1 ? 's' : ''} déplacée${n > 1 ? 's' : ''} avec l'événement`);
 }
 
 /* ---------- Créer un événement en glissant sur une plage horaire ---------- */
