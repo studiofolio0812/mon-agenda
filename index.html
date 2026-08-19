@@ -2795,6 +2795,37 @@
   .mail-rail-color:hover { color: var(--accent); }
   .mail-rail-sep { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); padding: 12px 9px 4px; }
   .mail-rail-empty { font-size: 12px; color: var(--text-soft); padding: 12px 9px; line-height: 1.4; }
+  /* sélecteur de vue email */
+  .mail-viewbar { display: flex; align-items: center; gap: 10px; padding: 8px 0 10px; }
+  .mail-viewseg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+  .mvseg { background: transparent; border: none; border-right: 1px solid var(--border); padding: 6px 13px; font-size: 12.5px; color: var(--text-soft); cursor: pointer; font-family: var(--font-sans); }
+  .mvseg:last-child { border-right: none; }
+  .mvseg:hover { background: var(--bg-soft); }
+  .mvseg.on { background: var(--accent-soft, var(--bg-soft)); color: var(--text); font-weight: 600; }
+  .btn.ghost.on { background: var(--accent-soft, var(--bg-soft)); border-color: var(--accent); color: var(--text); }
+  /* en-têtes de regroupement (par date / par expéditeur) */
+  .mail-group-head { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-soft); font-weight: 600; padding: 12px 12px 5px; }
+  .mail-group-n { font-weight: 400; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
+  .mail-sender-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); }
+  .mail-sender-head:hover { background: var(--bg-soft); }
+  .mail-sender-chev { color: var(--text-soft); font-size: 11px; flex: 0 0 auto; }
+  .mail-sender-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* densité compacte */
+  .mail-compact .mail-row { padding: 4px 12px; font-size: 12px; }
+  .mail-compact .mail-subj i { display: none; }
+  /* vue kanban */
+  .mail-kanban { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 10px; align-items: flex-start; }
+  .mail-kan-col { flex: 0 0 260px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; max-height: calc(100vh - 240px); }
+  .mail-kan-colhead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg-soft); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+  .mail-kan-coltitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-kan-cards { padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 60px; }
+  .mail-kan-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; cursor: pointer; }
+  .mail-kan-card:hover { border-color: var(--border-strong); }
+  .mail-kan-card.unread { border-left: 3px solid var(--accent); }
+  .mail-kan-from { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-kan-subj { font-size: 12.5px; color: var(--text); margin: 2px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-kan-date { font-size: 11px; color: var(--text-faint); }
+  .mail-kan-empty { font-size: 12px; color: var(--text-faint); text-align: center; padding: 16px 8px; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
   .gmail-color-menu { left: 0; right: auto; }
   /* Barre de recherche */
   .mail-searchbar { position: relative; padding: 10px 12px 0; }
@@ -19071,7 +19102,10 @@ async function gmailCreateFolderAndMove(msgId, ev) {
 
 // Charge la boîte automatiquement à l'ouverture de l'onglet si on a déjà un token valide.
 function gmailAutoLoad() {
-  if ((gmailAccessToken || readStoredGmailToken()) && !gmailList.length && !gmailLoading) gmailFetchList();
+  if (!(gmailAccessToken || readStoredGmailToken())) return;
+  // en vue Kanban : charger les colonnes ; sinon la liste
+  if (gmailViewMode() === 'kanban') { if (!Object.keys(gmailKanban).length && !gmailKanbanLoading) gmailFetchKanban(); }
+  else if (!gmailList.length && !gmailLoading) gmailFetchList();
 }
 
 window.gmailConnect = gmailConnect;
@@ -19187,6 +19221,152 @@ function renderMailOverlay() {
 }
 window.renderMailOverlay = renderMailOverlay;
 
+/* ---------- Vues de la boîte mail : liste / kanban / par date / par expéditeur + densité ---------- */
+function gmailViewMode() { return state.mailView || 'list'; }
+function gmailIsCompact() { return !!state.mailCompact; }
+function gmailSetView(v) { state.mailView = v; save(); if (v === 'kanban') gmailFetchKanban(); else renderMailSpace(); }
+function gmailToggleCompact() { state.mailCompact = !state.mailCompact; save(); renderMailSpace(); }
+window.gmailSetView = gmailSetView;
+window.gmailToggleCompact = gmailToggleCompact;
+
+// une ligne de mail (réutilisée par les vues liste / date / expéditeur)
+function gmailRowHtml(m) {
+  const menu = gmailMoveMenuFor === m.id ? gmailMoveMenuHtml(m.id) : '';
+  const checked = gmailSelected.has(m.id);
+  return '<div class="mail-row' + (m.unread ? ' unread' : '') + (checked ? ' selected' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
+    + '<span class="mail-check' + (checked ? ' on' : '') + '" onclick="gmailToggleSelect(\'' + m.id + '\',event)" title="Sélectionner">' + (checked ? '✓' : '') + '</span>'
+    + '<span class="mail-star' + (m.starred ? ' on' : '') + '" onclick="gmailToggleStar(\'' + m.id + '\',event)" title="' + (m.starred ? 'Retirer l\'étoile' : 'Ajouter une étoile') + '">' + (m.starred ? '★' : '☆') + '</span>'
+    + '<span class="mail-from" title="' + esc(m.from) + '">' + esc(gmailCleanFrom(m.from)) + '</span>'
+    + '<span class="mail-subj"><b>' + esc(m.subject) + '</b><i>' + esc(m.snippet) + '</i></span>'
+    + '<span class="mail-date">' + esc(gmailFmtDate(m.date)) + '</span>'
+    + '<span class="mail-move-wrap">'
+    + '<button class="mail-move" onclick="gmailToggleMoveMenu(\'' + m.id + '\',event)" title="Ranger dans un dossier">'
+    + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
+    + '</button>' + menu + '</span>'
+    + '<button class="mail-trash" onclick="event.stopPropagation();gmailTrashMessage(\'' + m.id + '\')" title="Corbeille">'
+    + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>'
+    + '</button></div>';
+}
+
+// bucket de date d'un mail (0 aujourd'hui, 1 cette semaine, 2 ce mois, 3 plus ancien)
+function gmailDateBucket(dateStr) {
+  const d = new Date(dateStr); if (isNaN(d)) return 3;
+  const now = new Date(); const day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const md = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((day0 - md) / 86400000);
+  if (diff <= 0) return 0;
+  if (diff < 7) return 1;
+  if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return 2;
+  return 3;
+}
+const GMAIL_DATE_LABELS = ["Aujourd'hui", 'Cette semaine', 'Ce mois-ci', 'Plus ancien'];
+function gmailDateGroupsHtml() {
+  const buckets = [[], [], [], []];
+  gmailList.forEach(m => buckets[gmailDateBucket(m.date)].push(m));
+  return buckets.map((arr, i) => arr.length
+    ? '<div class="mail-group-head">' + GMAIL_DATE_LABELS[i] + ' <span class="mail-group-n">' + arr.length + '</span></div>' + arr.map(gmailRowHtml).join('')
+    : '').join('') || '<div class="mail-empty">Aucun mail à afficher.</div>';
+}
+
+let gmailSenderCollapsed = new Set();
+function gmailToggleSender(key, ev) { if (ev) ev.stopPropagation(); if (gmailSenderCollapsed.has(key)) gmailSenderCollapsed.delete(key); else gmailSenderCollapsed.add(key); renderMailSpace(); }
+window.gmailToggleSender = gmailToggleSender;
+function gmailSenderGroupsHtml() {
+  const map = new Map();
+  gmailList.forEach(m => { const k = gmailCleanFrom(m.from) || '(inconnu)'; if (!map.has(k)) map.set(k, []); map.get(k).push(m); });
+  const groups = [...map.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'fr'));
+  if (!groups.length) return '<div class="mail-empty">Aucun mail à afficher.</div>';
+  return groups.map(([k, arr]) => {
+    const key = k.replace(/'/g, "\\'");
+    const collapsed = gmailSenderCollapsed.has(k);
+    const unread = arr.filter(m => m.unread).length;
+    return '<div class="mail-sender-head" onclick="gmailToggleSender(\'' + esc(key) + '\')">'
+      + '<span class="mail-sender-chev">' + (collapsed ? '▸' : '▾') + '</span>'
+      + '<span class="mail-sender-name">' + esc(k) + '</span>'
+      + '<span class="mail-group-n">' + arr.length + (unread ? ' · ' + unread + ' non lus' : '') + '</span></div>'
+      + (collapsed ? '' : arr.map(gmailRowHtml).join(''));
+  }).join('');
+}
+
+/* ---------- Vue Kanban : une colonne par dossier, glisser une carte pour ranger ---------- */
+let gmailKanban = {};          // { colKey: [mails] }
+let gmailKanbanLoading = false;
+let gmailDragMsg = null;        // id du mail en cours de glissement
+function gmailKanbanCols() {
+  const cols = [
+    { key: 'inbox', label: 'Boîte de réception', q: 'in:inbox', color: '' },
+    { key: 'starred', label: 'Étoilés', q: 'is:starred', color: '' },
+  ];
+  gmailLabels.forEach(l => cols.push({ key: 'label:' + l.id, label: l.name, q: 'label:' + JSON.stringify(l.name), color: gmailFolderColor(l.id), labelId: l.id }));
+  return cols;
+}
+async function gmailFetchKanban() {
+  gmailKanbanLoading = true; renderMailSpace();
+  try {
+    if (!gmailLabels.length) await gmailFetchLabels();
+    const cols = gmailKanbanCols();
+    await Promise.all(cols.map(async col => {
+      try {
+        const list = await gmailApi('/messages?q=' + encodeURIComponent(col.q) + '&maxResults=12');
+        const msgs = list.messages || [];
+        const details = await Promise.all(msgs.map(m => gmailApi('/messages/' + m.id + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date')));
+        gmailKanban[col.key] = details.map(m => ({
+          id: m.id, snippet: m.snippet || '', labels: m.labelIds || [],
+          starred: (m.labelIds || []).indexOf('STARRED') >= 0, unread: (m.labelIds || []).indexOf('UNREAD') >= 0,
+          from: gmailHeader(m, 'From'), subject: gmailHeader(m, 'Subject') || '(sans objet)', date: gmailHeader(m, 'Date')
+        }));
+      } catch (e) { gmailKanban[col.key] = gmailKanban[col.key] || []; }
+    }));
+  } catch (e) { showToast('Erreur Gmail : ' + e.message); }
+  gmailKanbanLoading = false; renderMailSpace();
+}
+function gmailKanbanCardHtml(m, colKey) {
+  return '<div class="mail-kan-card' + (m.unread ? ' unread' : '') + '" draggable="true"'
+    + ' ondragstart="gmailDragMsg=\'' + m.id + '\';event.dataTransfer.effectAllowed=\'move\'"'
+    + ' onclick="gmailOpenMessage(\'' + m.id + '\')">'
+    + '<div class="mail-kan-from">' + (m.starred ? '★ ' : '') + esc(gmailCleanFrom(m.from)) + '</div>'
+    + '<div class="mail-kan-subj">' + esc(m.subject) + '</div>'
+    + '<div class="mail-kan-date">' + esc(gmailFmtDate(m.date)) + '</div>'
+    + '</div>';
+}
+function gmailKanbanViewHtml() {
+  if (gmailKanbanLoading && !Object.keys(gmailKanban).length) return '<div class="mail-loading">Chargement du tableau…</div>';
+  const cols = gmailKanbanCols();
+  return '<div class="mail-kanban">' + cols.map(col => {
+    const arr = gmailKanban[col.key] || [];
+    const dot = col.color ? '<span class="mail-rail-dot" style="background:' + dotOf(col.color) + '"></span>' : '';
+    return '<div class="mail-kan-col" ondragover="event.preventDefault()" ondrop="gmailKanbanDrop(\'' + col.key + '\',event)">'
+      + '<div class="mail-kan-colhead">' + dot + '<span class="mail-kan-coltitle">' + esc(col.label) + '</span><span class="mail-group-n">' + arr.length + '</span></div>'
+      + '<div class="mail-kan-cards">' + (arr.length ? arr.map(m => gmailKanbanCardHtml(m, col.key)).join('') : '<div class="mail-kan-empty">Glisse un mail ici</div>') + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+async function gmailKanbanDrop(colKey, ev) {
+  if (ev) ev.preventDefault();
+  const msgId = gmailDragMsg; gmailDragMsg = null;
+  if (!msgId) return;
+  // retrouver la carte + sa colonne source
+  let src = null, card = null;
+  Object.keys(gmailKanban).forEach(k => { const f = (gmailKanban[k] || []).find(x => x.id === msgId); if (f) { src = k; card = f; } });
+  if (!card || src === colKey) return;
+  // maj optimiste : déplacer la carte dans la colonne cible
+  gmailKanban[src] = gmailKanban[src].filter(x => x.id !== msgId);
+  gmailKanban[colKey] = [card].concat(gmailKanban[colKey] || []);
+  renderMailSpace();
+  // corps de la requête selon la colonne cible
+  let body;
+  if (colKey === 'inbox') body = { addLabelIds: ['INBOX'] };
+  else if (colKey === 'starred') body = { addLabelIds: ['STARRED'] };
+  else body = { addLabelIds: [colKey.slice(6)], removeLabelIds: ['INBOX'] };
+  try {
+    await gmailApi('/messages/' + msgId + '/modify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const lbl = colKey === 'inbox' ? 'Boîte de réception' : colKey === 'starred' ? 'Étoilés' : (gmailLabels.find(l => 'label:' + l.id === colKey) || {}).name;
+    showToast('Rangé dans « ' + (lbl || 'dossier') + ' »');
+  } catch (e) { showToast('Erreur : ' + e.message); gmailFetchKanban(); }
+}
+window.gmailKanbanDrop = gmailKanbanDrop;
+window.gmailFetchKanban = gmailFetchKanban;
+
 function renderMailSpace() {
   const connectee = !!gmailAccessToken || readStoredGmailToken();
   const rechercheActive = !!(gmailSearchQuery && gmailSearchQuery.trim());
@@ -19229,23 +19409,11 @@ function renderMailSpace() {
       + (railFolders ? '<div class="mail-rail-sep">Dossiers</div>' + railFolders : '<div class="mail-rail-empty">Range un mail pour créer ton premier dossier.</div>');
 
     const nbSel = gmailSelected.size;
-    const rows = gmailList.map(m => {
-      const menu = gmailMoveMenuFor === m.id ? gmailMoveMenuHtml(m.id) : '';
-      const checked = gmailSelected.has(m.id);
-      return '<div class="mail-row' + (m.unread ? ' unread' : '') + (checked ? ' selected' : '') + '" onclick="gmailOpenMessage(\'' + m.id + '\')">'
-        + '<span class="mail-check' + (checked ? ' on' : '') + '" onclick="gmailToggleSelect(\'' + m.id + '\',event)" title="Sélectionner">' + (checked ? '✓' : '') + '</span>'
-        + '<span class="mail-star' + (m.starred ? ' on' : '') + '" onclick="gmailToggleStar(\'' + m.id + '\',event)" title="' + (m.starred ? 'Retirer l\'étoile' : 'Ajouter une étoile') + '">' + (m.starred ? '★' : '☆') + '</span>'
-        + '<span class="mail-from" title="' + esc(m.from) + '">' + esc(gmailCleanFrom(m.from)) + '</span>'
-        + '<span class="mail-subj"><b>' + esc(m.subject) + '</b><i>' + esc(m.snippet) + '</i></span>'
-        + '<span class="mail-date">' + esc(gmailFmtDate(m.date)) + '</span>'
-        + '<span class="mail-move-wrap">'
-        + '<button class="mail-move" onclick="gmailToggleMoveMenu(\'' + m.id + '\',event)" title="Ranger dans un dossier">'
-        + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
-        + '</button>' + menu + '</span>'
-        + '<button class="mail-trash" onclick="event.stopPropagation();gmailTrashMessage(\'' + m.id + '\')" title="Corbeille">'
-        + '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>'
-        + '</button></div>';
-    }).join('');
+    const view = gmailViewMode();
+    // corps selon la vue choisie (liste / par date / par expéditeur ; le kanban a son propre rendu plus bas)
+    const listBody = view === 'date' ? gmailDateGroupsHtml()
+                   : view === 'sender' ? gmailSenderGroupsHtml()
+                   : (gmailList.map(gmailRowHtml).join('') || '<div class="mail-empty">Aucun mail à afficher.</div>');
 
     const searchBar = '<div class="mail-searchbar">'
       + '<input type="search" class="mail-search" placeholder="Rechercher (nom, mot, from:…, subject:…)" value="' + esc(gmailSearchQuery) + '" '
@@ -19270,24 +19438,41 @@ function renderMailSpace() {
       + '<button class="mail-bulk-close" onclick="gmailClearSelection()" title="Annuler la sélection">✕</button>'
       + '</div>' : '';
 
-    html = '<div class="space wide" onclick="if(gmailMoveMenuFor||gmailBulkMenuOpen||gmailColorMenuFor){gmailMoveMenuFor=null;gmailBulkMenuOpen=false;gmailColorMenuFor=null;renderMailSpace()}">'
-      + '<div class="space-head">'
+    // sélecteur de vue + densité
+    const seg = [['list', 'Liste'], ['kanban', 'Kanban'], ['date', 'Par date'], ['sender', 'Par expéditeur']]
+      .map(([v, l]) => '<button class="mvseg' + (view === v ? ' on' : '') + '" onclick="gmailSetView(\'' + v + '\')">' + l + '</button>').join('');
+    const viewBar = '<div class="mail-viewbar">'
+      + '<div class="mail-viewseg">' + seg + '</div>'
+      + '<span style="flex:1"></span>'
+      + (view === 'kanban' ? '<button class="btn ghost" onclick="gmailFetchKanban()" title="Actualiser le tableau">↻ Actualiser</button>'
+        : '<button class="btn ghost' + (gmailIsCompact() ? ' on' : '') + '" onclick="gmailToggleCompact()" title="Affichage plus dense">Compact</button>')
+      + '</div>';
+
+    const head = '<div class="space-head">'
       + '<span class="space-title">Mail</span>'
       + '<span style="flex:1"></span>'
       + '<button class="btn primary" onclick="gmailNewMail()" title="Écrire un nouveau mail">✎ Nouveau</button>'
       + '<button class="btn ghost" onclick="gmailFetchList()" title="Actualiser">↻ Actualiser</button>'
       + '<button class="btn ghost" onclick="gmailDisconnect()" title="Déconnecter Gmail">Déconnecter</button>'
-      + '</div>'
-      + '<div class="mail-layout">'
-      + '<div class="mail-rail">' + railHtml + '</div>'
-      + '<div class="mail-main">'
-      + searchBar
-      + bandeauRecherche
-      + bulkBar
-      + (gmailLoading ? '<div class="mail-loading">Chargement…</div>' : (rows || '<div class="mail-empty">Aucun mail à afficher.</div>'))
-      + '</div>'
-      + '</div>'
       + '</div>';
+
+    if (view === 'kanban') {
+      html = '<div class="space wide" onclick="if(gmailMoveMenuFor||gmailBulkMenuOpen||gmailColorMenuFor){gmailMoveMenuFor=null;gmailBulkMenuOpen=false;gmailColorMenuFor=null;renderMailSpace()}">'
+        + head + viewBar + gmailKanbanViewHtml() + '</div>';
+    } else {
+      html = '<div class="space wide" onclick="if(gmailMoveMenuFor||gmailBulkMenuOpen||gmailColorMenuFor){gmailMoveMenuFor=null;gmailBulkMenuOpen=false;gmailColorMenuFor=null;renderMailSpace()}">'
+        + head + viewBar
+        + '<div class="mail-layout">'
+        + '<div class="mail-rail">' + railHtml + '</div>'
+        + '<div class="mail-main' + (gmailIsCompact() ? ' mail-compact' : '') + '">'
+        + searchBar
+        + bandeauRecherche
+        + bulkBar
+        + (gmailLoading ? '<div class="mail-loading">Chargement…</div>' : listBody)
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    }
   }
   canvas.innerHTML = html;
 }
