@@ -1755,7 +1755,7 @@
   /* ---- Suivi santé ---- */
   .health-mini { display: flex; gap: 4px; padding: 4px 8px; }
   .health-dot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
-  .health-entry { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 16px; }
+  .health-entry { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 16px; max-width: 760px; }
   .health-entry-head { display: flex; align-items: center; gap: 10px; font-weight: 600; margin-bottom: 12px; }
   .health-entry-head input[type="date"] { margin-left: auto; }
   .health-mood-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
@@ -1803,6 +1803,16 @@
   .hr-quad-help p { margin: 0 0 8px; } .hr-quad-help p:last-child { margin-bottom: 0; }
   .hr-quad-help b { color: var(--text); font-weight: 600; }
   .hr-quad-help ul { margin: 6px 0 8px; padding-left: 18px; } .hr-quad-help li { margin-bottom: 5px; }
+  /* graphique cliquable + bouton agrandir + fenêtre santé en grand (réappliqué après fusion Notion) */
+  .hr-chart-click { cursor: zoom-in; }
+  .hr-expand { float: right; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 26px; height: 22px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-soft); cursor: pointer; margin-left: 6px; }
+  .hr-expand:hover { background: var(--bg-soft); color: var(--accent); border-color: var(--accent); }
+  #healthChartOverlay .hcx-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: min(1100px, 95vw); max-height: 92vh; margin: auto; display: flex; flex-direction: column; overflow: hidden; }
+  .hcx-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+  .hcx-title { flex: 1; font-weight: 600; font-size: 15px; }
+  .hcx-body { padding: 16px 18px; overflow-y: auto; }
+  .hcx-chart { margin-top: 10px; }
+  .hcx-chart .hc-quad { max-width: 640px; }
   /* curseurs humeur / énergie */
   .health-slider-row { margin-bottom: 16px; }
   .health-slider-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
@@ -3134,7 +3144,7 @@
 
 <style id="tagsStyle">
   /* Étiquettes transversales : rectangle légèrement arrondi, teinte choisie posée à 75 % d'opacité
-     (les pilules d'agenda et d'��vénement restent en couleur pleine, la différence est nette). */
+     (les pilules d'agenda et d'événement restent en couleur pleine, la différence est nette). */
   .tag-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 170px; padding: 2px 7px;
     border-radius: 4px; font-size: 11.5px; font-weight: 600; line-height: 1.5; vertical-align: middle; }
   .tag-chip .tc-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3215,7 +3225,7 @@
 </div>
 
 <!-- ============ MODAL: PORTÉE D'UNE SÉRIE ============
-     Un choix à trois issues (celle-ci / toute la série / annuler) : une fen��tre
+     Un choix à trois issues (celle-ci / toute la série / annuler) : une fenêtre
      dédiée, parce qu'un confirm() natif n'offre que deux boutons. -->
 <div class="overlay" id="seriesOverlay">
   <div class="modal" style="max-width:400px;">
@@ -3502,6 +3512,17 @@
 <div class="overlay" id="mailOverlay">
   <div class="mail-panel">
     <div id="mailPanelContent"></div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: GRAPHIQUE SANTÉ EN GRAND (réappliqué après fusion Notion) ============ -->
+<div class="overlay" id="healthChartOverlay">
+  <div class="hcx-panel">
+    <div class="hcx-head">
+      <span class="hcx-title" id="healthChartTitle">Graphique</span>
+      <button class="mail-panel-close" data-close title="Fermer">✕</button>
+    </div>
+    <div class="hcx-body" id="healthChartBody"></div>
   </div>
 </div>
 
@@ -3808,7 +3829,7 @@ const lighten = c => `color-mix(in oklab, ${c} 45%, white)`;
 
 /* ---------- Contraste texte / fond ----------
    Règle demandée : encre foncée sur un fond clair (pastel), encre claire sur un
-   fond foncé (couleur soutenue ou personnalisée). On calcule la luminance per����ue
+   fond foncé (couleur soutenue ou personnalisée). On calcule la luminance perçue
    du fond ; les fonds non-hex (color-mix…) sont toujours clairs → encre foncée. */
 function hexRgb(h) {
   h = String(h).replace('#', '');
@@ -3906,7 +3927,7 @@ const defaultState = () => ({
   tasks: [],
   // habitudes récurrentes (médicament, sport…) : {id,name,times:['08:00'],days:[0..6],color,icon}
   habits: [],
-  // pointages : clé �� habitId|AAAA-MM-JJ|HH:MM » → true quand l'habitude est faite ce jour-là à cette heure
+  // pointages : clé « habitId|AAAA-MM-JJ|HH:MM » → true quand l'habitude est faite ce jour-là à cette heure
   habitDone: {},
   // notes libres : {id,title,body(HTML),color,projectId,eventId,folderId,fav,updated}
   notes: [],
@@ -4465,7 +4486,7 @@ function renderPeriodTitle() {
     const s = state.view === 'week' ? startOfWeek(cursor) : new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
     const e = addDays(s, viewDayCount() - 1);
     t = s.getFullYear() !== e.getFullYear()
-      ? `${s.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()} �� ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
+      ? `${s.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()} → ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
       : s.getMonth() === e.getMonth()
         ? `${s.getDate()} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`
         : `${s.getDate()} ${MONTHS[s.getMonth()]} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
@@ -5981,7 +6002,7 @@ function homeCfg() {
   return c;
 }
 const homeVisibleOrder = () => { const c = homeCfg(); return c.order.filter(k => !c.hidden.includes(k)); };
-// définition d'un widget par sa clé : soit un widget intégré, soit un « feed �� (note du jour)
+// définition d'un widget par sa clé : soit un widget intégré, soit un « feed » (note du jour)
 function homeW(key) {
   if (HOME_WIDGETS[key]) return HOME_WIDGETS[key];
   if (typeof key === 'string' && key.startsWith('feed:')) {
@@ -6083,7 +6104,7 @@ function homeFocusTasks(limit) {
   const liste = [...retard, ...jour, ...suite];
   return limit ? liste.slice(0, limit) : liste;
 }
-// ce qui « reste à faire aujourd'hui �� : sert à la petite gratification de fin de journée
+// ce qui « reste à faire aujourd'hui » : sert à la petite gratification de fin de journée
 const homeDueTodayCount = () => { const tk = ymd(new Date()); return (state.tasks || []).filter(t => !t.done && t.due && t.due <= tk && catVisible(t.catId)).length; };
 
 function homeToggleTask(id, ev) {
@@ -7638,7 +7659,7 @@ function projTimelineHtml(list) {
   // Passage par les millisecondes pour accepter un décalage fractionnaire (molette fine).
   if (tlPan) { min = new Date(min.getTime() + tlPan * 86400000); max = new Date(max.getTime() + tlPan * 86400000); }
   const span = (max - min) / 86400000;
-  tlSpan = span;   // m��morisé pour convertir les pixels de molette en jours
+  tlSpan = span;   // mémorisé pour convertir les pixels de molette en jours
   const pct = d => ((parseYmd(typeof d === 'string' ? d : ymd(d)) - min) / 86400000 / span) * 100;
 
   /* Deux niveaux de graduation : les mois en haut, puis un niveau plus fin dessous
@@ -8458,7 +8479,7 @@ function personById(id) {
   }
   return null;
 }
-// petit sous-texte : la 1re coordonnée renseignée (e-mail, téléphone���) pour aider à reconnaître
+// petit sous-texte : la 1re coordonnée renseignée (e-mail, téléphone…) pour aider à reconnaître
 function personSub(tableId, rec) {
   const props = schemaOf(tableId) || [];
   const pref = props.find(p => ['email', 'phone', 'text', 'url'].includes(p.type) && (rec.props || {})[p.id]);
@@ -8486,7 +8507,7 @@ function peopleTableId() {
 // crée un contact vierge, le lie à l'événement/projet, et ouvre sa fiche à remplir
 function createContactFor(coll, recId) {
   let tid = peopleTableId();
-  if (!tid) {   // aucune table : on démarre un répertoire �� Personnes »
+  if (!tid) {   // aucune table : on démarre un répertoire « Personnes »
     tid = uid();
     state.customTables.push({ id: tid, name: 'Personnes' });
     state.customRecords[tid] = [];
@@ -9178,7 +9199,7 @@ function healthReadingCardHtml() {
 
 // ---- « Comment lire » dépliable sur la carte des journées ----
 let healthQuadHelpOpen = false;
-function healthToggleQuadHelp() { healthQuadHelpOpen = !healthQuadHelpOpen; renderHealthSpace(); }
+function healthToggleQuadHelp() { healthQuadHelpOpen = !healthQuadHelpOpen; if (typeof healthRerender === 'function') healthRerender(); else renderHealthSpace(); }
 window.healthToggleQuadHelp = healthToggleQuadHelp;
 function healthQuadHelpHtml() {
   if (!healthQuadHelpOpen) return '';
@@ -9305,17 +9326,17 @@ function healthChartShift(dir) {
     const n = healthChartMode === '90' ? 90 : 30;
     healthChartEnd = ymd(addDays(parseYmd(healthChartEnd), dir * n));
   }
-  clampHealthChartEnd(); renderHealthSpace();
+  clampHealthChartEnd(); healthRerender();
 }
 function setHealthChartMode(m) {
   healthChartMode = m;
   if (m === 'month') { const d = parseYmd(healthChartEnd); healthChartEnd = ymd(new Date(d.getFullYear(), d.getMonth(), 1)); }
-  clampHealthChartEnd(); renderHealthSpace();
+  clampHealthChartEnd(); healthRerender();
 }
 function healthChartToday() {
   const now = new Date();
   healthChartEnd = healthChartMode === 'month' ? ymd(new Date(now.getFullYear(), now.getMonth(), 1)) : ymd(now);
-  renderHealthSpace();
+  healthRerender();
 }
 function healthWinLabel(days) {
   const a = parseYmd(days[0]), b = parseYmd(days[days.length - 1]);
@@ -9323,6 +9344,57 @@ function healthWinLabel(days) {
   const f = d => `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
   return `${f(a)} au ${f(b)}`;
 }
+
+/* ---- Ouvrir un graphique santé en grand dans une fenêtre dédiée (réappliqué après la fusion Notion) ---- */
+let healthChartZoom = null;
+function healthChartDef(key) {
+  const m = {
+    moodene: ['Humeur et énergie', healthMoodEnergyChartHtml],
+    quad: ['Carte des journées', healthQuadrantChartHtml],
+    sleep: ['Sommeil', healthSleepChartHtml],
+    moodsleep: ['Humeur × Sommeil', healthMoodSleepChartHtml],
+    cyclemed: ['Traitement et cycle', healthCycleMedChartHtml],
+    legacy: ['Humeur (ancienne échelle)', healthMoodChartHtml],
+  };
+  return m[key] || null;
+}
+function healthOpenChart(key, ev) {
+  if (ev) ev.stopPropagation();
+  const def = healthChartDef(key); if (!def) return;
+  healthChartZoom = key;
+  $('healthChartOverlay').classList.add('show');
+  renderHealthChartOverlay();
+}
+window.healthOpenChart = healthOpenChart;
+function renderHealthChartOverlay() {
+  const box = $('healthChartBody');
+  if (!box || !healthChartZoom) return;
+  const def = healthChartDef(healthChartZoom); if (!def) return;
+  const days = healthWinDays();
+  $('healthChartTitle').textContent = def[0];
+  const atNow = healthChartAtPresent();
+  const nav = `<div class="health-chart-nav">
+    <div class="hcn-modes">
+      ${[['30','30 j'],['90','90 j'],['month','Mois']].map(([m,l]) => `<button type="button" class="hcn-mode ${healthChartMode===m?'on':''}" onclick="setHealthChartMode('${m}')">${l}</button>`).join('')}
+    </div>
+    <div class="hcn-range">
+      <button type="button" class="hcn-arrow" onclick="healthChartShift(-1)" aria-label="Période précédente">‹</button>
+      <span class="hcn-label">${esc(healthWinLabel(days))}</span>
+      <button type="button" class="hcn-arrow ${atNow?'disabled':''}" ${atNow?'disabled':''} onclick="healthChartShift(1)" aria-label="Période suivante">›</button>
+      ${!atNow ? `<button type="button" class="hcn-today" onclick="healthChartToday()">Aujourd'hui</button>` : ''}
+    </div>
+  </div>`;
+  const help = healthChartZoom === 'quad'
+    ? `<div style="text-align:right;margin-bottom:6px"><button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button></div>${healthQuadHelpHtml()}`
+    : '';
+  box.innerHTML = nav + help + `<div class="hcx-chart">${def[1](days)}</div>`;
+}
+window.renderHealthChartOverlay = renderHealthChartOverlay;
+function healthRerender() {
+  renderHealthSpace();
+  if (healthChartZoom && $('healthChartOverlay').classList.contains('show')) renderHealthChartOverlay();
+}
+
 function renderHealthSpace() {
   const log = healthLogFor(healthEditDate) || {};
   const isToday = healthEditDate === ymd(new Date());
@@ -9409,10 +9481,12 @@ function renderHealthSpace() {
           ${!atNow ? `<button type="button" class="hcn-today" onclick="healthChartToday()">Aujourd'hui</button>` : ''}
         </div>
       </div>`;
+      const expandBtn = key => `<button type="button" class="hr-expand" onclick="healthOpenChart('${key}',event)" title="Ouvrir ce graphique en grand"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5"/></svg></button>`;
+      const clickWrap = (key, svg) => `<div class="hr-chart-click" onclick="healthOpenChart('${key}')" title="Ouvrir en grand">${svg}</div>`;
       // l'ancienne courbe d'humeur n'apparaît que s'il reste des journées notées à l'ancienne échelle dans la fenêtre
       const legacyCard = k.hasLegacyMood ? `<div class="health-card">
-        <div class="health-card-title">Humeur (ancienne échelle)<span class="health-card-hint">tes journées notées avant les deux axes</span></div>
-        ${healthMoodChartHtml(days)}
+        <div class="health-card-title">Humeur (ancienne échelle)<span class="health-card-hint">tes journées notées avant les deux axes</span>${expandBtn('legacy')}</div>
+        ${clickWrap('legacy', healthMoodChartHtml(days))}
       </div>` : '';
       return `${kpis}
       ${healthReadingCardHtml()}
@@ -9420,27 +9494,27 @@ function renderHealthSpace() {
       ${nav}
       <div class="health-grid">
         <div class="health-card">
-          <div class="health-card-title">Humeur et énergie<span class="health-card-hint">deux courbes · repères verticaux = événements</span></div>
-          ${healthMoodEnergyChartHtml(days)}
+          <div class="health-card-title">Humeur et énergie<span class="health-card-hint">deux courbes · repères verticaux = événements</span>${expandBtn('moodene')}</div>
+          ${clickWrap('moodene', healthMoodEnergyChartHtml(days))}
         </div>
         <div class="health-card">
           <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour</span>
-            <button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>
+            <button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>${expandBtn('quad')}
           </div>
           ${healthQuadHelpHtml()}
-          ${healthQuadrantChartHtml(days)}
+          ${clickWrap('quad', healthQuadrantChartHtml(days))}
         </div>
         <div class="health-card">
-          <div class="health-card-title">Sommeil</div>
-          ${healthSleepChartHtml(days)}
+          <div class="health-card-title">Sommeil${expandBtn('sleep')}</div>
+          ${clickWrap('sleep', healthSleepChartHtml(days))}
         </div>
         <div class="health-card">
-          <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">chaque point = une journée</span></div>
-          ${healthMoodSleepChartHtml(days)}
+          <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">chaque point = une journée</span>${expandBtn('moodsleep')}</div>
+          ${clickWrap('moodsleep', healthMoodSleepChartHtml(days))}
         </div>
         <div class="health-card">
-          <div class="health-card-title">Traitement et cycle</div>
-          ${healthCycleMedChartHtml(days)}
+          <div class="health-card-title">Traitement et cycle${expandBtn('cyclemed')}</div>
+          ${clickWrap('cyclemed', healthCycleMedChartHtml(days))}
         </div>
         ${legacyCard}
       </div>
@@ -9456,7 +9530,7 @@ function renderHealthSpace() {
       <span class="space-tab ${healthTab === 'trends' ? 'on' : ''}" onclick="setHealthTab('trends')">Mes tendances</span>
     </span>`;
 
-  const html = `<div class="space">
+  const html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">Suivi santé</span>
       <span class="space-count">${nbEntrees} entrée${nbEntrees > 1 ? 's' : ''}</span>
@@ -10370,7 +10444,7 @@ function applyNoteMode() {
   nbBuildToc();
 }
 function toggleNoteDoc() { state.noteDoc = !state.noteDoc; save(); applyNoteMode(); }
-// largeur portrait/paysage : propre �� la note ouverte (persistée sur la note)
+// largeur portrait/paysage : propre à la note ouverte (persistée sur la note)
 function toggleNoteWide() { noteDraftWide = !noteDraftWide; applyNoteMode(); noteAutosave(true); }
 function toggleNoteRead() {
   state.noteRead = !state.noteRead;
@@ -11225,7 +11299,7 @@ function nbResolveHover(container, e) {
   }
   return blk;
 }
-// conteneur qui d��file : la note elle-même en modale, le corps de la fenêtre en plein écran
+// conteneur qui défile : la note elle-même en modale, le corps de la fenêtre en plein écran
 function nbScrollBox() {
   return $('noteOverlay').classList.contains('doc') ? $('noteOverlay').querySelector('.modal-body') : $('noteBody');
 }
@@ -11290,11 +11364,11 @@ const EMOJI_LIB = [
   ['ampoule', '💡'], ['cible', '🎯'], ['fusee', '🚀'], ['trophee', '🏆'], ['medaille', '🥇'],
   ['cadeau', '🎁'], ['ballon', '🎈'], ['musique', '🎵'], ['photo', '📷'], ['cinema', '🎬'],
   ['jeu', '🎮'], ['sport', '⚽'], ['course', '🏃'], ['yoga', '🧘'], ['argent', '💰'],
-  ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '��'], ['sante', '🩺'],
+  ['carte bancaire', '💳'], ['graphique', '📈'], ['baisse', '📉'], ['panier', '🧺'], ['sante', '🩺'],
   ['pilule', '💊'], ['cerveau', '🧠'], ['soin', '❤️‍🩹'], ['zen', '🧘‍♀️'], ['valide', '✅'],
   ['croix', '❌'], ['attention', '⚠️'], ['question', '❓'], ['exclamation', '❗'], ['interdit', '🚫'],
   ['etincelles', '✨'], ['eclair', '⚡'], ['yeux', '👀'], ['salut', '👋'], ['chat', '🐱'],
-  ['chien', '🐶'], ['papillon', '����'], ['drapeau rouge', '🚩'],
+  ['chien', '🐶'], ['papillon', '🦋'], ['drapeau rouge', '🚩'],
 ];
 let emojiIdx = 0, emojiItems = [];
 function svgNoteIco(name) {
@@ -11522,7 +11596,7 @@ function renderNoteDbContent(id, cfg, rows) {
   if (cfg.type === 'kanban') return `<div class="ndb-kanban">${renderKanban(coll, rows, { groupBy: cfg.groupBy, cardProps: cp })}</div>`;
   if (cfg.type === 'cards')  return rows.length ? renderCardsView(coll, rows, cp, cfg.groupBy) : emptyMsg;
   if (cfg.type === 'list')   return rows.length ? renderListView(coll, rows, cp, cfg.groupBy) : emptyMsg;
-  // table (par défaut) — masquage + ORDRE des colonnes via le panneau « Paramètres › Propriétés ��,
+  // table (par défaut) — masquage + ORDRE des colonnes via le panneau « Paramètres › Propriétés »,
   // largeur ajustable en glissant le bord d'un en-tête (mémorisée par bloc dans cfg.colWidths)
   const hidden = cfg.hiddenCols || [];
   const titleKey = titleFieldOf(coll);
@@ -11573,7 +11647,7 @@ function renderNoteDbCards(coll, rows, cfg) {
     </div>`;
   }).join('')}</div>`;
 }
-// pour le Kanban : de quoi grouper par défaut (priorité pour les t��ches, sinon 1re colonne « Sélection »)
+// pour le Kanban : de quoi grouper par défaut (priorité pour les tâches, sinon 1re colonne « Sélection »)
 function defaultGroupBy(coll) {
   if (coll === 'tasks') return 'prio';
   const sel = schemaOf(coll).find(p => p.type === 'select');
@@ -12999,7 +13073,7 @@ function syncRecurField() {
   }
   const start = $('fDate').value;
   const hint = $('recurHint');
-  if (!start) { hint.textContent = "Choisis d'abord une date de d��part."; return; }
+  if (!start) { hint.textContent = "Choisis d'abord une date de départ."; return; }
 
   const rule = readRecurRule();
   const dates = recurDates(start, rule);
@@ -13584,7 +13658,7 @@ window.doInstall = doInstall;
 /* ============================================================
    Notifications (rappels de traitement, façon Web Push)
    ------------------------------------------------------------
-   La clé publique ci-dessous est sans danger �� exposer (comme la clé
+   La clé publique ci-dessous est sans danger à exposer (comme la clé
    Supabase) : seule la clé PRIVÉE, gardée côté serveur, sait signer les
    envois. L'abonnement de CET appareil est stocké dans
    `state.pushSubscriptions` et suit la synchro habituelle — c'est ainsi
@@ -13818,6 +13892,7 @@ function closeModals() {
   if (closingProjTpl) { persistProjTplFromForm(); projTplEditId = null; }
   // si l'overlay mail était ouvert, on nettoie son état pour éviter de laisser un mail « ouvert » invisible
   if ($('mailOverlay').classList.contains('show')) { gmailOpenedId = null; gmailOpenedBody = null; gmailMoveMenuFor = null; }
+  if ($('healthChartOverlay') && $('healthChartOverlay').classList.contains('show')) healthChartZoom = null;
   const wasEditingTpl = noteTplEdit || closingProjTpl;
   $$('.overlay').forEach(o => o.classList.remove('show'));
   // fenêtre dossier ouverte depuis une note, puis annulée → on rouvre la note
@@ -14635,7 +14710,7 @@ async function createShare(kind, srcId) {
   const slug = newSlug();
   try {
     await sharesFetch('POST', { headers: { Prefer: 'return=minimal' }, body: { id: slug, owner: auth.user_id, kind, title: content.title, html: content.html, src_id: srcId } });
-  } catch (e) { alert('Le lien n���a pas pu être créé. Vérifie que la table « shares » est bien configurée dans Supabase (voir les étapes que je t’ai données).'); return null; }
+  } catch (e) { alert('Le lien n’a pas pu être créé. Vérifie que la table « shares » est bien configurée dans Supabase (voir les étapes que je t’ai données).'); return null; }
   return slug;
 }
 async function updateShare(kind, srcId, slug) {
@@ -14783,7 +14858,7 @@ function openNoteFromPage(id) {
 }
 window.openNoteFromPage = openNoteFromPage;
 /* Nouvelle note déjà rattachée à ce qu'on regarde : on arme le retour à la page,
-   puis on pré-remplit le champ �� Rattacher à ». */
+   puis on pré-remplit le champ « Rattacher à ». */
 function addNoteTo(cible, id) {
   if (pageCtx) reopenPage = { coll: pageCtx.coll, id: pageCtx.id };
   openNote(null);
@@ -15006,7 +15081,7 @@ let reopenData = false;  // rouvrir le panneau base de données après un sous-f
 const BUILTIN_TABLES = ['events', 'tasks', 'projects', 'cats', 'habits', 'health', 'notes'];
 const isBuiltinTable = c => BUILTIN_TABLES.includes(c);
 /* ============================================================
-   ��TIQUETTES TRANSVERSALES
+   ÉTIQUETTES TRANSVERSALES
    ------------------------------------------------------------
    • Registre unique : state.tags = [{ id, name, color }]
    • Sur chaque enregistrement : rec.tags = [idÉtiquette, …], 3 au maximum.
