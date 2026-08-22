@@ -2527,6 +2527,8 @@
   .tabbar { display: none; }
   .fab { display: none; }   /* bouton d'ajout flottant : téléphone uniquement */
   .day-strip { display: none; }   /* bandeau de dates : téléphone uniquement */
+  /* bouton enveloppe (accès aux mails) dans la barre du haut : téléphone uniquement */
+  .mail-top-btn { display: none; }
 
   /* =========================================================
      MOBILE / TÉLÉPHONE (≤ 640px)
@@ -2551,6 +2553,11 @@
     .toolbar .spacer { display: none; }
     .period-title { font-size: 16px; margin-left: 2px; order: 2; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .today-btn { padding: 6px 11px; font-size: 13px; }
+    /* enveloppe Mail : toujours visible en haut à droite de la 1re ligne, pastille de non-lus */
+    .mail-top-btn { order: 3; margin-left: auto; position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; }
+    .mail-top-btn:hover { background: var(--bg-soft); }
+    .mail-top-btn.on { color: var(--accent); border-color: var(--accent); }
+    .mail-top-badge { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
     .view-switch { order: 4; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .view-switch button { white-space: nowrap; }
     #dayBlockPick { order: 5; }
@@ -3090,6 +3097,11 @@
       <button class="icon-btn" id="sidebarToggle" title="Replier / afficher le panneau">☰</button>
       <button class="tb-logo" id="toolbarLogo" title="Réglages" aria-label="Réglages">M</button>
       <button class="sync-badge" id="syncBadge" title="Synchronisation"><span class="sync-dot"></span><span class="sync-txt"></span></button>
+      <!-- accès aux mails sur téléphone (masqué sur ordinateur : le rail latéral sert d'accès) -->
+      <button class="mail-top-btn" id="mailTopBtn" title="Mail" aria-label="Mail" onclick="openMailFromTop()">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        <span class="mail-top-badge" id="mailTopBadge" hidden></span>
+      </button>
       <div class="nav-btns">
         <button class="today-btn" id="todayBtn">Aujourd'hui</button>
         <button class="icon-btn" id="prevBtn">‹</button>
@@ -4546,6 +4558,7 @@ function render() {
   else renderTimeGrid(viewDayCount());
 
   wireItemDrag(); // rend déplaçables la barre latérale ET les éléments déjà posés
+  renderMailTopBadge(); // enveloppe Mail (mobile) : état actif + pastille de non-lus
 }
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 
@@ -19398,10 +19411,42 @@ let gmailCounts = {}; // { INBOX: n, STARRED: n, <labelId>: n }
 async function gmailFetchCounts() {
   const ids = ['INBOX', 'STARRED'].concat(gmailLabels.map(l => l.id));
   await Promise.all(ids.map(async id => {
-    try { const d = await gmailApi('/labels/' + id); gmailCounts[id] = (typeof d.messagesTotal === 'number') ? d.messagesTotal : gmailCounts[id]; }
+    try {
+      const d = await gmailApi('/labels/' + id);
+      gmailCounts[id] = (typeof d.messagesTotal === 'number') ? d.messagesTotal : gmailCounts[id];
+      // non-lus de la boîte de réception : alimente la pastille de l'enveloppe (mobile)
+      if (id === 'INBOX' && typeof d.messagesUnread === 'number') gmailCounts['INBOX_UNREAD'] = d.messagesUnread;
+    }
     catch (e) {}
   }));
+  renderMailTopBadge();
 }
+/* Pastille de l'enveloppe (barre du haut, téléphone) : nombre de mails non lus dans la boîte de réception. */
+function renderMailTopBadge() {
+  const btn = document.getElementById('mailTopBtn'); if (!btn) return;
+  btn.classList.toggle('on', state.view === 'mail');
+  const badge = document.getElementById('mailTopBadge'); if (!badge) return;
+  const n = gmailCounts['INBOX_UNREAD'];
+  if (typeof n === 'number' && n > 0) { badge.textContent = n > 99 ? '99+' : String(n); badge.hidden = false; }
+  else { badge.hidden = true; }
+}
+window.renderMailTopBadge = renderMailTopBadge;
+/* Ouvre la section Mail depuis l'enveloppe du haut (téléphone). */
+function openMailFromTop() {
+  closeDrawer();
+  state.view = 'mail';
+  tabbarPage = tabbarPageOf('mail');
+  save(); render();
+}
+window.openMailFromTop = openMailFromTop;
+/* Au démarrage : va chercher le compteur de non-lus même hors section Mail, pour afficher la pastille. */
+function gmailRefreshBadge() {
+  if (!(gmailAccessToken || readStoredGmailToken())) return;
+  gmailApi('/labels/INBOX')
+    .then(d => { if (d && typeof d.messagesUnread === 'number') { gmailCounts['INBOX_UNREAD'] = d.messagesUnread; renderMailTopBadge(); } })
+    .catch(() => {});
+}
+window.gmailRefreshBadge = gmailRefreshBadge;
 function gmailCountFor(key) {
   if (key === 'inbox') return gmailCounts['INBOX'];
   if (key === 'starred') return gmailCounts['STARRED'];
@@ -19951,6 +19996,7 @@ if (_partageSlug) {
   handleLaunchAction();    // raccourcis d'icône (appui long) : nouvelle tâche / note / aujourd'hui
   drainPendingHabitDone(); // habitudes cochées depuis une notification pendant que l'app était fermée
   maybeAutoBackup();       // sauvegarde locale automatique (une par jour), filet de sécurité
+  gmailRefreshBadge();     // pastille de mails non lus sur l'enveloppe (téléphone), même hors section Mail
   setTimeout(revalidatePushSub, 3000); // recrée l'abonnement push s'il a été perdu (rappels qui ne partent plus)
 }
 </script>
