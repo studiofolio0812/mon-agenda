@@ -1004,6 +1004,26 @@
   /* rangées colorées (vue Agenda + vues du jour) : événement en aplat plein,
      projet en fond clair + contour, tâche avec bande de couleur à gauche —
      mêmes règles que le calendrier */
+  /* bloc checklist sous un événement dans les listes (agenda / jour / accueil) */
+  .ev-checklist { margin: 2px 0 6px 46px; border-left: 2px solid var(--border); padding: 4px 0 4px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .evc-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12.5px; }
+  .evc-item:hover { background: var(--surface-2); }
+  .evc-item.done .evc-txt { text-decoration: line-through; color: var(--text-faint); }
+  .evc-check { width: 15px; height: 15px; flex: none; border: 1.5px solid var(--border-strong); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: white; }
+  .evc-check.on { background: var(--accent); border-color: var(--accent); }
+  .evc-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .evc-item .task-check { width: 15px; height: 15px; flex: none; }
+  /* gestion de la checklist sur la fiche événement */
+  .evc-edit-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .evc-edit-item { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .evc-edit-item.done .evc-edit-txt { text-decoration: line-through; color: var(--text-faint); }
+  .evc-edit-item .evc-check { cursor: pointer; }
+  .evc-edit-txt { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+  .evc-del { background: transparent; border: none; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+  .evc-del:hover { color: #d0574f; }
+  .evc-add { display: flex; gap: 8px; align-items: center; }
+  .evc-add-input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); }
+  .evc-add-input:focus { outline: none; border-color: var(--accent); }
   .ag-chip { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
     padding: 7px 11px; border-radius: 9px; font-size: 14px; }
   .ag-chip .ag-title { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2761,6 +2781,7 @@
   .mail-rail-count { flex: 0 0 auto; font-size: 11px; color: var(--text-soft); background: var(--bg-soft); border-radius: 10px; padding: 1px 7px; min-width: 20px; text-align: center; }
   .mail-rail-item.on .mail-rail-count { background: var(--bg); }
   /* fenêtre de composition */
+  #composeOverlay { z-index: 92; }   /* au-dessus des fiches (pageOverlay 55) : compo ouverte depuis une fiche contact */
   #composeOverlay .compose-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.25); width: min(720px, 94vw); height: min(80vh, 760px); margin: auto; display: flex; flex-direction: column; overflow: hidden; }
   .compose-head { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
   .compose-title { flex: 1; font-weight: 600; font-size: 14px; }
@@ -3535,6 +3556,7 @@
         <button class="page-ico-btn hidden" id="pageIcoBtn" title="Ajouter une icône"></button>
         <h1 class="page-title" id="pageTitle" contenteditable="true" spellcheck="false"></h1>
       </div>
+      <div id="pageTop"></div>
       <div id="pageRecur"></div>
       <div class="page-props" id="pageProps"></div>
       <div class="page-hidden-row" id="pageHiddenRow"></div>
@@ -4675,6 +4697,59 @@ function renderAgenda() {
    `styled` = rendu coloré (mêmes règles que le calendrier : événement en aplat plein,
    projet en fond clair + contour foncé, tâche avec bande de couleur à gauche) pour
    les vues du jour sur téléphone ; sinon simple pastille (vue Agenda). */
+/* ---------- Checklist d'un événement + tâches reliées (bloc cochable dans les listes) ---------- */
+function evFind(id) { return (state.events || []).find(e => e.id === id); }
+function evChecklist(e) { return Array.isArray(e && e.checklist) ? e.checklist : []; }
+// tâches reliées à l'événement via le système de liens
+function evLinkedTasks(e) {
+  if (typeof linksOf !== 'function') return [];
+  return linksOf('events', e.id).map(refResolve).filter(r => r && r.coll === 'tasks')
+    .map(r => (state.tasks || []).find(t => t.id === r.id)).filter(Boolean);
+}
+function evChecklistAdd(evId, text) {
+  const e = evFind(evId); if (!e) return;
+  const t = (text || '').trim(); if (!t) return;
+  if (!Array.isArray(e.checklist)) e.checklist = [];
+  e.checklist.push({ id: uid(), text: t, done: false });
+  save();
+}
+function evChecklistAddFromInput(evId) {
+  const inp = $('evChkInput'); if (!inp) return;
+  const v = inp.value.trim(); if (!v) return;
+  evChecklistAdd(evId, v);
+  if (pageCtx) openPage(pageCtx.coll, pageCtx.id);
+  setTimeout(() => { const i = $('evChkInput'); if (i) i.focus(); }, 30);
+}
+window.evChecklistAddFromInput = evChecklistAddFromInput;
+function evChecklistToggle(evId, itemId, ev) {
+  if (ev) ev.stopPropagation();
+  const e = evFind(evId); if (!e) return;
+  const it = evChecklist(e).find(x => x.id === itemId);
+  if (it) { it.done = !it.done; save(); render(); }
+}
+window.evChecklistToggle = evChecklistToggle;
+function evChecklistDelete(evId, itemId, ev) {
+  if (ev) ev.stopPropagation();
+  const e = evFind(evId); if (!e) return;
+  e.checklist = evChecklist(e).filter(x => x.id !== itemId);
+  save();
+  if (pageCtx) openPage(pageCtx.coll, pageCtx.id); else render();
+}
+window.evChecklistDelete = evChecklistDelete;
+// bloc affiché SOUS un événement dans les listes (agenda, accueil/jour mobile) : checklist interne + tâches reliées, cochables
+function eventChecklistBlockHtml(e) {
+  const items = evChecklist(e);
+  const linked = evLinkedTasks(e);
+  if (!items.length && !linked.length) return '';
+  const chk = items.map(it => `<div class="evc-item ${it.done ? 'done' : ''}" onclick="evChecklistToggle('${e.id}','${it.id}',event)">
+      <span class="evc-check ${it.done ? 'on' : ''}">${it.done ? '✓' : ''}</span><span class="evc-txt">${esc(it.text)}</span></div>`).join('');
+  const tks = linked.map(t => { const pc = prioCol(t.prio || 'med');
+    return `<div class="evc-item task ${t.done ? 'done' : ''}">
+      <span class="task-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
+      <span class="evc-txt" onclick="openEdit('task','${t.id}',event)">${esc(t.title)}</span></div>`; }).join('');
+  return `<div class="ev-checklist">${chk}${tks}</div>`;
+}
+
 function dayEntries(d, styled) {
   const k = ymd(d);
   const entrees = [];
@@ -4705,7 +4780,8 @@ function dayEntries(d, styled) {
       ? `<span class="ag-chip" style="${look.style}">${inner}</span>`
       : `<span class="ag-dot" style="background:${look.dot}"></span>${inner}`;
     entrees.push({ t: timed ? e.start : '', html:
-      `<div class="ag-item" onclick="openEdit('event','${e.id}',event)"><span class="ag-time">${timed ? e.start : 'journée'}</span>${body}</div>` });
+      `<div class="ag-item" onclick="openEdit('event','${e.id}',event)"><span class="ag-time">${timed ? e.start : 'journée'}</span>${body}</div>`
+      + eventChecklistBlockHtml(e) });
   });
   // tâches du jour
   tasksOn(d).forEach(t => {
@@ -14341,6 +14417,8 @@ function renderPage() {
         `<button class="page-hidden-chip" onclick="togglePageProp('${coll}','${f.key}')" title="Afficher cette propriété">${ICON_EYE_OFF} ${esc(f.label)}</button>`).join('')
     : '';
 
+  // carte d'identité du contact tout en haut de la fiche (le reste va dans pageExtra)
+  if ($('pageTop')) $('pageTop').innerHTML = isPeopleColl(coll) ? contactCardHtml(coll, rec) : '';
   // extra : projet → avancement + tâches ; tâche → ses sous-tâches ; événement → ses notes
   $('pageExtra').innerHTML = (coll === 'projects') ? projectPageExtra(rec)
                            : (coll === 'tasks')    ? taskPageExtra(rec)
@@ -14419,7 +14497,18 @@ function projectPageExtra(p) {
     ${linksSectionHtml('projects', p.id)}`;
 }
 // un événement n'a pas de sous-éléments : sa page se prolonge juste de ses notes
-function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectionHtml('e', e.id) + linksSectionHtml('events', e.id); }
+function eventChecklistSectionHtml(e) {
+  const items = evChecklist(e);
+  const list = items.length ? `<div class="evc-edit-list">${items.map(it => `<div class="evc-edit-item ${it.done ? 'done' : ''}">
+      <span class="evc-check ${it.done ? 'on' : ''}" onclick="evChecklistToggle('${e.id}','${it.id}',event)">${it.done ? '✓' : ''}</span>
+      <span class="evc-edit-txt">${esc(it.text)}</span>
+      <button class="evc-del" title="Supprimer" onclick="evChecklistDelete('${e.id}','${it.id}',event)">✕</button></div>`).join('')}</div>` : '';
+  return `<div class="page-section-title">Checklist de l'événement${items.length ? ` <span class="grp-n">· ${items.filter(i => i.done).length}/${items.length}</span>` : ''}</div>`
+    + list
+    + `<div class="evc-add"><input type="text" id="evChkInput" class="evc-add-input" placeholder="Ajouter une étape…" onkeydown="if(event.key==='Enter'){event.preventDefault();evChecklistAddFromInput('${e.id}')}">
+       <button class="btn-ghost" onclick="evChecklistAddFromInput('${e.id}')">${ICON_PLUS} Ajouter</button></div>`;
+}
+function eventPageExtra(e) { return imagesSectionHtml('events', e) + eventChecklistSectionHtml(e) + notesSectionHtml('e', e.id) + linksSectionHtml('events', e.id); }
 
 /* Fiche contact : une carte d'identité en tête (coordonnées cliquables) puis tout ce qui
    relie ce contact au reste de l'application. Les liens ne sont pas de nouvelles données :
@@ -14502,7 +14591,8 @@ function gmailComposeToContact(email, ev) {
 }
 window.gmailComposeToContact = gmailComposeToContact;
 
-function contactPageExtra(coll, rec) {
+// carte d'identité du contact — affichée EN HAUT de la fiche (dans #pageTop)
+function contactCardHtml(coll, rec) {
   const P = state.crmProps || {};
   const val = k => String((rec.props || {})[P[k]] || '').trim();
   const tel = val('phone'), mail = val('email'), adr = val('address');
@@ -14546,7 +14636,9 @@ function contactPageExtra(coll, rec) {
     </div>
     ${acts ? `<div class="ct-acts">${acts}</div>` : ''}
   </div>`;
-
+  return carte;
+}
+function contactPageExtra(coll, rec) {
   const today = ymd(new Date());
   const evs = (state.events || []).filter(e => (e.people || []).includes(rec.id));
   const aVenir = evs.filter(e => (e.date || '') >= today).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -14565,8 +14657,7 @@ function contactPageExtra(coll, rec) {
       <span class="ct-row-meta">${st.total ? `${st.done}/${st.total} tâches` : 'aucune tâche'}</span></div>`;
   };
 
-  return carte
-    + crmLogSectionHtml(coll, rec)
+  return crmLogSectionHtml(coll, rec)
     + `<div class="page-section-title">Événements liés${evs.length ? ` <span class="grp-n">· ${evs.length}</span>` : ''}</div>`
     + (evs.length
         ? (aVenir.length ? `<div class="hint-txt">À venir</div>` + aVenir.slice(0, 12).map(ligneEv).join('') : '')
