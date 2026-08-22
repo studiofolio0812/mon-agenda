@@ -2145,6 +2145,24 @@
   .ct-act { padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border-strong);
     background: var(--surface); color: var(--text-soft); font-size: 12px; text-decoration: none; }
   .ct-act:hover { border-color: var(--accent); color: var(--accent); }
+  button.ct-act { cursor: pointer; font-family: var(--font-sans); line-height: 1.2; }
+  /* journal d'échanges CRM */
+  .crm-log-add { margin: 2px 0 10px; }
+  .crm-log-form { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; margin: 4px 0 12px; display: flex; flex-direction: column; gap: 8px; }
+  .crm-log-form-row { display: flex; gap: 8px; }
+  .crm-log-select, .crm-log-date { padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); }
+  .crm-log-text { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font-sans); }
+  .crm-log-text:focus, .crm-log-select:focus, .crm-log-date:focus { outline: none; border-color: var(--accent); }
+  .crm-log-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .crm-log-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .crm-log-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; background: var(--surface); }
+  .crm-log-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .crm-log-type { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft, var(--bg-soft)); color: var(--text); }
+  .crm-log-when { font-size: 11.5px; color: var(--text-faint); flex: 0 0 auto; }
+  .crm-log-del { margin-left: auto; background: transparent; border: none; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+  .crm-log-del:hover { color: #d0574f; }
+  .crm-log-txt { font-size: 13px; line-height: 1.45; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .crm-band-meta.urgent { color: #d0574f; font-weight: 600; }
   .ct-row { display: flex; align-items: center; gap: 9px; padding: 9px 8px; border-radius: 10px; cursor: pointer; }
   .ct-row:hover { background: var(--surface-2); }
   .ct-row + .ct-row { border-top: 1px solid var(--border); }
@@ -8609,7 +8627,9 @@ const CRM_STATUTS = { prospect: ['Prospect', '#eae8e4'], actif: ['Client actif',
 /* Champs de la fiche contact. Ce sont de VRAIES propriétés de la table Personnes :
    modifiables depuis la fiche comme depuis la base de données, filtrables, jamais dupliquées. */
 const CRM_FIELDS = [['phone', 'Téléphone', 'phone'], ['email', 'Email', 'email'], ['address', 'Adresse', 'text'],
-                    ['company', 'Société', 'text'], ['role', 'Rôle', 'text'], ['birthday', 'Anniversaire', 'date']];
+                    ['company', 'Société', 'text'], ['role', 'Rôle', 'text'], ['birthday', 'Anniversaire', 'date'],
+                    ['instagram', 'Instagram', 'text'], ['website', 'Site web', 'text'], ['source', 'Rencontré via', 'text'],
+                    ['followup', 'À relancer le', 'date']];
 const isPeopleColl = c => !!c && c === (state.crmTableId || peopleTableId());
 function ensureCrmSchema() {
   let tid = state.crmTableId && (state.customTables || []).some(t => t.id === state.crmTableId) ? state.crmTableId : peopleTableId();
@@ -8725,6 +8745,14 @@ function crmSinceLast(rec) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return Math.round((today - new Date(d + 'T00:00:00')) / 86400000);
 }
+/* Jours avant la relance programmée (négatif = en retard), null si aucune date « À relancer le ». */
+function crmFollowUpIn(rec) {
+  const pid = (state.crmProps || {}).followup;
+  const d = String((pid && (rec.props || {})[pid]) || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(d + 'T00:00:00') - today) / 86400000);
+}
 function crmSortList(list, mode) {
   const arr = list.slice();
   if (mode === 'last') arr.sort((a, b) => crmSinceLast(b) - crmSinceLast(a));
@@ -8764,20 +8792,33 @@ function crmGroupList(list, mode, relProp) {
 function crmBandHtml(tid) {
   const all = crmRecords();
   const bdays = all.filter(r => crmBdayIn(r) <= 45).sort((a, b) => crmBdayIn(a) - crmBdayIn(b)).slice(0, 6);
-  const relance = all.filter(r => crmSinceLast(r) >= 90).sort((a, b) => crmSinceLast(b) - crmSinceLast(a)).slice(0, 6);
-  const row = (r, meta) => `<div class="crm-band-row" onclick="openPage('${tid}','${r.id}')">`
+  // relances PROGRAMMÉES (date « À relancer le » due sous 14 jours ou en retard), prioritaires
+  const programmees = all.filter(r => { const n = crmFollowUpIn(r); return n !== null && n <= 14; })
+    .sort((a, b) => crmFollowUpIn(a) - crmFollowUpIn(b));
+  const dejaLa = new Set(programmees.map(r => r.id));
+  // puis relances PASSIVES (pas de contact depuis 90 j), en excluant celles déjà programmées
+  const relancePassive = all.filter(r => !dejaLa.has(r.id) && crmSinceLast(r) >= 90)
+    .sort((a, b) => crmSinceLast(b) - crmSinceLast(a));
+  const relance = programmees.concat(relancePassive).slice(0, 6);
+  const row = (r, meta, urgent) => `<div class="crm-band-row" onclick="openPage('${tid}','${r.id}')">`
     + `<span class="person-av">${esc(initials(r.title))}</span>${esc(r.title || 'Sans nom')}`
-    + `<span class="crm-band-meta">${esc(meta)}</span></div>`;
+    + `<span class="crm-band-meta${urgent ? ' urgent' : ''}">${esc(meta)}</span></div>`;
   const jours = n => n === 0 ? "aujourd'hui" : n === 1 ? 'demain' : 'dans ' + n + ' jours';
   const depuis = n => n >= 9999 ? 'jamais contacté' : n >= 365 ? 'il y a plus d’un an' : 'il y a ' + n + ' jours';
+  // libellé d'une ligne de relance : la date programmée prime sur le « depuis dernier contact »
+  const relanceMeta = r => {
+    const n = crmFollowUpIn(r);
+    if (n !== null && n <= 14) return { txt: n < 0 ? 'à relancer, en retard de ' + (-n) + ' j' : n === 0 ? 'à relancer aujourd’hui' : 'à relancer ' + jours(n), urgent: n <= 0 };
+    return { txt: depuis(crmSinceLast(r)), urgent: false };
+  };
   return `<div class="crm-band">
     <div class="crm-band-card"><div class="crm-band-t">Anniversaires à venir</div>`
     + (bdays.length ? bdays.map(r => row(r, jours(crmBdayIn(r)))).join('')
         : `<div class="crm-band-empty">Aucun anniversaire dans les six prochaines semaines. Renseignez le champ Anniversaire d’une fiche pour les voir ici.</div>`)
     + `</div>
     <div class="crm-band-card"><div class="crm-band-t">À relancer</div>`
-    + (relance.length ? relance.map(r => row(r, depuis(crmSinceLast(r)))).join('')
-        : `<div class="crm-band-empty">Personne à relancer. Le champ Dernier contact de chaque fiche alimente cette liste.</div>`)
+    + (relance.length ? relance.map(r => { const m = relanceMeta(r); return row(r, m.txt, m.urgent); }).join('')
+        : `<div class="crm-band-empty">Personne à relancer. Renseignez « À relancer le » sur une fiche, ou laissez « Dernier contact » alimenter la liste au bout de 90 jours.</div>`)
     + `</div>
   </div>`;
 }
@@ -14315,17 +14356,101 @@ function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectio
 /* Fiche contact : une carte d'identité en tête (coordonnées cliquables) puis tout ce qui
    relie ce contact au reste de l'application. Les liens ne sont pas de nouvelles données :
    ils se lisent dans le champ « Personnes » des événements et des projets, déjà existant. */
+/* ---------- CRM : journal d'échanges + action « écrire un email » dans l'app ---------- */
+const CRM_LOG_TYPES = [['note', 'Note'], ['call', 'Appel'], ['mail', 'Email'], ['meeting', 'Rendez-vous']];
+const crmLogTypeLabel = t => (CRM_LOG_TYPES.find(x => x[0] === t) || [, 'Note'])[1];
+let crmLogFormFor = null;   // id du contact dont le formulaire « noter un échange » est ouvert
+
+function crmRecFrom(coll, id) { return (collArr(coll) || []).find(r => r.id === id) || null; }
+
+function crmToggleLogForm(coll, id, ev) {
+  if (ev) ev.stopPropagation();
+  crmLogFormFor = (crmLogFormFor === id) ? null : id;
+  openPage(coll, id);
+  if (crmLogFormFor === id) setTimeout(() => { const i = $('crmLogText'); if (i) i.focus(); }, 40);
+}
+window.crmToggleLogForm = crmToggleLogForm;
+
+function crmSaveInteraction(coll, id) {
+  const rec = crmRecFrom(coll, id); if (!rec) return;
+  const type = ($('crmLogType') || {}).value || 'note';
+  const date = ($('crmLogDate') || {}).value || ymd(new Date());
+  const text = (($('crmLogText') || {}).value || '').trim();
+  if (!text) { const i = $('crmLogText'); if (i) i.focus(); return; }
+  if (!Array.isArray(rec.crmLog)) rec.crmLog = [];
+  rec.crmLog.push({ id: uid(), date, type, text });
+  // « Dernier contact » suit automatiquement (jamais en arrière)
+  const P = state.crmProps || {};
+  if (state.crmDateProp) {
+    if (!rec.props) rec.props = {};
+    const cur = String(rec.props[state.crmDateProp] || '');
+    if (!cur || date > cur) rec.props[state.crmDateProp] = date;
+  }
+  crmLogFormFor = null;
+  save();
+  openPage(coll, id);
+  showToast('Échange noté');
+}
+window.crmSaveInteraction = crmSaveInteraction;
+
+function crmDeleteInteraction(coll, id, logId, ev) {
+  if (ev) ev.stopPropagation();
+  const rec = crmRecFrom(coll, id); if (!rec || !Array.isArray(rec.crmLog)) return;
+  rec.crmLog = rec.crmLog.filter(l => l.id !== logId);
+  save();
+  openPage(coll, id);
+}
+window.crmDeleteInteraction = crmDeleteInteraction;
+
+function crmLogSectionHtml(coll, rec) {
+  const log = Array.isArray(rec.crmLog) ? rec.crmLog.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')) : [];
+  const form = crmLogFormFor === rec.id ? `<div class="crm-log-form" onclick="event.stopPropagation()">
+      <div class="crm-log-form-row">
+        <select id="crmLogType" class="crm-log-select">${CRM_LOG_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+        <input type="date" id="crmLogDate" class="crm-log-date" value="${ymd(new Date())}" max="${ymd(new Date())}">
+      </div>
+      <input type="text" id="crmLogText" class="crm-log-text" placeholder="Ce qui s'est dit, à retenir, prochaine étape…" onkeydown="if(event.key==='Enter'){event.preventDefault();crmSaveInteraction('${coll}','${rec.id}')}">
+      <div class="crm-log-form-actions">
+        <button class="btn-ghost" onclick="crmToggleLogForm('${coll}','${rec.id}',event)">Annuler</button>
+        <button class="btn-primary" onclick="crmSaveInteraction('${coll}','${rec.id}')">Enregistrer</button>
+      </div>
+    </div>` : `<button class="btn-ghost crm-log-add" onclick="crmToggleLogForm('${coll}','${rec.id}',event)">${ICON_PLUS} Noter un échange</button>`;
+  const list = log.length ? `<div class="crm-log-list">${log.map(l => `<div class="crm-log-item">
+      <div class="crm-log-head"><span class="crm-log-type">${esc(crmLogTypeLabel(l.type))}</span><span class="crm-log-when">${esc(fmtDateShort(l.date))}</span>
+        <button class="crm-log-del" title="Supprimer cet échange" onclick="crmDeleteInteraction('${coll}','${rec.id}','${l.id}',event)">✕</button></div>
+      <div class="crm-log-txt">${esc(l.text)}</div>
+    </div>`).join('')}</div>`
+    : `<div class="hint-txt">Aucun échange noté pour l'instant. Note un appel, un mail ou un rendez-vous — « Dernier contact » se mettra à jour tout seul.</div>`;
+  return `<div class="page-section-title">Échanges${log.length ? ` <span class="grp-n">· ${log.length}</span>` : ''}</div>${form}${list}`;
+}
+
+// « Écrire un email » depuis une fiche : ouvre la composition dans l'app si Gmail est connecté, sinon le mail externe
+function gmailComposeToContact(email, ev) {
+  if (ev) ev.stopPropagation();
+  if (!email) return;
+  const connecte = (typeof gmailAccessToken !== 'undefined' && gmailAccessToken) || (typeof readStoredGmailToken === 'function' && readStoredGmailToken());
+  if (connecte && typeof gmailOpenCompose === 'function') gmailOpenCompose({ to: email });
+  else window.location.href = 'mailto:' + email;
+}
+window.gmailComposeToContact = gmailComposeToContact;
+
 function contactPageExtra(coll, rec) {
   const P = state.crmProps || {};
   const val = k => String((rec.props || {})[P[k]] || '').trim();
   const tel = val('phone'), mail = val('email'), adr = val('address');
+  const insta = val('instagram'), site = val('website');
   const sous = [val('company'), val('role')].filter(Boolean).join(' · ');
   const coord = [tel, mail, adr].filter(Boolean);
+  const igUrl = insta ? (/^https?:\/\//.test(insta) ? insta : 'https://instagram.com/' + insta.replace(/^@/, '')) : '';
+  const siteUrl = site ? (/^https?:\/\//.test(site) ? site : 'https://' + site) : '';
 
   const acts = [
     tel ? `<a class="ct-act" href="tel:${esc(tel)}" onclick="event.stopPropagation()">Appeler</a>` : '',
-    mail ? `<a class="ct-act" href="mailto:${esc(mail)}" onclick="event.stopPropagation()">Écrire</a>` : '',
+    mail ? `<button class="ct-act" onclick="gmailComposeToContact('${esc(mail).replace(/'/g, "\\'")}',event)">Écrire un email</button>` : '',
+    `<button class="ct-act" onclick="crmToggleLogForm('${coll}','${rec.id}',event)">Noter un échange</button>`,
     adr ? `<a class="ct-act" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Itinéraire</a>` : '',
+    igUrl ? `<a class="ct-act" href="${esc(igUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Instagram</a>` : '',
+    siteUrl ? `<a class="ct-act" href="${esc(siteUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Site web</a>` : '',
   ].filter(Boolean).join('');
 
   // anniversaire : on annonce la PROCHAINE occurrence, pas l'année de naissance
@@ -14373,6 +14498,7 @@ function contactPageExtra(coll, rec) {
   };
 
   return carte
+    + crmLogSectionHtml(coll, rec)
     + `<div class="page-section-title">Événements liés${evs.length ? ` <span class="grp-n">· ${evs.length}</span>` : ''}</div>`
     + (evs.length
         ? (aVenir.length ? `<div class="hint-txt">À venir</div>` + aVenir.slice(0, 12).map(ligneEv).join('') : '')
