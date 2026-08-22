@@ -1018,7 +1018,8 @@
   .evc-edit-item { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
   .evc-edit-item.done .evc-edit-txt { text-decoration: line-through; color: var(--text-faint); }
   .evc-edit-item .evc-check { cursor: pointer; }
-  .evc-edit-txt { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+  .evc-edit-txt { flex: 1 1 auto; min-width: 0; font-size: 13px; cursor: pointer; }
+  .evc-when { font-size: 11px; color: var(--text-faint); }
   .evc-del { background: transparent; border: none; color: var(--text-faint); cursor: pointer; font-size: 13px; padding: 2px 4px; }
   .evc-del:hover { color: #d0574f; }
   .evc-add { display: flex; gap: 8px; align-items: center; }
@@ -4697,57 +4698,87 @@ function renderAgenda() {
    `styled` = rendu coloré (mêmes règles que le calendrier : événement en aplat plein,
    projet en fond clair + contour foncé, tâche avec bande de couleur à gauche) pour
    les vues du jour sur téléphone ; sinon simple pastille (vue Agenda). */
-/* ---------- Checklist d'un événement + tâches reliées (bloc cochable dans les listes) ---------- */
+/* ---------- Tâches d'un événement : la « checklist » = de VRAIES tâches liées, datées/horodatées
+   sur l'événement (donc visibles dans la colonne de gauche du Jour ET par-dessus l'événement
+   sur les vues créneau, comme n'importe quelle tâche). Deux façons d'en ajouter : à la volée
+   (texte → nouvelle tâche) ou en piochant les tâches non terminées du projet lié. ---------- */
 function evFind(id) { return (state.events || []).find(e => e.id === id); }
-function evChecklist(e) { return Array.isArray(e && e.checklist) ? e.checklist : []; }
-// tâches reliées à l'événement via le système de liens
+// migration douce : les anciennes checklists internes {text,done} deviennent de vraies tâches liées
+function evMigrate(e) {
+  if (!e || !Array.isArray(e.checklist) || !e.checklist.length) return;
+  e.checklist.forEach(it => {
+    if (!it || typeof it.text !== 'string') return;
+    const t = { id: uid(), title: it.text, done: !!it.done, prio: 'med',
+      due: e.date || ymd(new Date()), dueTime: (!isAllDayEv(e) && e.start) ? e.start : '', dueEnd: '',
+      catId: e.catId || '', projectId: e.projectId || '', note: '' };
+    state.tasks.push(t);
+    if (typeof addLink === 'function') addLink('events', e.id, 'tasks', t.id);
+  });
+  delete e.checklist;
+  save();
+}
 function evLinkedTasks(e) {
+  if (!e) return [];
+  evMigrate(e);
   if (typeof linksOf !== 'function') return [];
   return linksOf('events', e.id).map(refResolve).filter(r => r && r.coll === 'tasks')
     .map(r => (state.tasks || []).find(t => t.id === r.id)).filter(Boolean);
 }
-function evChecklistAdd(evId, text) {
-  const e = evFind(evId); if (!e) return;
-  const t = (text || '').trim(); if (!t) return;
-  if (!Array.isArray(e.checklist)) e.checklist = [];
-  e.checklist.push({ id: uid(), text: t, done: false });
-  save();
-}
+// ajout à la volée : crée une VRAIE tâche datée/horodatée sur l'événement, et la relie
 function evChecklistAddFromInput(evId) {
   const inp = $('evChkInput'); if (!inp) return;
   const v = inp.value.trim(); if (!v) return;
-  evChecklistAdd(evId, v);
+  const e = evFind(evId); if (!e) return;
+  const t = { id: uid(), title: v, done: false, prio: 'med',
+    due: e.date || ymd(new Date()), dueTime: (!isAllDayEv(e) && e.start) ? e.start : '', dueEnd: '',
+    catId: e.catId || '', projectId: e.projectId || '', note: '' };
+  state.tasks.push(t);
+  if (typeof addLink === 'function') addLink('events', evId, 'tasks', t.id);
+  save();
   if (pageCtx) openPage(pageCtx.coll, pageCtx.id);
   setTimeout(() => { const i = $('evChkInput'); if (i) i.focus(); }, 30);
 }
 window.evChecklistAddFromInput = evChecklistAddFromInput;
-function evChecklistToggle(evId, itemId, ev) {
+// retirer une tâche de l'événement = la délier (la tâche reste dans l'agenda)
+function evUnlinkTask(evId, taskId, ev) {
   if (ev) ev.stopPropagation();
-  const e = evFind(evId); if (!e) return;
-  const it = evChecklist(e).find(x => x.id === itemId);
-  if (it) { it.done = !it.done; save(); render(); }
-}
-window.evChecklistToggle = evChecklistToggle;
-function evChecklistDelete(evId, itemId, ev) {
-  if (ev) ev.stopPropagation();
-  const e = evFind(evId); if (!e) return;
-  e.checklist = evChecklist(e).filter(x => x.id !== itemId);
+  if (typeof removeLink === 'function') removeLink('events', evId, 'tasks', taskId);
   save();
   if (pageCtx) openPage(pageCtx.coll, pageCtx.id); else render();
 }
-window.evChecklistDelete = evChecklistDelete;
-// bloc affiché SOUS un événement dans les listes (agenda, accueil/jour mobile) : checklist interne + tâches reliées, cochables
+window.evUnlinkTask = evUnlinkTask;
+// piocher les tâches NON TERMINÉES du projet lié à l'événement (et seulement celles-là)
+function evAddProjectTasks(evId, evt) {
+  if (evt) evt.stopPropagation();
+  const e = evFind(evId); if (!e || !e.projectId) return;
+  const deja = new Set(evLinkedTasks(e).map(t => t.id));
+  const dispo = (state.tasks || []).filter(t => t.projectId === e.projectId && !t.done && !deja.has(t.id))
+    .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  if (!dispo.length) { showToast('Aucune tâche non terminée à ajouter pour ce projet'); return; }
+  const groups = [{ label: 'Tâches non terminées du projet', items: dispo.slice(0, 200).map(t => ({
+    value: t.id, label: t.title || 'Sans titre', sub: t.due ? fmtDateShort(t.due) : '', dot: prioCol(t.prio || 'med')
+  })) }];
+  const anchor = (evt && evt.currentTarget) || document.body;
+  openStyledMenu(anchor, groups, null, v => {
+    if (!v) return;
+    const t = (state.tasks || []).find(x => x.id === v); if (!t) return;
+    t.due = e.date || t.due;
+    if (!isAllDayEv(e) && e.start) t.dueTime = e.start;   // se place sur le créneau de l'événement
+    if (typeof addLink === 'function') addLink('events', evId, 'tasks', t.id);
+    save();
+    if (pageCtx) openPage(pageCtx.coll, pageCtx.id);
+    setTimeout(() => evAddProjectTasks(evId), 60);        // rouvre pour en ajouter d'autres
+  });
+}
+window.evAddProjectTasks = evAddProjectTasks;
+// bloc sous un événement dans les listes (agenda / accueil-jour mobile) : ses tâches, cochables
 function eventChecklistBlockHtml(e) {
-  const items = evChecklist(e);
-  const linked = evLinkedTasks(e);
-  if (!items.length && !linked.length) return '';
-  const chk = items.map(it => `<div class="evc-item ${it.done ? 'done' : ''}" onclick="evChecklistToggle('${e.id}','${it.id}',event)">
-      <span class="evc-check ${it.done ? 'on' : ''}">${it.done ? '✓' : ''}</span><span class="evc-txt">${esc(it.text)}</span></div>`).join('');
-  const tks = linked.map(t => { const pc = prioCol(t.prio || 'med');
+  const tks = evLinkedTasks(e);
+  if (!tks.length) return '';
+  return `<div class="ev-checklist">` + tks.map(t => { const pc = prioCol(t.prio || 'med');
     return `<div class="evc-item task ${t.done ? 'done' : ''}">
       <span class="task-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
-      <span class="evc-txt" onclick="openEdit('task','${t.id}',event)">${esc(t.title)}</span></div>`; }).join('');
-  return `<div class="ev-checklist">${chk}${tks}</div>`;
+      <span class="evc-txt" onclick="openEdit('task','${t.id}',event)">${esc(t.title)}</span></div>`; }).join('') + `</div>`;
 }
 
 function dayEntries(d, styled) {
@@ -4772,19 +4803,22 @@ function dayEntries(d, styled) {
     entrees.push({ t: '', html:
       `<div class="ag-item" onclick="openPage('projects','${p.id}')"><span class="ag-time">projet</span>${body}</div>` });
   });
-  // événements touchant ce jour
+  // événements touchant ce jour (+ leurs tâches en bloc cochable sous l'événement)
+  const evTaskIds = new Set();   // tâches déjà montrées sous un événement → pas en double dans la liste
   eventsOn(d).forEach(e => {
     const look = eventLook(e), timed = !isAllDayEv(e) && e.start;
     const inner = `${repIco(e)}${iconOf(e, 'events', 13)}<span class="ag-title">${esc(e.title)}</span>`;
     const body = styled
       ? `<span class="ag-chip" style="${look.style}">${inner}</span>`
       : `<span class="ag-dot" style="background:${look.dot}"></span>${inner}`;
+    evLinkedTasks(e).forEach(t => evTaskIds.add(t.id));
     entrees.push({ t: timed ? e.start : '', html:
       `<div class="ag-item" onclick="openEdit('event','${e.id}',event)"><span class="ag-time">${timed ? e.start : 'journée'}</span>${body}</div>`
       + eventChecklistBlockHtml(e) });
   });
-  // tâches du jour
+  // tâches du jour (hors celles déjà affichées sous leur événement)
   tasksOn(d).forEach(t => {
+    if (evTaskIds.has(t.id)) return;
     const pr = t.prio || 'med', pc = prioCol(pr);
     const inner = `${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>`;
     const body = styled
@@ -14498,15 +14532,17 @@ function projectPageExtra(p) {
 }
 // un événement n'a pas de sous-éléments : sa page se prolonge juste de ses notes
 function eventChecklistSectionHtml(e) {
-  const items = evChecklist(e);
-  const list = items.length ? `<div class="evc-edit-list">${items.map(it => `<div class="evc-edit-item ${it.done ? 'done' : ''}">
-      <span class="evc-check ${it.done ? 'on' : ''}" onclick="evChecklistToggle('${e.id}','${it.id}',event)">${it.done ? '✓' : ''}</span>
-      <span class="evc-edit-txt">${esc(it.text)}</span>
-      <button class="evc-del" title="Supprimer" onclick="evChecklistDelete('${e.id}','${it.id}',event)">✕</button></div>`).join('')}</div>` : '';
-  return `<div class="page-section-title">Checklist de l'événement${items.length ? ` <span class="grp-n">· ${items.filter(i => i.done).length}/${items.length}</span>` : ''}</div>`
+  const tks = evLinkedTasks(e);
+  const list = tks.length ? `<div class="evc-edit-list">${tks.map(t => { const pc = prioCol(t.prio || 'med');
+    return `<div class="evc-edit-item ${t.done ? 'done' : ''}">
+      <span class="task-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
+      <span class="evc-edit-txt" onclick="openEdit('task','${t.id}',event)">${esc(t.title)}${(t.due && t.due !== e.date) ? ` <span class="evc-when">${esc(fmtDateShort(t.due))}</span>` : ''}</span>
+      <button class="evc-del" title="Retirer de l'événement (la tâche reste dans l'agenda)" onclick="evUnlinkTask('${e.id}','${t.id}',event)">✕</button></div>`; }).join('')}</div>` : '';
+  const projBtn = e.projectId ? `<button class="btn-ghost" onclick="evAddProjectTasks('${e.id}',event)">${ICON_PLUS} Tâches du projet</button>` : '';
+  return `<div class="page-section-title">Tâches de l'événement${tks.length ? ` <span class="grp-n">· ${tks.filter(t => t.done).length}/${tks.length}</span>` : ''}</div>`
     + list
-    + `<div class="evc-add"><input type="text" id="evChkInput" class="evc-add-input" placeholder="Ajouter une étape…" onkeydown="if(event.key==='Enter'){event.preventDefault();evChecklistAddFromInput('${e.id}')}">
-       <button class="btn-ghost" onclick="evChecklistAddFromInput('${e.id}')">${ICON_PLUS} Ajouter</button></div>`;
+    + `<div class="evc-add"><input type="text" id="evChkInput" class="evc-add-input" placeholder="Ajouter une tâche…" onkeydown="if(event.key==='Enter'){event.preventDefault();evChecklistAddFromInput('${e.id}')}">
+       <button class="btn-ghost" onclick="evChecklistAddFromInput('${e.id}')">${ICON_PLUS} Ajouter</button>${projBtn}</div>`;
 }
 function eventPageExtra(e) { return imagesSectionHtml('events', e) + eventChecklistSectionHtml(e) + notesSectionHtml('e', e.id) + linksSectionHtml('events', e.id); }
 
