@@ -2146,6 +2146,11 @@
     background: var(--surface); color: var(--text-soft); font-size: 12px; text-decoration: none; }
   .ct-act:hover { border-color: var(--accent); color: var(--accent); }
   button.ct-act { cursor: pointer; font-family: var(--font-sans); line-height: 1.2; }
+  /* sections de champs sur une fiche contact */
+  .crm-sec-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--text-soft); margin: 16px 0 4px; }
+  .crm-sec-head:first-child { margin-top: 4px; }
+  .crm-sec-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .prop-row.no-grip { padding-left: 4px; }
   /* journal d'échanges CRM */
   .crm-log-add { margin: 2px 0 10px; }
   .crm-log-form { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px; margin: 4px 0 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -8667,9 +8672,33 @@ function ensureCrmSchema() {
   // champs de la fiche contact : créés une seule fois, repérés par nom pour ne jamais doublonner
   // une colonne qu'elle aurait déjà créée à la main (Téléphone, Email…)
   if (!state.crmProps) state.crmProps = {};
+  // rapprochement de noms tolérant : « e-mail » = « Email » = « E mail » (on ignore accents/ponctuation/espaces)
+  const crmFuzzy = s => tagNorm(s).replace(/[^a-z0-9]/g, '');
+  const recs = () => state.customRecords[tid] || [];
+  const valCount = p => recs().filter(r => String((r.props || {})[p.id] || '').trim()).length;
   CRM_FIELDS.forEach(([key, name, type]) => {
-    let prop = schema.find(p => p.id === state.crmProps[key]) || schema.find(p => tagNorm(p.name) === tagNorm(name));
-    if (!prop) { prop = { id: uid(), name, type }; schema.push(prop); }
+    const fname = crmFuzzy(name);
+    // tous les candidats : la prop mémorisée + toutes celles au nom équivalent (d'où le dédoublonnage)
+    let cands = schema.filter(p => crmFuzzy(p.name) === fname);
+    const memo = schema.find(p => p.id === state.crmProps[key]);
+    if (memo && cands.indexOf(memo) < 0) cands.unshift(memo);
+    let prop;
+    if (cands.length) {
+      cands.sort((a, b) => valCount(b) - valCount(a));   // on garde la colonne la plus remplie
+      prop = cands[0];
+      // migrer les valeurs des doublons vers la colonne gardée, puis les retirer du schéma
+      cands.slice(1).forEach(dup => {
+        recs().forEach(r => {
+          if (!r.props) return;
+          const v = String(r.props[dup.id] || '').trim();
+          if (v && !String(r.props[prop.id] || '').trim()) r.props[prop.id] = r.props[dup.id];
+          delete r.props[dup.id];
+        });
+        const i = schema.findIndex(p => p.id === dup.id); if (i >= 0) schema.splice(i, 1);
+      });
+    } else {
+      prop = { id: uid(), name, type }; schema.push(prop);
+    }
     state.crmProps[key] = prop.id;
   });
   // colonne « type de relation » DÉJÀ créée par elle (Client/Amis/Famille/Collègue…) :
@@ -8862,16 +8891,23 @@ function renderCrmSpace() {
     ? `<span class="space-tabs">${relTab('tous', 'Tout')}${(relProp.options || []).map(o => relTab(o.id, o.label)).join('')}</span>`
     : '';
 
+  const statutSelect = `<select class="pill-select" title="Filtrer par statut" onchange="setCrmFilter(this.value)">`
+    + [['tous', 'Tous les statuts'], ['prospect', 'Prospects'], ['actif', 'Clients actifs'], ['inactif', 'Inactifs']]
+      .map(([v, l]) => `<option value="${v}" ${cfg.filter === v ? 'selected' : ''}>${l}</option>`).join('') + `</select>`;
+  const relSelect = relProp ? `<select class="pill-select" title="Filtrer par type de relation" onchange="setCrmRel(this.value)">`
+    + `<option value="tous" ${cfg.rel === 'tous' ? 'selected' : ''}>Toutes relations</option>`
+    + (relProp.options || []).map(o => `<option value="${o.id}" ${cfg.rel === o.id ? 'selected' : ''}>${esc(o.label)}</option>`).join('') + `</select>` : '';
+
   let html = `<div class="space wide">
     <div class="space-head">
       <span class="space-title">CRM</span>
       <span class="space-count">${all.length} contact${all.length > 1 ? 's' : ''}</span>
-      <span class="space-tabs">${tab('tous', 'Tous statuts')}${tab('prospect', 'Prospects')}${tab('actif', 'Actifs')}${tab('inactif', 'Inactifs')}</span>
     </div>
-    ${relTabsHtml ? `<div class="space-head" style="margin-top:-6px">${relTabsHtml}</div>` : ''}
     <div class="space-bar">
       <span class="space-add" onclick="createCrmContact()">${ICON_PLUS} Nouveau contact</span>
       <span class="space-sep">·</span>
+      ${statutSelect}
+      ${relSelect}
       <select class="pill-select" title="Trier" onchange="setCrmSort(this.value)">${crmSortOpts(cfg.sort)}</select>
       <select class="pill-select" title="Grouper" onchange="setCrmGroup(this.value)">${crmGroupOpts(cfg.groupBy)}</select>
     </div>
@@ -14227,17 +14263,42 @@ function renderPage() {
   const masked = fields.filter(f => hidden.includes(f.key));
   const pins = pagePinsOf(coll);
 
-  const ligne = f => {
+  const ligne = (f, hideGrip) => {
     const ctrl = f.prop ? customField(coll, rec, f.prop) : builtinField(coll, rec, f);
     const pinOn = pins.includes(f.key);
     // pas de petit sigle devant le nom : plus sobre (choix de Clémence)
-    return `<div class="prop-row ${f.kind === 'longtext' ? 'tall' : ''}" ondragover="propRowOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="propRowDrop(event,'${coll}','${f.key}',this)">
-      <span class="prop-grip" draggable="true" ondragstart="propDragStart(event,'${f.key}',this)" ondragend="propDragEnd(this)" title="Glisser pour réordonner">⋮⋮</span>
+    // hideGrip : sur les fiches contact, l'ordre vient des sections, pas du glisser-réordonner
+    return `<div class="prop-row ${f.kind === 'longtext' ? 'tall' : ''} ${hideGrip ? 'no-grip' : ''}"${hideGrip ? '' : ` ondragover="propRowOver(event,this)" ondragleave="this.classList.remove('drop-hover')" ondrop="propRowDrop(event,'${coll}','${f.key}',this)"`}>
+      ${hideGrip ? '' : `<span class="prop-grip" draggable="true" ondragstart="propDragStart(event,'${f.key}',this)" ondragend="propDragEnd(this)" title="Glisser pour réordonner">⋮⋮</span>`}
       <div class="prop-key">${esc(f.label)}</div>
       <div class="prop-val">${ctrl}</div>
       <button class="prop-pin ${pinOn ? 'on' : ''}" onclick="togglePagePin('${coll}','${f.key}')" title="${pinOn ? 'Désépingler' : 'Épingler en haut de la fiche'}">${ICON_PIN}</button>
       <button class="prop-eye" onclick="togglePageProp('${coll}','${f.key}')" title="Masquer cette propriété">${ICON_EYE}</button>
     </div>`;
+  };
+  // regroupement en sections des champs d'une fiche CONTACT (Coordonnées / Pro / Perso / Suivi)
+  const crmSectionsHtml = (fields) => {
+    const P = state.crmProps || {};
+    const SEC = [
+      { t: 'Coordonnées', c: '#4a86e8', keys: ['phone', 'email', 'address', 'instagram', 'website'] },
+      { t: 'Professionnel', c: '#16a766', keys: ['company', 'role'] },
+      { t: 'Personnel', c: '#a479e2', keys: ['birthday', 'source'] },
+      { t: 'Suivi & relation', c: '#ffad47', keys: ['__statut', '__relation', '__date', 'followup'] },
+    ];
+    const idToSec = {};
+    SEC.forEach((s, i) => s.keys.forEach(k => {
+      const id = k === '__statut' ? state.crmStatutProp : k === '__relation' ? state.crmRelationProp : k === '__date' ? state.crmDateProp : P[k];
+      if (id) idToSec[id] = i;
+    }));
+    const secOf = f => { const id = f.prop ? f.prop.id : null; return (id != null && idToSec[id] != null) ? idToSec[id] : 99; };
+    const groups = {}; fields.forEach(f => { const s = secOf(f); (groups[s] = groups[s] || []).push(f); });
+    let out = '';
+    SEC.forEach((s, i) => {
+      if (!groups[i] || !groups[i].length) return;
+      out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:${s.c}"></span>${s.t}</div>` + groups[i].map(f => ligne(f, true)).join('');
+    });
+    if (groups[99] && groups[99].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:var(--border-strong)"></span>Divers</div>` + groups[99].map(f => ligne(f, true)).join('');
+    return out;
   };
 
   // carte horizontale d'une propriété épinglée (façon Notion)
@@ -14258,11 +14319,18 @@ function renderPage() {
   const epinglees = visible.filter(f => pins.includes(f.key));
   const autres = visible.filter(f => !pins.includes(f.key));
   const deplie = !!(state.pageMore || {})[coll];
-  $('pageProps').innerHTML = (epinglees.length
-    ? '<div class="pins-row">' + epinglees.map(carte).join('') + '</div>'
-      + (autres.length ? `<button class="page-more-btn" onclick="togglePageMore('${coll}')">${deplie ? '▴ Réduire' : `▾ Afficher ${autres.length} propriété${autres.length > 1 ? 's' : ''} de plus`}</button>${deplie ? autres.map(ligne).join('') : ''}` : '')
-    : visible.map(ligne).join(''))
-    || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
+  const pinsHtml = epinglees.length ? '<div class="pins-row">' + epinglees.map(carte).join('') + '</div>' : '';
+  if (isPeopleColl(coll)) {
+    // fiche contact : épinglés en haut, puis champs regroupés en sections (Coordonnées / Pro / Perso / Suivi)
+    $('pageProps').innerHTML = (pinsHtml + crmSectionsHtml(autres))
+      || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
+  } else {
+    $('pageProps').innerHTML = (epinglees.length
+      ? pinsHtml
+        + (autres.length ? `<button class="page-more-btn" onclick="togglePageMore('${coll}')">${deplie ? '▴ Réduire' : `▾ Afficher ${autres.length} propriété${autres.length > 1 ? 's' : ''} de plus`}</button>${deplie ? autres.map(ligne).join('') : ''}` : '')
+      : visible.map(ligne).join(''))
+      || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
+  }
   // on ajuste la hauteur des zones de texte au contenu déjà saisi
   $$('#pageProps .prop-textarea').forEach(autoGrow);
   // champ Étiquettes : monté en mode direct, chaque ajout ou retrait est enregistré aussitôt
@@ -14357,7 +14425,7 @@ function eventPageExtra(e) { return imagesSectionHtml('events', e) + notesSectio
    relie ce contact au reste de l'application. Les liens ne sont pas de nouvelles données :
    ils se lisent dans le champ « Personnes » des événements et des projets, déjà existant. */
 /* ---------- CRM : journal d'échanges + action « écrire un email » dans l'app ---------- */
-const CRM_LOG_TYPES = [['note', 'Note'], ['call', 'Appel'], ['mail', 'Email'], ['meeting', 'Rendez-vous']];
+const CRM_LOG_TYPES = [['note', 'Note'], ['call', 'Appel'], ['mail', 'Email'], ['sms', 'SMS'], ['whatsapp', 'WhatsApp'], ['meeting', 'Rendez-vous']];
 const crmLogTypeLabel = t => (CRM_LOG_TYPES.find(x => x[0] === t) || [, 'Note'])[1];
 let crmLogFormFor = null;   // id du contact dont le formulaire « noter un échange » est ouvert
 
