@@ -2176,6 +2176,10 @@
   /* sections de champs sur une fiche contact */
   .crm-sec-head { display: flex; align-items: center; gap: 8px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--text-soft); margin: 16px 0 4px; }
   .crm-sec-head:first-child { margin-top: 4px; }
+  .crm-sec-head.foldable { cursor: pointer; user-select: none; border-radius: var(--radius-sm); padding: 3px 4px; margin-left: -4px; }
+  .crm-sec-head.foldable:hover { background: var(--surface-2); }
+  .sec-chev { font-size: 10px; color: var(--text-faint); width: 10px; flex: 0 0 auto; }
+  .sec-count { margin-left: auto; font-weight: 400; color: var(--text-faint); text-transform: none; letter-spacing: 0; font-size: 11px; }
   .crm-sec-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
   .prop-row.no-grip { padding-left: 4px; }
   /* journal d'échanges CRM */
@@ -14227,6 +14231,16 @@ const PAGE_SECTIONS = {
   ],
 };
 const PAGE_DIVERS = { projects: 'Propriétés du projet', tasks: 'Autres', events: 'Autres' };
+// repli des sections de fiche (mémorisé par collection + titre de section)
+function pageSecFolded(coll, title) { return !!((state.pageSecFold || {})[coll + '|' + title]); }
+function togglePageSec(coll, title) {
+  if (!state.pageSecFold) state.pageSecFold = {};
+  const k = coll + '|' + title;
+  if (state.pageSecFold[k]) delete state.pageSecFold[k]; else state.pageSecFold[k] = 1;
+  save();
+  if (pageCtx) openPage(pageCtx.coll, pageCtx.id);
+}
+window.togglePageSec = togglePageSec;
 /* Liste des tâches pouvant servir de parent : ni la tâche elle-même, ni ses descendantes
    (sinon on créerait une boucle « A dans B dans A »). */
 const optsParent = (sel, selfId) => '<option value="">—</option>' + state.tasks
@@ -14459,6 +14473,16 @@ function renderPage() {
     </div>`;
   };
   // regroupement en sections des champs d'une fiche CONTACT (Coordonnées / Pro / Perso / Suivi)
+  // un bloc de section repliable : en-tête (chevron + pastille + titre) + ses lignes (masquées si replié)
+  const secBlock = (color, title, arr) => {
+    if (!arr || !arr.length) return '';
+    const folded = pageSecFolded(coll, title);
+    const t = String(title).replace(/'/g, "\\'");
+    return `<div class="crm-sec-head foldable ${folded ? 'folded' : ''}" onclick="togglePageSec('${coll}','${t}')">`
+      + `<span class="sec-chev">${folded ? '▸' : '▾'}</span><span class="crm-sec-dot" style="background:${color}"></span>${esc(title)}`
+      + `<span class="sec-count">${arr.length}</span></div>`
+      + (folded ? '' : arr.map(f => ligne(f, true)).join(''));
+  };
   const crmSectionsHtml = (fields) => {
     const P = state.crmProps || {};
     const SEC = [
@@ -14475,11 +14499,8 @@ function renderPage() {
     const secOf = f => { const id = f.prop ? f.prop.id : null; return (id != null && idToSec[id] != null) ? idToSec[id] : 99; };
     const groups = {}; fields.forEach(f => { const s = secOf(f); (groups[s] = groups[s] || []).push(f); });
     let out = '';
-    SEC.forEach((s, i) => {
-      if (!groups[i] || !groups[i].length) return;
-      out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:${s.c}"></span>${s.t}</div>` + groups[i].map(f => ligne(f, true)).join('');
-    });
-    if (groups[99] && groups[99].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:var(--border-strong)"></span>Divers</div>` + groups[99].map(f => ligne(f, true)).join('');
+    SEC.forEach((s, i) => { out += secBlock(s.c, s.t, groups[i]); });
+    out += secBlock('var(--border-strong)', 'Divers', groups[99]);
     return out;
   };
   // sections des fiches tâches / événements / projets (champs standards rangés par thème, colonnes perso en « Divers »)
@@ -14488,8 +14509,8 @@ function renderPage() {
     const idx = {}; defs.forEach((s, i) => s.keys.forEach(k => idx[k] = i));
     const groups = {}; fields.forEach(f => { const s = (idx[f.key] != null) ? idx[f.key] : 99; (groups[s] = groups[s] || []).push(f); });
     let out = '';
-    defs.forEach((s, i) => { if (groups[i] && groups[i].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:${s.c}"></span>${s.t}</div>` + groups[i].map(f => ligne(f, true)).join(''); });
-    if (groups[99] && groups[99].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:var(--border-strong)"></span>${PAGE_DIVERS[coll] || 'Autres'}</div>` + groups[99].map(f => ligne(f, true)).join('');
+    defs.forEach((s, i) => { out += secBlock(s.c, s.t, groups[i]); });
+    out += secBlock('var(--border-strong)', PAGE_DIVERS[coll] || 'Autres', groups[99]);
     return out;
   };
 
