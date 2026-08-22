@@ -4777,6 +4777,38 @@ function evAddProjectTasks(evId, evt) {
   });
 }
 window.evAddProjectTasks = evAddProjectTasks;
+// un agenda + tous ses sous-agendas (pour piocher aussi les tâches des sous-agendas)
+function catAndDescendants(id) {
+  const set = new Set([id]);
+  let grew = true;
+  while (grew) { grew = false; (state.categories || []).forEach(c => { if (c.parentId && set.has(c.parentId) && !set.has(c.id)) { set.add(c.id); grew = true; } }); }
+  return set;
+}
+// piocher les tâches NON TERMINÉES de l'agenda (et ses sous-agendas) lié à l'événement
+function evAddAgendaTasks(evId, evt) {
+  if (evt) evt.stopPropagation();
+  const e = evFind(evId); if (!e || !e.catId) return;
+  const cats = catAndDescendants(e.catId);
+  const deja = new Set(evLinkedTasks(e).map(t => t.id));
+  const dispo = (state.tasks || []).filter(t => cats.has(t.catId) && !t.done && !deja.has(t.id))
+    .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  if (!dispo.length) { showToast('Aucune tâche non terminée dans cet agenda'); return; }
+  const groups = [{ label: 'Tâches non terminées de l\'agenda', items: dispo.slice(0, 200).map(t => ({
+    value: t.id, label: t.title || 'Sans titre', sub: t.due ? fmtDateShort(t.due) : '', dot: prioCol(t.prio || 'med')
+  })) }];
+  const anchor = (evt && evt.currentTarget) || document.body;
+  openStyledMenu(anchor, groups, null, v => {
+    if (!v) return;
+    const t = (state.tasks || []).find(x => x.id === v); if (!t) return;
+    t.due = e.date || t.due;
+    if (!isAllDayEv(e) && e.start) t.dueTime = e.start;
+    if (typeof addLink === 'function') addLink('events', evId, 'tasks', t.id);
+    save();
+    if (pageCtx) openPage(pageCtx.coll, pageCtx.id);
+    setTimeout(() => evAddAgendaTasks(evId), 60);
+  });
+}
+window.evAddAgendaTasks = evAddAgendaTasks;
 // checklist EMPILÉE À L'INTÉRIEUR du bloc événement sur la grille horaire (jour/3j/semaine)
 function eventGridChecklistHtml(e) {
   const tks = evLinkedTasks(e);
@@ -14559,10 +14591,11 @@ function eventChecklistSectionHtml(e) {
       <span class="evc-edit-txt" onclick="openEdit('task','${t.id}',event)">${esc(t.title)}${(t.due && t.due !== e.date) ? ` <span class="evc-when">${esc(fmtDateShort(t.due))}</span>` : ''}</span>
       <button class="evc-del" title="Retirer de l'événement (la tâche reste dans l'agenda)" onclick="evUnlinkTask('${e.id}','${t.id}',event)">✕</button></div>`; }).join('')}</div>` : '';
   const projBtn = e.projectId ? `<button class="btn-ghost" onclick="evAddProjectTasks('${e.id}',event)">${ICON_PLUS} Tâches du projet</button>` : '';
+  const agBtn = e.catId ? `<button class="btn-ghost" onclick="evAddAgendaTasks('${e.id}',event)">${ICON_PLUS} Tâches de l'agenda</button>` : '';
   return `<div class="page-section-title">Tâches de l'événement${tks.length ? ` <span class="grp-n">· ${tks.filter(t => t.done).length}/${tks.length}</span>` : ''}</div>`
     + list
     + `<div class="evc-add"><input type="text" id="evChkInput" class="evc-add-input" placeholder="Ajouter une tâche…" onkeydown="if(event.key==='Enter'){event.preventDefault();evChecklistAddFromInput('${e.id}')}">
-       <button class="btn-ghost" onclick="evChecklistAddFromInput('${e.id}')">${ICON_PLUS} Ajouter</button>${projBtn}</div>`;
+       <button class="btn-ghost" onclick="evChecklistAddFromInput('${e.id}')">${ICON_PLUS} Ajouter</button>${projBtn}${agBtn}</div>`;
 }
 function eventPageExtra(e) { return imagesSectionHtml('events', e) + eventChecklistSectionHtml(e) + notesSectionHtml('e', e.id) + linksSectionHtml('events', e.id); }
 
