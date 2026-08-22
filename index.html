@@ -2159,6 +2159,9 @@
   .page-hidden-chip { font-size: 12.5px; color: var(--text-soft); border: 1px dashed var(--border-strong); border-radius: var(--radius-pill, 999px); padding: 4px 11px; display: inline-flex; align-items: center; gap: 6px; }
   .page-hidden-chip:hover { border-color: var(--accent); color: var(--accent); }
   .page-section-title { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); font-weight: 500; margin: 26px 0 10px; }
+  .page-section-title.foldable { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; border-radius: var(--radius-sm); padding: 4px; margin-left: -4px; }
+  .page-section-title.foldable:hover { background: var(--surface-2); }
+  .page-section-title.foldable .sec-chev { color: var(--text-faint); }
   /* fiche contact */
   .ct-card { display: flex; align-items: flex-start; gap: 14px; padding: 14px; margin: 20px 0 2px;
     border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
@@ -14565,6 +14568,33 @@ function renderPage() {
                            : (coll === 'tasks')    ? taskPageExtra(rec)
                            : (coll === 'events')   ? eventPageExtra(rec)
                            : isPeopleColl(coll)    ? contactPageExtra(coll, rec) : '';
+  wirePageExtraFolding(coll);
+}
+/* Rend repliables les sections de la 2e partie de la fiche (Images, Tâches, Note, Lié à…).
+   Générique : chaque en-tête .page-section-title devient un toggle qui masque les frères
+   jusqu'au prochain en-tête. État mémorisé (state.pageSecFold, préfixe « ex »). */
+function wirePageExtraFolding(coll) {
+  const box = $('pageExtra'); if (!box) return;
+  box.querySelectorAll('.page-section-title').forEach(title => {
+    const clone = title.cloneNode(true); clone.querySelectorAll('.grp-n').forEach(n => n.remove());
+    const key = coll + '|ex|' + (clone.textContent || '').trim();
+    const folded = !!((state.pageSecFold || {})[key]);
+    const chev = document.createElement('span'); chev.className = 'sec-chev'; chev.textContent = folded ? '▸' : '▾';
+    title.insertBefore(chev, title.firstChild);
+    title.classList.add('foldable');
+    if (folded) title.classList.add('folded');
+    const apply = f => { let el = title.nextElementSibling; while (el && !el.classList.contains('page-section-title')) { el.style.display = f ? 'none' : ''; el = el.nextElementSibling; } };
+    apply(folded);
+    title.addEventListener('click', () => {
+      if (!state.pageSecFold) state.pageSecFold = {};
+      const nowFold = !state.pageSecFold[key];
+      if (nowFold) state.pageSecFold[key] = 1; else delete state.pageSecFold[key];
+      save();
+      chev.textContent = nowFold ? '▸' : '▾';
+      title.classList.toggle('folded', nowFold);
+      apply(nowFold);
+    });
+  });
 }
 function projectPageExtra(p) {
   const st = projStats(p);
