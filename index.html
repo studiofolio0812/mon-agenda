@@ -1373,6 +1373,12 @@
   }
   .ev-block .t { font-weight: 500; }
   .ev-block .h { font-size: 11px; color: var(--ink-soft-on-pastel); }
+  /* checklist empilée à l'intérieur d'un bloc événement (grille horaire) */
+  .evg-list { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+  .evg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; line-height: 1.25; }
+  .evg-item.done .evg-txt { text-decoration: line-through; opacity: .6; }
+  .evg-check { width: 12px; height: 12px; flex: none; border: 1.5px solid var(--ink-soft-on-pastel); border-radius: 3px; cursor: pointer; }
+  .evg-txt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
   /* poignées pour allonger/raccourcir un événement */
   .ev-resize { position: absolute; left: 0; right: 0; height: 8px; z-index: 3; cursor: ns-resize; }
   .ev-resize.top { top: 0; }
@@ -4771,6 +4777,15 @@ function evAddProjectTasks(evId, evt) {
   });
 }
 window.evAddProjectTasks = evAddProjectTasks;
+// checklist EMPILÉE À L'INTÉRIEUR du bloc événement sur la grille horaire (jour/3j/semaine)
+function eventGridChecklistHtml(e) {
+  const tks = evLinkedTasks(e);
+  if (!tks.length) return '';
+  return `<div class="evg-list">` + tks.map(t => { const pc = prioCol(t.prio || 'med');
+    return `<div class="evg-item ${t.done ? 'done' : ''}">
+      <span class="evg-check ${t.done ? 'done' : ''}" style="${t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`}" onclick="event.stopPropagation();toggleTask('${t.id}',event)" title="Cocher / décocher"></span>
+      <span class="evg-txt" onclick="event.stopPropagation();openEdit('task','${t.id}',event)">${esc(t.title)}</span></div>`; }).join('') + `</div>`;
+}
 // bloc sous un événement dans les listes (agenda / accueil-jour mobile) : ses tâches, cochables
 function eventChecklistBlockHtml(e) {
   const tks = evLinkedTasks(e);
@@ -5516,21 +5531,26 @@ function renderTimeGrid(nDays) {
     body += `<div class="tg-day-col" data-date="${ymd(d)}" style="position:relative;">`;
     for (let h = 0; h < 24; h++) body += `<div class="tg-cell" data-hour="${h}"></div>`;
     // événements positionnés (uniquement ceux qui ont un créneau ; les autres vont dans le bandeau)
+    const evTaskIds = new Set();   // tâches montrées DANS le bloc événement → pas de doublon à côté
     timedEventsOn(d).forEach(e => {
       const [sh, sm] = (e.start||'09:00').split(':').map(Number);
       const [eh, em] = (e.end||'10:00').split(':').map(Number);
       const top = (sh*60 + sm) * 48/60;
       const height = Math.max(22, ((eh*60+em) - (sh*60+sm)) * 48/60);
       const look = eventLook(e);
+      evLinkedTasks(e).forEach(t => evTaskIds.add(t.id));
       body += `<div class="ev-block ${look.isProject?'as-project':''}" ${DRAG_ATTR} data-drag-kind="event" data-drag-id="${e.id}" style="top:${top}px;height:${height}px;${look.style}" onclick="openEdit('event','${e.id}',event)">
         <div class="ev-resize top" data-edge="top"></div>
         <div class="t">${repIco(e)}${iconOf(e,'events',12)}${esc(e.title)}</div><div class="h">${e.start||''} – ${e.end||''}</div>
         ${eventPeopleHtml(e)}
+        ${eventGridChecklistHtml(e)}
         <div class="ev-resize bottom" data-edge="bottom"></div>
       </div>`;
     });
     // tâches ayant une heure : elles s'étirent sur les créneaux (les autres vont dans le bandeau)
+    // (on saute celles déjà affichées DANS un bloc événement)
     timedTasksOn(d).forEach(t => {
+      if (evTaskIds.has(t.id)) return;
       const border = taskStripe(t);
       const label = `<span class="tk-tick" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher">${t.done?'✓':'○'}</span><span class="tk-title">${repIco(t)}${iconOf(t,'tasks',12)}${esc(t.title)}</span>`;
       const startMin = timeToMin(t.dueTime);
