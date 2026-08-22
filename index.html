@@ -14207,6 +14207,26 @@ const PAGE_BUILTINS = {
   health:   [['date','Date','date'],['mood','Humeur','mood'],['sleepHours','Sommeil (h)','num'],['cycle','Règles','check'],['note','Note','longtext']],
 };
 const BUILTIN_ICO = { date:'--:--', time:'--:--', color:'◉', text:'Aa', longtext:'Aa', check:'✓', cat:'◉', proj:'⇄', prio:'◉', task:'⇄', people:'@' };
+// sections des fiches (comme le CRM) : regroupe les champs par thème (les colonnes perso vont dans « Divers »)
+const PAGE_SECTIONS = {
+  tasks: [
+    { t: 'État & priorité', c: '#16a766', keys: ['done', 'prio'] },
+    { t: 'Dates', c: '#4a86e8', keys: ['start', 'due', 'dueTime', 'dueEnd'] },
+    { t: 'Classement', c: '#a479e2', keys: ['catId', 'projectId', 'parentId'] },
+    { t: 'Contenu', c: '#ffad47', keys: ['note', 'tags'] },
+  ],
+  events: [
+    { t: 'Dates & horaires', c: '#4a86e8', keys: ['date', 'endDate', 'allDay', 'start', 'end'] },
+    { t: 'Classement', c: '#a479e2', keys: ['catId', 'projectId', 'people'] },
+    { t: 'Contenu', c: '#ffad47', keys: ['color', 'note', 'tags'] },
+  ],
+  projects: [
+    { t: 'Dates', c: '#4a86e8', keys: ['start', 'end'] },
+    { t: 'Classement', c: '#a479e2', keys: ['people'] },
+    { t: 'Contenu', c: '#ffad47', keys: ['color', 'tags'] },
+  ],
+};
+const PAGE_DIVERS = { projects: 'Propriétés du projet', tasks: 'Autres', events: 'Autres' };
 /* Liste des tâches pouvant servir de parent : ni la tâche elle-même, ni ses descendantes
    (sinon on créerait une boucle « A dans B dans A »). */
 const optsParent = (sel, selfId) => '<option value="">—</option>' + state.tasks
@@ -14462,6 +14482,16 @@ function renderPage() {
     if (groups[99] && groups[99].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:var(--border-strong)"></span>Divers</div>` + groups[99].map(f => ligne(f, true)).join('');
     return out;
   };
+  // sections des fiches tâches / événements / projets (champs standards rangés par thème, colonnes perso en « Divers »)
+  const pageSectionsHtml = (fields) => {
+    const defs = PAGE_SECTIONS[coll] || [];
+    const idx = {}; defs.forEach((s, i) => s.keys.forEach(k => idx[k] = i));
+    const groups = {}; fields.forEach(f => { const s = (idx[f.key] != null) ? idx[f.key] : 99; (groups[s] = groups[s] || []).push(f); });
+    let out = '';
+    defs.forEach((s, i) => { if (groups[i] && groups[i].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:${s.c}"></span>${s.t}</div>` + groups[i].map(f => ligne(f, true)).join(''); });
+    if (groups[99] && groups[99].length) out += `<div class="crm-sec-head"><span class="crm-sec-dot" style="background:var(--border-strong)"></span>${PAGE_DIVERS[coll] || 'Autres'}</div>` + groups[99].map(f => ligne(f, true)).join('');
+    return out;
+  };
 
   // carte horizontale d'une propriété épinglée (façon Notion)
   const carte = f => {
@@ -14485,6 +14515,10 @@ function renderPage() {
   if (isPeopleColl(coll)) {
     // fiche contact : épinglés en haut, puis champs regroupés en sections (Coordonnées / Pro / Perso / Suivi)
     $('pageProps').innerHTML = (pinsHtml + crmSectionsHtml(autres))
+      || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
+  } else if (PAGE_SECTIONS[coll]) {
+    // fiches tâche / événement / projet : épinglés en haut, puis champs regroupés en sections
+    $('pageProps').innerHTML = (pinsHtml + pageSectionsHtml(autres))
       || `<div class="hint-txt">Aucune propriété affichée. Réaffiche-en une ci-dessous.</div>`;
   } else {
     $('pageProps').innerHTML = (epinglees.length
