@@ -1277,7 +1277,7 @@
   /* événement : pastille pastel + texte encre fixe (design system, valable dans les deux thèmes) */
   .chip.event { color: var(--ink-on-pastel); }
   .chip.event .ev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .chip.event .ev-h { color: var(--ink-soft-on-pastel); }
+  .chip.event .ev-h { color: var(--ev-ink, var(--ink-soft-on-pastel)); }
   .chip.task { background: var(--surface); border: 1px solid var(--border-strong); }
   .chip.project { font-weight: 600; }
   /* un événement rattaché à un projet prend le look du projet */
@@ -1448,6 +1448,14 @@
   .color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .color-picker .dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
   .color-picker .dot.sel { border-color: var(--text); }
+  /* choix de la couleur du texte d'un agenda (aperçu Aa + options) */
+  .cat-textcolor { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .cat-tc-preview { width: 34px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: 0 0 auto; }
+  .cat-tc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--text); font-size: 12.5px; cursor: pointer; font-family: var(--font-sans); }
+  .cat-tc-btn:hover { background: var(--bg-soft); }
+  .cat-tc-btn.on { border-color: var(--accent); background: var(--accent-soft, var(--bg-soft)); font-weight: 600; }
+  .cat-tc-dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto; }
+  .cat-tc-rainbow { background: conic-gradient(from 0deg, #f2b8a2, #d9c94a, #8fcf9f, #a2c8f2, #c3b2e6, #e0a9c4, #f2b8a2); }
   /* réglage « couleur des priorités » : un libellé + une seule pastille cliquable par niveau */
   .prio-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
   .prio-row-label { font-size: 13px; width: 84px; flex: none; color: var(--text-soft); }
@@ -3472,6 +3480,8 @@
       <label style="margin-top:16px">Couleur</label>
       <label class="check-row hidden" id="catInheritRow" style="margin:0 0 8px"><input type="checkbox" id="catInherit"> Même couleur que l'agenda</label>
       <div class="color-picker" id="catColorPicker"></div>
+      <label style="margin-top:16px">Couleur du texte</label>
+      <div class="cat-textcolor" id="catTextPicker"></div>
       <label style="margin-top:16px">Icône</label>
       <button class="btn-ghost" id="catIconBtn" style="display:inline-flex;align-items:center;gap:8px">Choisir…</button>
     </div>
@@ -4769,6 +4779,8 @@ const hasSubCats = id => state.categories.some(c => c.parentId === id);
 const topCats = () => state.categories.filter(c => !catParent(c));
 // couleur effective : la sienne, sinon celle de l'agenda qui le contient
 const catColor = c => (c && (c.color || (catParent(c) || {}).color)) || PALETTE[0];
+// couleur d'écriture choisie pour un agenda (héritée du parent si la liste n'en a pas) ; '' = auto (noir/blanc selon le fond)
+const catTextColor = c => (c && (c.textColor || (catParent(c) || {}).textColor)) || '';
 // libellé complet « Parent › Liste », pour les sélecteurs et les fiches
 const catPath = c => { const p = catParent(c); return p ? `${p.name} › ${c.name}` : (c ? c.name : ''); };
 /* Un élément est visible si son agenda n'est pas masqué (les éléments sans agenda
@@ -4830,9 +4842,12 @@ function eventLook(e) {
   // sinon la couleur vient de l'agenda choisi ; à défaut, de la couleur propre de l'événement
   const cat = e.catId ? catById(e.catId) : null;
   const col = cat ? catColor(cat) : e.color;
-  // l'encre (texte ET icône) s'adapte à la teinte : claire sur fond foncé, foncée sur pastel
-  const ink = inkOn(col);
-  return { style: `background:${col};border-left:3px solid ${dotOf(col)};color:${ink}`, dot: dotOf(col), ink, isProject: false };
+  // couleur du texte : celle choisie sur l'agenda si définie, sinon auto (claire sur fond foncé, foncée sur pastel)
+  const custom = cat ? catTextColor(cat) : '';
+  const ink = custom || inkOn(col);
+  // --ev-ink : quand une couleur de texte est imposée, l'heure (.ev-h) la suit aussi (au lieu de sa teinte douce)
+  const extra = custom ? `;--ev-ink:${custom}` : '';
+  return { style: `background:${col};border-left:3px solid ${dotOf(col)};color:${ink}${extra}`, dot: dotOf(col), ink, isProject: false };
 }
 // couleur de la bande d'une tâche : son agenda, sinon son projet
 function taskStripe(t) {
@@ -13902,6 +13917,7 @@ function addCustomColor(ctx) {
   colorCtx = ctx;
   const cur = ctx.startsWith('prio:') ? prioCol(ctx.slice(5))
             : ctx.startsWith('mailfolder:') ? gmailFolderColor(ctx.slice(11))
+            : ctx === 'cattext' ? (catDraft.textColor || '#333333')
             : ctx === 'item' ? draft.color : ctx === 'cat' ? catDraft.color : ctx === 'proj' ? projDraftColor
             : ctx === 'habit' ? habitDraft.color : ctx === 'note' ? noteDraftColor : ctx === 'folder' ? folderDraftColor
             : ctx === 'projtpl' ? projTplEditColor : state.accent;
@@ -14236,6 +14252,7 @@ function openCatModal(id, parentId, ev) {
     color: (c && c.color) || (parRec ? parRec.color : '') || allColors()[Math.floor(Math.random()*PALETTE.length)],
     icon: (c && c.icon) || '',
     inherit: c ? (!!par && !c.color) : !!par,
+    textColor: (c && c.textColor) || '',
   };
   $('catName').value = c ? c.name : '';
   syncCatParent(); renderCatPicker(); syncCatIcon();
@@ -14271,9 +14288,27 @@ function renderCatPicker() {
   $('catInherit').checked = !!catDraft.inherit;
   $('catColorPicker').classList.toggle('hidden', !!catDraft.inherit);
   $('catColorPicker').innerHTML = paletteHtml(catDraft.color, 'pickCatColor', 'cat');
+  renderCatTextPicker();
 }
 function pickCatColor(c) { catDraft.color = c; catDraft.inherit = false; rememberColor(c); renderCatPicker(); syncCatIcon(); }
 window.pickCatColor = pickCatColor;
+// choix de la couleur du texte des événements de cet agenda (avec aperçu Aa sur le fond)
+function renderCatTextPicker() {
+  const box = $('catTextPicker'); if (!box) return;
+  const bg = catDraftColorNow();
+  const tc = catDraft.textColor || '';
+  const par = catById(catDraft.parentId);
+  const eff = tc || (par && par.textColor) || inkOn(bg);
+  const isCustom = !!tc && !['#ffffff', '#2a2a2a'].includes(tc.toLowerCase());
+  const opt = (val, label, sw, sel) => `<button type="button" class="cat-tc-btn ${sel ? 'on' : ''}" onclick="pickCatText('${val}')">${sw ? `<span class="cat-tc-dot" style="background:${sw}"></span>` : ''}${label}</button>`;
+  box.innerHTML = `<span class="cat-tc-preview" style="background:${bg};color:${eff}">Aa</span>`
+    + opt('', 'Auto', '', tc === '')
+    + opt('#ffffff', 'Blanc', '#ffffff', tc.toLowerCase() === '#ffffff')
+    + opt('#2a2a2a', 'Foncé', '#2a2a2a', tc.toLowerCase() === '#2a2a2a')
+    + `<button type="button" class="cat-tc-btn ${isCustom ? 'on' : ''}" onclick="addCustomColor('cattext')"><span class="cat-tc-dot cat-tc-rainbow"></span>Autre…${isCustom ? `<span class="cat-tc-dot" style="background:${tc};margin-left:4px;border:1px solid var(--border)"></span>` : ''}</button>`;
+}
+function pickCatText(v) { catDraft.textColor = v; renderCatTextPicker(); }
+window.pickCatText = pickCatText;
 // couleur affichée pour l'icône : celle du parent si la liste en hérite
 function catDraftColorNow() {
   const par = catById(catDraft.parentId);
@@ -14292,6 +14327,7 @@ function saveCat() {
     name, parentId: par,
     color: (par && catDraft.inherit) ? '' : catDraft.color,   // vide = hérite du parent
     icon: catDraft.icon || '',
+    textColor: catDraft.textColor || '',   // '' = couleur de texte automatique
   };
   if (editingCat) {
     const c = catById(editingCat);
@@ -18597,6 +18633,7 @@ $('hexInput').onchange = e => {
   else if (colorCtx.startsWith('mailfolder:')) { gmailSetFolderColor(colorCtx.slice(11), c); }
   else if (colorCtx === 'item') { draft.color = c; renderColorPicker(); }
   else if (colorCtx === 'cat') { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
+  else if (colorCtx === 'cattext') { catDraft.textColor = c; renderCatTextPicker(); }
   else if (colorCtx === 'proj') { projDraftColor = c; renderProjPicker(); }
   else if (colorCtx === 'habit') { habitDraft.color = c; renderHabitColor(); syncHabitIcon(); }
   else if (colorCtx === 'note') { noteDraftColor = c; renderNoteColorPicker(); }
