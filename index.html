@@ -1883,6 +1883,39 @@
   .cyc-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
   .cyc-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft); }
   .cyc-dot { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; opacity: 0.6; }
+  /* ---- Espace Objectifs ---- */
+  .obj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+  .obj-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 16px 14px; box-shadow: var(--shadow-sm); }
+  .obj-card.done { opacity: .6; }
+  .obj-card-top { display: flex; align-items: flex-start; gap: 14px; }
+  .obj-ring { position: relative; flex: 0 0 auto; width: 52px; height: 52px; display: grid; place-items: center; }
+  .obj-ring-val { position: absolute; font-size: 12px; font-weight: 700; color: var(--text); }
+  .obj-ring-empty { border: 2px dashed var(--border-strong); border-radius: 50%; color: var(--text-faint); font-size: 18px; }
+  .obj-card-main { flex: 1; min-width: 0; }
+  .obj-card-title { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.3; }
+  .obj-card.done .obj-card-title { text-decoration: line-through; }
+  .obj-card-target { font-size: 12.5px; color: var(--text-soft); margin-top: 3px; }
+  .obj-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 7px; }
+  .obj-due { font-size: 11.5px; color: var(--text-soft); background: var(--bg-soft); border-radius: 999px; padding: 2px 9px; }
+  .obj-due.late { color: #d0574f; background: rgba(208,87,79,.1); }
+  .obj-meta-count { font-size: 11.5px; color: var(--text-faint); }
+  .obj-card-acts { display: flex; gap: 4px; flex: 0 0 auto; }
+  .obj-act { width: 28px; height: 28px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-soft); cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+  .obj-act:hover { background: var(--bg-soft); color: var(--text); border-color: var(--border-strong); }
+  .obj-card-note { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); white-space: pre-wrap; }
+  .obj-links { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+  .obj-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 999px; padding: 3px 6px 3px 10px; font-size: 12px; color: var(--text); cursor: pointer; }
+  .obj-chip:hover { border-color: var(--border-strong); }
+  .obj-chip-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .obj-chip-val { font-size: 11px; font-weight: 700; color: var(--text-soft); }
+  .obj-chip-x { background: transparent; border: none; color: var(--text-faint); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+  .obj-chip-x:hover { color: #d0574f; }
+  .obj-add { background: transparent; border: 1px dashed var(--border-strong); border-radius: 999px; padding: 3px 11px; font-size: 12px; color: var(--text-soft); cursor: pointer; font-family: var(--font-sans); }
+  .obj-add:hover { border-color: var(--accent); color: var(--accent); }
+  .obj-empty { text-align: center; color: var(--text-soft); padding: 48px 20px; max-width: 460px; margin: 0 auto; }
+  .obj-empty-ico { color: var(--border-strong); margin-bottom: 8px; }
+  .obj-empty p { margin: 6px 0; font-size: 14px; }
+  .obj-empty-sub { font-size: 13px; color: var(--text-faint); line-height: 1.6; }
   /* Récap des notes du suivi santé */
   .health-notes .hn-list { display: flex; flex-direction: column; gap: 8px; }
   .hn-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer; background: var(--surface-2); transition: border-color .12s; }
@@ -3114,6 +3147,13 @@
         <span class="nav-label">Bilan</span>
       </button>
 
+      <!-- Objectifs -->
+      <button class="nav-item" data-section="objectives">
+        <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></svg>
+        <span class="nav-label">Objectifs</span>
+        <span class="nav-add" id="addObjectiveBtn" title="Nouvel objectif" role="button">＋</span>
+      </button>
+
       <!-- Mail -->
       <button class="nav-item" data-section="mail">
         <svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
@@ -3561,6 +3601,29 @@
     <div class="modal-foot">
       <button class="btn-ghost btn-danger hidden" id="deleteHabitBtn">Supprimer</button>
       <button class="btn-primary" id="saveHabitBtn">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: OBJECTIF ============ -->
+<div class="overlay" id="objOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head"><h2 id="objModalTitle">Nouvel objectif</h2><button class="icon-btn" data-close>✕</button></div>
+    <div class="modal-body">
+      <label>Objectif</label>
+      <input id="objTitle" placeholder="Ex : Reprendre le sport, Lancer mon studio…" autocomplete="off">
+      <label style="margin-top:16px">Détail / cible (facultatif)</label>
+      <input id="objTarget" placeholder="Ex : courir 3× par semaine, 10 clients…" autocomplete="off">
+      <label style="margin-top:16px">Échéance (facultative)</label>
+      <input type="date" id="objDue">
+      <label style="margin-top:16px">Couleur</label>
+      <div class="color-picker" id="objColorPicker"></div>
+      <label style="margin-top:16px">Note (facultative)</label>
+      <textarea id="objNote" rows="3" placeholder="Pourquoi cet objectif compte pour toi…"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost btn-danger hidden" id="objDeleteBtn" onclick="deleteObjective()">Supprimer</button>
+      <button class="btn-primary" onclick="saveObjective()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -4600,6 +4663,7 @@ function render() {
   else if (state.view === 'health') renderHealthSpace();
   else if (state.view === 'habits') renderHabitsSpace();
   else if (state.view === 'bilan') renderBilanSpace();
+  else if (state.view === 'objectives') renderObjectivesSpace();
   else if (state.view === 'mail') { renderMailSpace(); gmailAutoLoad(); }
   else if (state.view === 'month') { isMobile() ? renderMonthMobile() : renderMonth(); }
   else if (state.view === 'agenda') renderAgenda();
@@ -4617,7 +4681,7 @@ const dayBlockN = () => Math.min(14, Math.max(2, state.dayBlock || 3));
 const viewDayCount = () => state.view === 'week' ? 7 : state.view === 'days' ? dayBlockN() : 1;
 
 // les vues qui ne sont pas un calendrier (espaces de travail plein cadre)
-const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan', 'mail', 'tags'];
+const SPACE_VIEWS = ['home', 'daily', 'tasks', 'projects', 'notes', 'crm', 'health', 'habits', 'bilan', 'mail', 'tags', 'objectives'];
 const isSpaceView = v => SPACE_VIEWS.includes(v);
 
 function renderPeriodTitle() {
@@ -6957,10 +7021,11 @@ const TB_ICO = {
   bilan:  '<path d="M4 20V10M12 20V4M20 20v-6"/>',
   crm:    '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="1.8"/><path d="M5.5 16c0-1.7 1.3-2.6 3-2.6s3 .9 3 2.6"/><path d="M14 9.5h4M14 13h4"/>',
   daily:  '<path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7z"/><path d="M18.5 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  objectives: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>',
 };
 const TABBAR_PAGES = [
   [ ['home',"Aujourd'hui"], ['cal','Calendrier'], ['tasks','Tâches'], ['habits','Habitudes'], ['health','Santé'], ['more','Plus'] ],
-  [ ['back','Retour'], ['projects','Projets'], ['notes','Notes'], ['daily','Widgets'], ['bilan','Bilan'], ['crm','CRM'] ],
+  [ ['back','Retour'], ['projects','Projets'], ['notes','Notes'], ['objectives','Objectifs'], ['daily','Widgets'], ['bilan','Bilan'], ['crm','CRM'] ],
 ];
 // sur quelle page se trouve une destination (pour afficher la bonne page au chargement)
 function tabbarPageOf(view) {
@@ -9193,6 +9258,24 @@ const MOOD_SCALE = [
   { v: 3, label: 'Hypomanie forte', color: '#e2985e' },
 ];
 const moodInfo = v => MOOD_SCALE.find(m => m.v === v);
+/* Traduit une journée (humeur −5..+5 + énergie 0..10) en un point sur l'axe
+   dépression(−3) ↔ stable(0) ↔ hypomanie(+3). L'énergie porte l'activation
+   (marqueur d'hypomanie/dépression), l'humeur la tonalité : on fait la moyenne
+   des deux quand elles sont là. Repli sur l'ancienne saisie `mood` pour l'historique.
+   C'est une estimation de lecture, jamais un diagnostic. */
+function moodSpectrumFor(l) {
+  if (!l) return null;
+  const hasM = l.moodVal != null, hasE = l.energy != null;
+  if (hasM || hasE) {
+    const parts = [];
+    if (hasM) parts.push(l.moodVal / 5);        // −1..+1
+    if (hasE) parts.push((l.energy - 5) / 5);   // −1..+1
+    const s = parts.reduce((a, b) => a + b, 0) / parts.length;
+    return Math.max(-3, Math.min(3, Math.round(s * 3)));
+  }
+  if (l.mood != null) return l.mood;
+  return null;
+}
 const healthLogFor = date => (state.healthLogs || []).find(h => h.date === date);
 function healthUpsert(date, patch) {
   if (!state.healthLogs) state.healthLogs = [];
@@ -9496,9 +9579,10 @@ function healthMoodChartHtml(days) {
   const step = n > 1 ? (x1 - x0) / (n - 1) : 0;
   const xAt = i => x0 + i * step;
   const yMood = v => bottom - (v + 3) * ((bottom - top) / 6);
+  const bands = cycleBandsSvg(days, i => Math.max(x0, xAt(i) - step / 2), j => Math.min(x1, xAt(j) + step / 2), top, bottom);
   let grid = '';
   for (let g = -3; g <= 3; g++) grid += `<line x1="${x0}" y1="${yMood(g)}" x2="${x1}" y2="${yMood(g)}" class="hc-grid ${g === 0 ? 'hc-grid-mid' : ''}"/>`;
-  const pts = days.map((d, i) => { const l = healthLogFor(d); return (l && l.mood != null) ? { x: xAt(i), y: yMood(l.mood), color: moodInfo(l.mood).color, mood: l.mood, d } : null; });
+  const pts = days.map((d, i) => { const l = healthLogFor(d); const v = moodSpectrumFor(l); return (v != null) ? { x: xAt(i), y: yMood(v), color: moodInfo(v).color, mood: v, d } : null; });
   let paths = '', seg = [];
   pts.forEach((p, i) => {
     if (p) seg.push(p);
@@ -9509,7 +9593,7 @@ function healthMoodChartHtml(days) {
   const yLabels = `<text x="${x0 - 8}" y="${yMood(3) + 3}" class="hc-axis" text-anchor="end">Hypomanie</text>
     <text x="${x0 - 8}" y="${yMood(0) + 3}" class="hc-axis" text-anchor="end">Stable</text>
     <text x="${x0 - 8}" y="${yMood(-3) + 3}" class="hc-axis" text-anchor="end">Dépression</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" class="hc-mood">${grid}${yLabels}${paths}${dots}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-mood">${bands}${grid}${yLabels}${paths}${dots}${labels}</svg>`;
 }
 
 // ---- SOMMEIL : barres colorées selon la durée, zone idéale 7-9h, moyenne, repères d'heures ----
@@ -9814,7 +9898,7 @@ function healthChartDef(key) {
     sleep: ['Sommeil', healthSleepChartHtml],
     moodsleep: ['Humeur × Sommeil', healthMoodSleepChartHtml],
     cyclemed: ['Traitement et cycle', healthCycleMedChartHtml],
-    legacy: ['Humeur (ancienne échelle)', healthMoodChartHtml],
+    legacy: ['Tendance : dépression ↔ hypomanie', healthMoodChartHtml],
   };
   return m[key] || null;
 }
@@ -9943,11 +10027,12 @@ function renderHealthSpace() {
       </div>`;
       const expandBtn = key => `<button type="button" class="hr-expand" onclick="healthOpenChart('${key}',event)" title="Ouvrir ce graphique en grand"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5"/></svg></button>`;
       const clickWrap = (key, svg) => `<div class="hr-chart-click" onclick="healthOpenChart('${key}')" title="Ouvrir en grand">${svg}</div>`;
-      // l'ancienne courbe d'humeur n'apparaît que s'il reste des journées notées à l'ancienne échelle dans la fenêtre
-      const legacyCard = k.hasLegacyMood ? `<div class="health-card">
-        <div class="health-card-title">Humeur (ancienne échelle)<span class="health-card-hint">tes journées notées avant les deux axes</span>${expandBtn('legacy')}</div>
+      // tendance dépression ↔ hypomanie : DÉDUITE automatiquement de l'humeur + l'énergie du jour
+      // (remplace l'ancienne échelle qu'on ne pouvait plus remplir). Toujours affichée.
+      const spectrumCard = `<div class="health-card">
+        <div class="health-card-title">Tendance : dépression ↔ hypomanie<span class="health-card-hint">estimée automatiquement d'après ton humeur et ton énergie — repère de lecture, pas un diagnostic</span>${expandBtn('legacy')}</div>
         ${clickWrap('legacy', healthMoodChartHtml(days))}
-      </div>` : '';
+      </div>`;
       return `${kpis}
       ${healthReadingCardHtml()}
       ${healthCycleSettingsHtml()}
@@ -9958,6 +10043,7 @@ function renderHealthSpace() {
           <div class="health-card-title">Humeur et énergie<span class="health-card-hint">deux courbes · repères verticaux = événements</span>${expandBtn('moodene')}</div>
           ${clickWrap('moodene', healthMoodEnergyChartHtml(days))}
         </div>
+        ${spectrumCard}
         <div class="health-card">
           <div class="health-card-title">Carte des journées<span class="health-card-hint">chaque point = un jour</span>
             <button type="button" class="hr-quad-help-btn" onclick="healthToggleQuadHelp()">${healthQuadHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>${expandBtn('quad')}
@@ -9977,7 +10063,6 @@ function renderHealthSpace() {
           <div class="health-card-title">Traitement et cycle${expandBtn('cyclemed')}</div>
           ${clickWrap('cyclemed', healthCycleMedChartHtml(days))}
         </div>
-        ${legacyCard}
       </div>
       </div>
       <div class="health-card health-notes">
@@ -10866,6 +10951,161 @@ function renderBilanSpace() {
   canvas.innerHTML = html;
 }
 window.renderBilanSpace = renderBilanSpace;
+
+/* ============================================================
+   OBJECTIFS — grands buts auxquels on relie des projets et des habitudes.
+   La progression est CALCULÉE : moyenne de l'avancement des projets liés et
+   de l'assiduité (30 j) des habitudes liées. Aucune saisie de % à la main.
+   Modèle : state.objectives = [{ id, title, target, due, color, note, done,
+   createdAt, projectIds:[], habitIds:[] }]
+   ============================================================ */
+function objArr() { return state.objectives || (state.objectives = []); }
+function objById(id) { return objArr().find(o => o.id === id); }
+// assiduité d'une habitude sur ~30 jours (jours prévus faits / jours prévus), en %
+function objHabitAdherence(h) {
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  if (habitIsWeekly(h)) {
+    let done = 0; for (let i = 1; i <= 28; i++) { if (habitDayDone(h, addDays(base, -i))) done++; }
+    const target = habitWeekTargetN(h) * 4;
+    return target ? Math.min(100, Math.round(done / target * 100)) : null;
+  }
+  let done = 0, sched = 0;
+  for (let i = 1; i <= 30; i++) { const d = addDays(base, -i); if (habitScheduledOn(h, d)) { sched++; if (habitDayDone(h, d)) done++; } }
+  return sched ? Math.round(done / sched * 100) : null;
+}
+// progression globale d'un objectif : moyenne des projets liés (avancement) et des habitudes liées (assiduité)
+function objProgress(o) {
+  const projs = (o.projectIds || []).map(projById).filter(Boolean);
+  const habs = (o.habitIds || []).map(id => (state.habits || []).find(h => h.id === id)).filter(Boolean);
+  const parts = [];
+  projs.forEach(p => parts.push(projProgress(p.id).pct));
+  habs.forEach(h => { const a = objHabitAdherence(h); if (a != null) parts.push(a); });
+  const pct = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
+  return { pct, nbProj: projs.length, nbHab: habs.length };
+}
+// ---- création / édition (modale) ----
+let objEditId = null;
+let objColorDraft = PALETTE[0];
+function renderObjColorPicker() { $('objColorPicker').innerHTML = paletteHtml(objColorDraft, 'pickObjColor', 'objective'); }
+function pickObjColor(c) { objColorDraft = c; rememberColor(c); renderObjColorPicker(); }
+window.pickObjColor = pickObjColor;
+function createObjective() { openObjectiveModal(null); }
+window.createObjective = createObjective;
+function openObjectiveModal(id) {
+  objEditId = id || null;
+  const o = id ? objById(id) : null;
+  $('objModalTitle').textContent = o ? 'Modifier l\'objectif' : 'Nouvel objectif';
+  $('objTitle').value = o ? (o.title || '') : '';
+  $('objTarget').value = o ? (o.target || '') : '';
+  $('objDue').value = o ? (o.due || '') : '';
+  $('objNote').value = o ? (o.note || '') : '';
+  objColorDraft = o ? (o.color || PALETTE[0]) : allColors()[Math.floor(Math.random() * PALETTE.length)];
+  renderObjColorPicker();
+  $('objDeleteBtn').classList.toggle('hidden', !o);
+  $('objOverlay').classList.add('show');
+  setTimeout(() => $('objTitle').focus(), 50);
+}
+window.openObjectiveModal = openObjectiveModal;
+function saveObjective() {
+  const title = $('objTitle').value.trim();
+  if (!title) { $('objTitle').focus(); return; }
+  const patch = { title, target: $('objTarget').value.trim(), due: $('objDue').value || '', color: objColorDraft, note: $('objNote').value.trim() };
+  if (objEditId) { Object.assign(objById(objEditId), patch); }
+  else { objArr().push({ id: 'obj_' + uid(), createdAt: new Date().toISOString(), done: false, projectIds: [], habitIds: [], ...patch }); }
+  save(); closeModals(); renderObjectivesSpace();
+}
+window.saveObjective = saveObjective;
+function deleteObjective() {
+  if (!objEditId) return;
+  if (!confirm('Supprimer cet objectif ? (les projets et habitudes liés ne sont pas supprimés)')) return;
+  state.objectives = objArr().filter(o => o.id !== objEditId);
+  save(); closeModals(); renderObjectivesSpace();
+}
+window.deleteObjective = deleteObjective;
+function toggleObjectiveDone(id, ev) {
+  if (ev) ev.stopPropagation();
+  const o = objById(id); if (!o) return;
+  o.done = !o.done; save(); renderObjectivesSpace();
+}
+window.toggleObjectiveDone = toggleObjectiveDone;
+// ---- relier / délier projets et habitudes ----
+function objAddProject(id, ev) {
+  if (ev) ev.stopPropagation();
+  const o = objById(id); if (!o) return;
+  const linked = new Set(o.projectIds || []);
+  const items = (state.projects || []).filter(p => !linked.has(p.id))
+    .map(p => ({ value: p.id, label: p.name || 'Sans titre', sub: projProgress(p.id).pct + '%', dot: dotOf(p.color || '#eae8e4') }));
+  if (!items.length) { showToast('Aucun projet à relier'); return; }
+  openStyledMenu((ev && ev.currentTarget) || document.body, [{ label: 'Projets', items }], null, v => {
+    (o.projectIds || (o.projectIds = [])).push(v); save(); renderObjectivesSpace();
+  }, { search: true, placeholder: 'Rechercher un projet…' });
+}
+function objAddHabit(id, ev) {
+  if (ev) ev.stopPropagation();
+  const o = objById(id); if (!o) return;
+  const linked = new Set(o.habitIds || []);
+  const items = (state.habits || []).filter(h => !linked.has(h.id))
+    .map(h => ({ value: h.id, label: h.name || 'Sans titre', dot: dotOf(h.color || PALETTE[1]) }));
+  if (!items.length) { showToast('Aucune habitude à relier'); return; }
+  openStyledMenu((ev && ev.currentTarget) || document.body, [{ label: 'Habitudes', items }], null, v => {
+    (o.habitIds || (o.habitIds = [])).push(v); save(); renderObjectivesSpace();
+  }, { search: true, placeholder: 'Rechercher une habitude…' });
+}
+function objRemoveProject(id, pid, ev) { if (ev) ev.stopPropagation(); const o = objById(id); if (!o) return; o.projectIds = (o.projectIds || []).filter(x => x !== pid); save(); renderObjectivesSpace(); }
+function objRemoveHabit(id, hid, ev) { if (ev) ev.stopPropagation(); const o = objById(id); if (!o) return; o.habitIds = (o.habitIds || []).filter(x => x !== hid); save(); renderObjectivesSpace(); }
+window.objAddProject = objAddProject; window.objAddHabit = objAddHabit;
+window.objRemoveProject = objRemoveProject; window.objRemoveHabit = objRemoveHabit;
+// ---- rendu ----
+function objCardHtml(o) {
+  const col = dotOf(o.color || '#eae8e4');
+  const pr = objProgress(o);
+  const ringHtml = pr.pct != null
+    ? `<div class="obj-ring">${progressRing(pr.pct, col, 52, 5)}<span class="obj-ring-val">${pr.pct}%</span></div>`
+    : `<div class="obj-ring obj-ring-empty" title="Relie un projet ou une habitude pour voir ta progression">—</div>`;
+  const projs = (o.projectIds || []).map(projById).filter(Boolean);
+  const habs = (o.habitIds || []).map(id => (state.habits || []).find(h => h.id === id)).filter(Boolean);
+  const projChips = projs.map(p => `<span class="obj-chip" onclick="openPage('projects','${p.id}')" title="Ouvrir le projet">
+      <span class="obj-chip-dot" style="background:${dotOf(p.color || '#eae8e4')}"></span>${esc(p.name || 'Sans titre')}
+      <span class="obj-chip-val">${projProgress(p.id).pct}%</span>
+      <button class="obj-chip-x" onclick="objRemoveProject('${o.id}','${p.id}',event)" title="Délier">×</button></span>`).join('');
+  const habChips = habs.map(h => { const a = objHabitAdherence(h); const st = habitStreak(h); return `<span class="obj-chip" onclick="openSpace('habits')" title="${esc(h.name || '')} · série ${st} j">
+      <span class="obj-chip-dot" style="background:${dotOf(h.color || PALETTE[1])}"></span>${esc(h.name || 'Sans titre')}
+      <span class="obj-chip-val">${a != null ? a + '%' : '—'}</span>
+      <button class="obj-chip-x" onclick="objRemoveHabit('${o.id}','${h.id}',event)" title="Délier">×</button></span>`; }).join('');
+  const dueBadge = o.due ? `<span class="obj-due ${o.due < ymd(new Date()) && !o.done ? 'late' : ''}">◷ ${esc(friendlyDate(o.due))}</span>` : '';
+  return `<div class="obj-card ${o.done ? 'done' : ''}" style="border-top:3px solid ${col}">
+    <div class="obj-card-top">
+      ${ringHtml}
+      <div class="obj-card-main">
+        <div class="obj-card-title">${esc(o.title || 'Sans titre')}</div>
+        ${o.target ? `<div class="obj-card-target">${esc(o.target)}</div>` : ''}
+        <div class="obj-card-meta">${dueBadge}${pr.nbProj || pr.nbHab ? `<span class="obj-meta-count">${pr.nbProj} projet${pr.nbProj > 1 ? 's' : ''} · ${pr.nbHab} habitude${pr.nbHab > 1 ? 's' : ''}</span>` : `<span class="obj-meta-count">rien de relié</span>`}</div>
+      </div>
+      <div class="obj-card-acts">
+        <button class="obj-act" onclick="toggleObjectiveDone('${o.id}',event)" title="${o.done ? 'Marquer à poursuivre' : 'Marquer atteint'}">${o.done ? '↩' : '✓'}</button>
+        <button class="obj-act" onclick="openObjectiveModal('${o.id}')" title="Modifier">✎</button>
+      </div>
+    </div>
+    ${o.note ? `<div class="obj-card-note">${esc(o.note)}</div>` : ''}
+    <div class="obj-links">
+      ${projChips}${habChips}
+      <button class="obj-add" onclick="objAddProject('${o.id}',event)">＋ Projet</button>
+      <button class="obj-add" onclick="objAddHabit('${o.id}',event)">＋ Habitude</button>
+    </div>
+  </div>`;
+}
+function renderObjectivesSpace() {
+  const list = objArr().slice().sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+  const head = `<div class="space-head"><span class="space-title">Objectifs</span><span class="space-count">${objArr().length}</span><span style="flex:1"></span><button class="btn primary" onclick="createObjective()">✎ Nouvel objectif</button></div>`;
+  const body = list.length
+    ? `<div class="obj-grid">${list.map(objCardHtml).join('')}</div>`
+    : `<div class="obj-empty"><div class="obj-empty-ico"><svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></svg></div>
+      <p>Pas encore d'objectif.</p>
+      <p class="obj-empty-sub">Crée un grand but (reprendre le sport, lancer ton studio…) et relie-lui des projets ou des habitudes : ta progression se calcule toute seule.</p>
+      <button class="btn primary" style="margin-top:16px" onclick="createObjective()">Créer mon premier objectif</button></div>`;
+  canvas.innerHTML = `<div class="space wide">${head}${body}</div>`;
+}
+window.renderObjectivesSpace = renderObjectivesSpace;
 
 function toggleNoteFav(id, ev) {
   if (ev) ev.stopPropagation();
@@ -18187,7 +18427,7 @@ $('miniNext').onclick = () => { miniCursor = new Date(miniCursor.getFullYear(), 
    — la petite flèche (ou le compteur) replie / déplie la liste sur place ;
    — le NOM ouvre l'espace de travail plein cadre correspondant.
    Les sections sans espace dédié (Agendas) gardent l'ancien comportement partout. */
-const SECTION_SPACE = { home: 'home', tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan', mail: 'mail' };
+const SECTION_SPACE = { home: 'home', tasks: 'tasks', projects: 'projects', notes: 'notes', crm: 'crm', health: 'health', habits: 'habits', bilan: 'bilan', mail: 'mail', objectives: 'objectives' };
 $$('.nav-item').forEach(btn => {
   btn.onclick = e => {
     if (e.target.closest('.nav-add')) return;
@@ -18224,6 +18464,7 @@ $('habitIconBtn').onclick = () => openIconPicker('habitDraft', null);
 
 $('addNoteBtn').onclick = e => { e.stopPropagation(); openNote(); };
 $('addCrmBtn').onclick = e => { e.stopPropagation(); if (!state.navOpen.crm) toggleNavSection('crm'); createCrmContact(); };
+$('addObjectiveBtn').onclick = e => { e.stopPropagation(); if (state.view !== 'objectives') { state.view = 'objectives'; save(); render(); } createObjective(); };
 $('saveNoteBtn').onclick = saveNote;
 $('deleteNoteBtn').onclick = () => { if (editingNote) deleteNote(editingNote); };
 $('noteZoomBtn').onclick = toggleNoteDoc;
