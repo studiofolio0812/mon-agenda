@@ -1874,6 +1874,15 @@
   .hc-trend { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; opacity: .7; }
   .hc-corr-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; padding: 12px 2px; }
   .health-card-hint { font-size: 11px; font-weight: 400; color: var(--text-faint); margin-left: 8px; text-transform: none; letter-spacing: 0; }
+  /* Réglage du cycle + légende des phases */
+  .cyc-fields { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 10px; }
+  .cyc-fields label { font-size: 13px; color: var(--text); display: inline-flex; align-items: center; gap: 8px; }
+  .cyc-fields input { width: 60px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 13px; }
+  .cyc-hint { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; margin-top: 10px; }
+  .cyc-apply { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .cyc-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
+  .cyc-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft); }
+  .cyc-dot { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; opacity: 0.6; }
   /* Récap des notes du suivi santé */
   .health-notes .hn-list { display: flex; flex-direction: column; gap: 8px; }
   .hn-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer; background: var(--surface-2); transition: border-color .12s; }
@@ -8700,7 +8709,13 @@ document.addEventListener('mousedown', e => {
   }
   if (!dtpIsHidden()) dtpClose();   // clic ailleurs → fermer
 }, true);
-window.addEventListener('scroll', () => { if (!dtpIsHidden()) dtpClose(); }, true);
+// fermeture au défilement de la PAGE, mais pas quand c'est la liste d'heures du popover
+// qui défile (sinon le scrollIntoView de l'heure sélectionnée referme le popover aussitôt)
+window.addEventListener('scroll', (e) => {
+  if (dtpIsHidden()) return;
+  if (dtpEl && e.target && dtpEl.contains(e.target)) return;   // défilement interne au popover : on garde
+  dtpClose();
+}, true);
 window.addEventListener('resize', () => { if (!dtpIsHidden()) dtpClose(); });
 
 /* ---------- Dossiers de notes ---------- */
@@ -9194,6 +9209,37 @@ function setHealthSleep(v) { healthUpsert(healthEditDate, { sleepHours: v === ''
 window.setHealthSleep = setHealthSleep;
 function setHealthCycle(v) { healthUpsert(healthEditDate, { cycle: v }); renderHealthSpace(); }
 window.setHealthCycle = setHealthCycle;
+// réglages du cycle (durée des règles + durée moyenne) — servent à placer ovulation/lutéale
+function setHealthCycleCfg(key, v) {
+  if (!state.healthCycle) state.healthCycle = { periodLen: 5, avgLen: 28 };
+  const n = Number(v);
+  if (key === 'periodLen' && n >= 1 && n <= 14) state.healthCycle.periodLen = Math.round(n);
+  if (key === 'avgLen' && n >= 15 && n <= 60) state.healthCycle.avgLen = Math.round(n);
+  save();
+  renderHealthSpace();
+}
+window.setHealthCycleCfg = setHealthCycleCfg;
+// carte de réglage + légende des phases (onglet « Mes tendances »)
+function healthCycleSettingsHtml() {
+  const { periodLen, avgLen } = healthCycleCfg();
+  const obs = cycleObservedAvg();
+  const starts = cycleStarts().length;
+  const hint = obs
+    ? `D'après tes règles cochées, ton cycle dure en moyenne <b>${obs} j</b>${obs !== avgLen ? ` — <span class="cyc-apply" onclick="setHealthCycleCfg('avgLen', ${obs})">utiliser cette valeur</span>` : ' (déjà pris en compte)'}.`
+    : (starts ? `Continue de cocher « Règles ce jour » : dès 2 cycles complets, je calculerai ta durée moyenne réelle.` : `Coche « Règles ce jour » dans « Ma journée » : les phases apparaîtront ici, calées sur tes vrais jours de règles.`);
+  const legend = Object.values(CYCLE_PHASES).map(p =>
+    `<span class="cyc-leg"><span class="cyc-dot" style="background:${p.color}"></span>${esc(p.label)}</span>`
+  ).join('');
+  return `<div class="health-card health-cycle-cfg">
+    <div class="health-card-title">Mon cycle<span class="health-card-hint">les phases colorent le fond des graphiques</span></div>
+    <div class="cyc-fields">
+      <label>Durée des règles <input type="number" min="1" max="14" value="${periodLen}" onchange="setHealthCycleCfg('periodLen', this.value)"> jours</label>
+      <label>Durée moyenne du cycle <input type="number" min="15" max="60" value="${avgLen}" onchange="setHealthCycleCfg('avgLen', this.value)"> jours</label>
+    </div>
+    <div class="cyc-hint">${hint}</div>
+    <div class="cyc-legend">${legend}</div>
+  </div>`;
+}
 function setHealthNote(v) { healthUpsert(healthEditDate, { note: v }); }
 window.setHealthNote = setHealthNote;
 function setHealthEditDate(v) { healthEditDate = v || ymd(new Date()); renderHealthSpace(); }
@@ -9362,6 +9408,88 @@ function healthKpiData(days) {
   return { avgSleep, shortNights, avgHum, avgEne, avgMood, hasLegacyMood, nbSleep: sleeps.length, nbHum: hums.length };
 }
 
+/* ============================================================
+   PHASES DU CYCLE — bandeaux de couleur en fond des graphiques
+   ------------------------------------------------------------
+   Le cycle est saisi jour par jour (case « Règles ce jour » → log.cycle).
+   On en DÉDUIT les phases : les bandeaux s'ancrent sur les vrais débuts de
+   règles cochés, et pour le cycle en cours / à venir on projette avec la durée
+   moyenne réglée par l'utilisatrice (elle garde la main, ça se recale tout seul
+   au fil des saisies). 4 phases : règles · folliculaire · ovulation · lutéale.
+   ============================================================ */
+const CYCLE_PHASES = {
+  regles:       { label: 'Règles',                 color: '#e07a86' },
+  folliculaire: { label: 'Phase folliculaire',     color: '#8fcf9f' },
+  ovulation:    { label: 'Ovulation (fenêtre fertile)', color: '#7fb3d5' },
+  luteale:      { label: 'Phase lutéale (prémenstruel)', color: '#c3b2e6' },
+};
+function healthCycleCfg() {
+  const c = state.healthCycle || {};
+  return { periodLen: Math.max(1, Math.min(14, c.periodLen || 5)), avgLen: Math.max(15, Math.min(60, c.avgLen || 28)) };
+}
+// débuts de règles = un jour coché « cycle » dont la veille ne l'est pas (triés)
+function cycleStarts() {
+  const set = new Set((state.healthLogs || []).filter(l => l.cycle).map(l => l.date));
+  if (!set.size) return [];
+  return [...set].filter(d => !set.has(ymd(addDays(parseYmd(d), -1)))).sort();
+}
+function daysBetweenYmd(a, b) { return Math.round((parseYmd(b) - parseYmd(a)) / 86400000); }
+// durée moyenne observée entre deux débuts de règles (si assez de données), sinon null
+function cycleObservedAvg() {
+  const s = cycleStarts();
+  if (s.length < 2) return null;
+  let tot = 0, k = 0;
+  for (let i = 1; i < s.length; i++) { const g = daysBetweenYmd(s[i - 1], s[i]); if (g >= 15 && g <= 60) { tot += g; k++; } }
+  return k ? Math.round(tot / k) : null;
+}
+// phase du cycle pour une date donnée, ou null si on n'a aucun repère
+function cyclePhaseFor(dateStr) {
+  const starts = cycleStarts();
+  if (!starts.length) return null;
+  const { periodLen, avgLen } = healthCycleCfg();
+  // ancre = dernier début de règles <= date ; sinon on projette en arrière depuis le 1er
+  let anchor = null, next = null;
+  for (let i = 0; i < starts.length; i++) {
+    if (starts[i] <= dateStr) { anchor = starts[i]; next = starts[i + 1] || null; }
+  }
+  let effLen = avgLen;
+  if (anchor == null) {
+    // date antérieure au 1er début connu : on recule d'un multiple de avgLen
+    const first = starts[0];
+    const back = Math.ceil(daysBetweenYmd(dateStr, first) / avgLen);
+    anchor = ymd(addDays(parseYmd(first), -back * avgLen));
+  } else if (next) {
+    const g = daysBetweenYmd(anchor, next);
+    if (g >= 15 && g <= 60) effLen = g;   // vraie longueur quand le cycle est bouclé
+  }
+  const day = daysBetweenYmd(anchor, dateStr) + 1;   // jour 1 = début des règles
+  if (day < 1) return null;
+  // au-delà d'un cycle sans nouveau début connu : on ne colorie pas indéfiniment le futur lointain
+  if (day > effLen + 2 && !next) return null;
+  const ovDay = Math.max(periodLen + 2, effLen - 14);   // ovulation ~ 14 j avant les règles suivantes
+  // les vrais jours cochés priment pour les règles
+  const logged = (state.healthLogs || []).find(l => l.date === dateStr && l.cycle);
+  if (logged) return { key: 'regles', ...CYCLE_PHASES.regles };
+  if (day <= periodLen) return { key: 'regles', ...CYCLE_PHASES.regles };
+  if (Math.abs(day - ovDay) <= 1) return { key: 'ovulation', ...CYCLE_PHASES.ovulation };
+  if (day < ovDay) return { key: 'folliculaire', ...CYCLE_PHASES.folliculaire };
+  return { key: 'luteale', ...CYCLE_PHASES.luteale };
+}
+// bandeaux : un rectangle par plage de jours d'une même phase, du bord gauche au bord droit
+function cycleBandsSvg(days, leftAt, rightAt, yTop, yBottom) {
+  if (!cycleStarts().length) return '';
+  const ph = days.map(cyclePhaseFor);
+  let out = '', i = 0;
+  while (i < days.length) {
+    if (!ph[i]) { i++; continue; }
+    let j = i; while (j + 1 < days.length && ph[j + 1] && ph[j + 1].key === ph[i].key) j++;
+    const x = leftAt(i), w = rightAt(j) - x;
+    if (w > 0) out += `<rect x="${x.toFixed(1)}" y="${yTop}" width="${w.toFixed(1)}" height="${(yBottom - yTop).toFixed(1)}" fill="${ph[i].color}" opacity="0.15"><title>${esc(ph[i].label)}</title></rect>`;
+    i = j + 1;
+  }
+  return out ? `<g class="hc-cycle-bands">${out}</g>` : '';
+}
+
 // ---- HUMEUR : courbe lissée, points colorés, coupure sur les jours non renseignés ----
 function healthMoodChartHtml(days) {
   const n = days.length, W = 860, H = 190, x0 = 74, x1 = 846, top = 20, bottom = 150;
@@ -9392,6 +9520,7 @@ function healthSleepChartHtml(days) {
   const yAt = h => base - Math.min(h, MAXH) / MAXH * (base - top);
   const sleepColor = h => h < 6 ? '#f4726a' : (h < 7 ? '#f5b23c' : (h <= 9 ? '#46c07d' : '#f5b23c'));
   const zone = `<rect x="${x0}" y="${yAt(9)}" width="${x1 - x0}" height="${yAt(7) - yAt(9)}" class="hc-zone"/>`;
+  const bands = cycleBandsSvg(days, i => x0 + i * step, j => x0 + (j + 1) * step, top, base);
   let grid = '';
   [0, 4, 8, 12].forEach(h => { const y = yAt(h); grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" class="hc-grid"/><text x="${x0 - 6}" y="${y + 3}" class="hc-axis" text-anchor="end">${h}h</text>`; });
   const sleeps = [];
@@ -9405,7 +9534,7 @@ function healthSleepChartHtml(days) {
   const avg = sleeps.length ? sleeps.reduce((a, b) => a + b, 0) / sleeps.length : null;
   const avgLine = avg != null ? `<line x1="${x0}" y1="${yAt(avg)}" x2="${x1}" y2="${yAt(avg)}" class="hc-avg"/><text x="${x1}" y="${yAt(avg) - 4}" class="hc-axis" text-anchor="end">moy. ${avg.toFixed(1)}h</text>` : '';
   const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); const x = x0 + i * step + step / 2; return `<text x="${x}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" class="hc-sleep">${zone}${grid}${bars}${avgLine}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-sleep">${bands}${zone}${grid}${bars}${avgLine}${labels}</svg>`;
 }
 
 // ---- HUMEUR + ÉNERGIE : deux courbes superposées (valence −5..+5 et activation 0..10) ----
@@ -9415,6 +9544,7 @@ function healthMoodEnergyChartHtml(days) {
   const xAt = i => x0 + i * step;
   const yHum = v => bottom - (v + 5) * ((bottom - top) / 10);   // −5..+5
   const yEne = v => bottom - v * ((bottom - top) / 10);          // 0..10
+  const bands = cycleBandsSvg(days, i => Math.max(x0, xAt(i) - step / 2), j => Math.min(x1, xAt(j) + step / 2), top, bottom);
   let grid = '';
   [-5, 0, 5].forEach(v => grid += `<line x1="${x0}" y1="${yHum(v)}" x2="${x1}" y2="${yHum(v)}" class="hc-grid ${v === 0 ? 'hc-grid-mid' : ''}"/>`);
   const humPts = days.map((d, i) => { const l = healthLogFor(d); return (l && l.moodVal != null) ? { x: xAt(i), y: yHum(l.moodVal), v: l.moodVal, d } : null; });
@@ -9431,7 +9561,7 @@ function healthMoodEnergyChartHtml(days) {
   const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); return `<text x="${xAt(i)}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
   const legend = `<g class="hc-legend"><circle cx="${x0 + 6}" cy="10" r="4" fill="#e2985e"/><text x="${x0 + 15}" y="13" class="hc-axis">Humeur</text><circle cx="${x0 + 92}" cy="10" r="4" fill="#c98aa8"/><text x="${x0 + 101}" y="13" class="hc-axis">Énergie</text></g>`;
   if (!humPts.some(Boolean) && !enePts.some(Boolean)) return `<div class="hc-corr-empty">Renseigne ton humeur et ton énergie du jour : les deux courbes se rempliront ici.</div>`;
-  return `<svg viewBox="0 0 ${W} ${H}" class="hc-moodene">${grid}${events}${yLab}${legend}${humLine}${eneLine}${humDots}${eneDots}${labels}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-moodene">${bands}${grid}${events}${yLab}${legend}${humLine}${eneLine}${humDots}${eneDots}${labels}</svg>`;
 }
 
 // ---- QUADRANTS : chaque jour = un point (X = humeur −5..+5, Y = énergie 0..10) ----
@@ -9549,6 +9679,7 @@ function healthCycleMedChartHtml(days) {
   const n = days.length, W = 860, H = 104, x0 = 74, x1 = 846, Y_MED = 20, Y_CYCLE = 82;
   const step = n > 1 ? (x1 - x0) / (n - 1) : 0;
   const xAt = i => x0 + i * step;
+  const bands = cycleBandsSvg(days, i => Math.max(x0, xAt(i) - step / 2), j => Math.min(x1, xAt(j) + step / 2), 6, 94);
   const meds = days.map((d, i) => {
     const occs = healthTrackedHabitsOn(d);
     if (!occs.length) return '';
@@ -9561,7 +9692,7 @@ function healthCycleMedChartHtml(days) {
   }).join('');
   const cycles = days.map((d, i) => { const l = healthLogFor(d); if (!l || !l.cycle) return ''; const cx = xAt(i); return `<path d="M${cx},${Y_CYCLE - 5} C${cx + 3.6},${Y_CYCLE - 1} ${cx + 3.6},${Y_CYCLE + 4} ${cx},${Y_CYCLE + 4} C${cx - 3.6},${Y_CYCLE + 4} ${cx - 3.6},${Y_CYCLE - 1} ${cx},${Y_CYCLE - 5} Z" class="hc-cycle"><title>${esc(fmtDateShort(d))} · règles</title></path>`; }).join('');
   const labels = days.map((d, i) => { if (i % 5 !== 0 && i !== n - 1) return ''; const dd = parseYmd(d); return `<text x="${xAt(i)}" y="${H - 6}" class="hc-label" text-anchor="middle">${dd.getDate()} ${MONTHS_SHORT[dd.getMonth()]}</text>`; }).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" class="hc-cm">
+  return `<svg viewBox="0 0 ${W} ${H}" class="hc-cm">${bands}
     <text x="${x0 - 8}" y="${Y_MED + 3}" class="hc-axis" text-anchor="end">Traitement</text>
     <text x="${x0 - 8}" y="${Y_CYCLE + 3}" class="hc-axis" text-anchor="end">Cycle</text>
     ${meds}${cycles}${labels}</svg>`;
@@ -9819,6 +9950,7 @@ function renderHealthSpace() {
       </div>` : '';
       return `${kpis}
       ${healthReadingCardHtml()}
+      ${healthCycleSettingsHtml()}
       <div class="health-charts-wrap" id="healthChartsWrap">
       ${nav}
       <div class="health-grid">
@@ -12709,6 +12841,13 @@ let dragItem = null;
 function wireItemDrag() {
   $$('[data-drag-id]').forEach(el => {
     el.addEventListener('dragstart', e => {
+      // Si le glissement démarre sur une case à cocher (ou un autre petit contrôle),
+      // on ANNULE le drag pour laisser passer le clic. Sinon un micro-mouvement du doigt
+      // ou de la souris déclenche un glisser-déposer et « avale » la coche/décoche.
+      if (e.target && e.target.closest && e.target.closest('.tick, .task-check, .habit-check, .evg-check, input, button, select, textarea')) {
+        e.preventDefault();
+        return;
+      }
       let grabMin = 0;
       if (el.classList.contains('ev-block') || el.classList.contains('task-block')) {
         const r = el.getBoundingClientRect();
