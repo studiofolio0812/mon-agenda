@@ -1860,6 +1860,7 @@
   .health-sig.on { border-color: transparent; font-weight: 600; color: var(--text); }
   .health-sig.on.up { background: #f6dfb5; }
   .health-sig.on.down { background: #cdd6e8; }
+  .health-sig.on.neutral { background: #d3e8cf; }
   /* repère doux (jamais un diagnostic) */
   .health-alert { display: flex; align-items: flex-start; gap: 10px; background: #fbe7c2; border: 1px solid #eed6a0; border-radius: var(--radius-md); padding: 12px 14px; margin-top: 14px; }
   :root[data-theme="dark"] .health-alert { background: #3a3320; border-color: #5c4d22; }
@@ -9411,18 +9412,36 @@ function healthQuadrant(mood, energy) {
   if (!hi && pos) return { key: 'calme', label: 'Calme / repos', color: '#7fb3d5' };
   return { key: 'fatig', label: 'Fatigue / tristesse', color: '#9aa0b0' };
 }
-// signaux à surveiller (relevé cochable, JAMAIS un diagnostic) — 'up' = côté activation/hypomanie, 'down' = côté dépressif
+// signaux à surveiller (relevé cochable, JAMAIS un diagnostic) — 'up' = côté activation/hypomanie,
+// 'down' = côté dépressif, 'neutral' = marqueur perso sans versant clair. `hint` = infobulle au survol.
 const HEALTH_SIGNALS = [
-  { k: 'sleep_less', label: 'Moins de sommeil sans fatigue', type: 'up' },
-  { k: 'fast_ideas', label: 'Idées accélérées', type: 'up' },
-  { k: 'more_projects', label: 'Plus de projets, élan', type: 'up' },
-  { k: 'spending', label: 'Dépenses impulsives', type: 'up' },
-  { k: 'social', label: 'Sociabilité inhabituelle', type: 'up' },
-  { k: 'irritable', label: 'Irritabilité', type: 'up' },
-  { k: 'anxiety', label: 'Anxiété, tension', type: 'up' },
-  { k: 'no_slow', label: 'Difficile de ralentir', type: 'up' },
-  { k: 'slow_sad', label: 'Ralentissement, tristesse', type: 'down' },
-  { k: 'no_focus', label: 'Mal à me concentrer', type: 'down' },
+  // — côté élan / activation —
+  { k: 'sleep_less', label: 'Moins de sommeil sans fatigue', type: 'up', hint: 'Tu dors moins mais sans te sentir fatiguée.' },
+  { k: 'fast_ideas', label: 'Idées accélérées', type: 'up', hint: 'Pensées qui défilent vite, difficiles à suivre.' },
+  { k: 'more_projects', label: 'Plus de projets, élan', type: 'up', hint: 'Beaucoup d’idées de projets, envie de tout lancer.' },
+  { k: 'spending', label: 'Dépenses impulsives', type: 'up', hint: 'Achats impulsifs, dépenses inhabituelles.' },
+  { k: 'social', label: 'Sociabilité inhabituelle', type: 'up', hint: 'Envie de contacts, sociabilité au-dessus de d’habitude.' },
+  { k: 'irritable', label: 'Irritabilité', type: 'up', hint: 'Tu t’agaces plus facilement que d’habitude.' },
+  { k: 'anxiety', label: 'Anxiété, tension', type: 'up', hint: 'Tension intérieure, nervosité, agitation.' },
+  { k: 'no_slow', label: 'Difficile de ralentir', type: 'up', hint: 'Difficile de te poser, de lever le pied.' },
+  { k: 'libido_up', label: 'Libido en hausse', type: 'up', hint: 'Désir sexuel plus élevé que d’habitude.' },
+  { k: 'grandiose', label: 'Sentiment de puissance', type: 'up', hint: 'Estime de soi gonflée, sentiment que tout est possible.' },
+  { k: 'fast_speech', label: 'Parler plus vite / plus fort', type: 'up', hint: 'Débit accéléré ; on te fait remarquer que tu parles beaucoup.' },
+  { k: 'consumption', label: 'Consommation en hausse', type: 'up', hint: 'Plus d’alcool, café, tabac ou autres.' },
+  // — marqueur neutre —
+  { k: 'motivated', label: 'Motivée à sortir / faire des choses', type: 'neutral', hint: 'Motivée à sortir, faire les courses, un tour en ville — des choses que tu évites quand ça ne va pas.' },
+  // — versant dépressif —
+  { k: 'slow_sad', label: 'Ralentissement, tristesse', type: 'down', hint: 'Tout ralentit, humeur triste, moral en berne.' },
+  { k: 'no_focus', label: 'Mal à me concentrer', type: 'down', hint: 'Difficile de fixer ton attention.' },
+  { k: 'anhedonia', label: 'Envie de rien / perte d’intérêt', type: 'down', hint: 'Plus de goût ni d’intérêt pour ce qui te plaît d’habitude.' },
+  { k: 'hypersomnia', label: 'Dormir trop / dur à me lever', type: 'down', hint: 'Hypersomnie, sommeil non réparateur, dur de sortir du lit.' },
+  { k: 'withdrawal', label: 'Repli / besoin d’isolement', type: 'down', hint: 'Envie d’éviter les autres, d’annuler, de t’isoler.' },
+  { k: 'loneliness', label: 'Sentiment de solitude', type: 'down', hint: 'Impression d’être seule, de ne compter pour personne.' },
+  { k: 'dark_thoughts', label: 'Idées sombres / dévalorisation', type: 'down', hint: 'Pensées noires, sentiment de ne pas valoir grand-chose.' },
+  { k: 'hypersensitive', label: 'Hypersensibilité / larmes faciles', type: 'down', hint: 'Émotions à fleur de peau, larmes ou réactions faciles.' },
+  { k: 'phys_fatigue', label: 'Fatigue physique inhabituelle', type: 'down', hint: 'Corps lourd, épuisement qui ne colle pas à ton activité.' },
+  { k: 'indecisive', label: 'Difficulté à décider', type: 'down', hint: 'Le moindre choix devient compliqué, tu tournes en rond.' },
+  { k: 'appetite', label: 'Appétit perturbé', type: 'neutral', hint: 'Tu manges beaucoup plus ou beaucoup moins que d’habitude.' },
 ];
 const signalLabel = k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).label || k;
 
@@ -9985,7 +10004,7 @@ function renderHealthSpace() {
 
   const humLbl = hum != null ? humeurWord(hum) + ' (' + (hum > 0 ? '+' : '') + hum + ')' : 'pas encore renseignée';
   const eneLbl = ene != null ? energyWord(ene) + ' (' + ene + '/10)' : 'pas encore renseignée';
-  const signalChips = HEALTH_SIGNALS.map(s => `<button type="button" class="health-sig ${signals.indexOf(s.k) >= 0 ? 'on ' + s.type : ''}" onclick="healthToggleSignal('${s.k}')">${esc(s.label)}</button>`).join('');
+  const signalChips = HEALTH_SIGNALS.map(s => `<button type="button" class="health-sig ${signals.indexOf(s.k) >= 0 ? 'on ' + s.type : ''}" onclick="healthToggleSignal('${s.k}')" title="${esc(s.hint || '')}">${esc(s.label)}</button>`).join('');
 
   const alert = healthGentleSignal();
   const alertHtml = alert ? `<div class="health-alert">
