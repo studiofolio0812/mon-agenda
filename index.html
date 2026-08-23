@@ -1819,6 +1819,16 @@
   .hr-read-txt { font-size: 13.5px; line-height: 1.55; color: var(--text); }
   .hr-read-txt b { font-weight: 600; }
   .hr-read-empty { font-size: 13px; color: var(--text-faint); line-height: 1.5; }
+  /* lecture enrichie : bilan point par point + « ce que j'en retiens » */
+  .hr-read-list { list-style: none; margin: 2px 0 0; padding: 0; }
+  .hr-read-list li { font-size: 13px; line-height: 1.5; color: var(--text); padding: 3px 0; }
+  .hr-read-list b { font-weight: 600; }
+  .hr-insights { margin-top: 12px; padding: 11px 13px; background: var(--bg-soft); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+  .hr-insights-t { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .hr-insights-list { list-style: none; margin: 0; padding: 0; }
+  .hr-insights-list li { font-size: 12.5px; line-height: 1.5; color: var(--text-soft); padding: 4px 0; }
+  .hr-insights-list li + li { border-top: 1px solid var(--border); }
+  .hr-insights-list b { font-weight: 600; color: var(--text); }
   .hr-read-lean { margin-top: 10px; font-size: 12.5px; line-height: 1.5; padding: 9px 12px; border-radius: var(--radius-sm); }
   .hr-read-lean.up { background: #f6dfb5; color: #6b4f16; }
   .hr-read-lean.down { background: #cdd6e8; color: #33415c; }
@@ -9763,43 +9773,86 @@ function healthRecentSummary() {
   const logs = days7.map(healthLogFor).filter(Boolean);
   const en = logs.filter(l => l.energy != null).map(l => l.energy);
   const hu = logs.filter(l => l.moodVal != null).map(l => l.moodVal);
-  if (en.length < 2 && hu.length < 2) return null;
+  // on parle dès qu'il y a QUELQUE CHOSE à dire (humeur, énergie, sommeil, signal ou note)
+  const anyData = en.length || hu.length || logs.some(l => l.sleepHours != null || (Array.isArray(l.signals) && l.signals.length) || (l.note && l.note.trim()));
+  if (!anyData) return null;
   const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
   const trend = vals => { if (vals.length < 3) return 'stable'; const h = Math.floor(vals.length / 2); const d = avg(vals.slice(-h)) - avg(vals.slice(0, h)); return d > 1 ? 'en hausse' : d < -1 ? 'en baisse' : 'plutôt stable'; };
   const avgEne = en.length ? avg(en) : null, avgHum = hu.length ? avg(hu) : null;
-  // sommeil récent vs habitude (30 j)
+  // sommeil récent vs habitude (30 j) + nuits courtes
   const sl7 = logs.filter(l => l.sleepHours != null).map(l => l.sleepHours);
   const sl30 = [...Array(30)].map((_, i) => healthLogFor(ymd(addDays(new Date(), -i)))).filter(l => l && l.sleepHours != null).map(l => l.sleepHours);
   let sleepTxt = null;
   if (sl7.length >= 2 && sl30.length >= 4) { const d = avg(sl7) - avg(sl30); sleepTxt = d > 0.5 ? 'en hausse' : d < -0.5 ? 'en baisse' : 'comme d\'habitude'; }
+  const shortNights = sl7.filter(h => h < 6).length;
   // quadrant dominant
   const quads = {};
   logs.forEach(l => { if (l.energy != null && l.moodVal != null) { const q = healthQuadrant(l.moodVal, l.energy).label; quads[q] = (quads[q] || 0) + 1; } });
   const domQuad = Object.keys(quads).sort((a, b) => quads[b] - quads[a])[0] || null;
-  // signaux
+  // tendance dépression ↔ hypomanie (spectre dérivé)
+  const specVals = logs.map(moodSpectrumFor).filter(v => v != null);
+  const spectrumWord = specVals.length >= 2 ? moodInfo(Math.round(avg(specVals))).label : null;
+  // signaux : jours haut/bas + les plus fréquents
   const upDays = logs.filter(l => Array.isArray(l.signals) && l.signals.some(k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).type === 'up')).length;
   const downDays = logs.filter(l => Array.isArray(l.signals) && l.signals.some(k => (HEALTH_SIGNALS.find(s => s.k === k) || {}).type === 'down')).length;
-  return { avgEne, avgHum, eneTrend: trend(en), humWord: avgHum == null ? null : (avgHum >= 1.5 ? 'plutôt agréable' : avgHum <= -1.5 ? 'plutôt désagréable' : 'plutôt neutre'), sleepTxt, domQuad, upDays, downDays, nb: Math.max(en.length, hu.length) };
+  const topSignals = healthSignalTally(days7).sort((a, b) => b.count - a.count).slice(0, 3);
+  const anySignals = logs.some(l => Array.isArray(l.signals) && l.signals.length);
+  // notes libres écrites dans la semaine
+  const notesCount = logs.filter(l => l.note && l.note.trim()).length;
+  // traitement suivi (habitudes marquées « suivi santé »)
+  const medDays = days7.map(healthMedRatio).filter(r => r != null);
+  const medRatio = medDays.length ? Math.round(avg(medDays) * 100) : null;
+  // phase de cycle du jour
+  const ph = cyclePhaseFor(ymd(new Date()));
+  const cyclePhase = ph ? ph.label : null;
+  return {
+    avgEne, avgHum, eneTrend: trend(en),
+    humWord: avgHum == null ? null : (avgHum >= 1.5 ? 'plutôt agréable' : avgHum <= -1.5 ? 'plutôt désagréable' : 'plutôt neutre'),
+    sleepTxt, shortNights, domQuad, spectrumWord, upDays, downDays, topSignals, anySignals, notesCount, medRatio, cyclePhase,
+    nb: logs.length,
+  };
+}
+// « Ce que j'en retiens » : quelques conclusions douces et pistes tirées des données (jamais un diagnostic)
+function healthInsights(s) {
+  const out = [];
+  // 1) lien sommeil × humeur sur ~30 jours (plus fiable qu'une seule semaine)
+  const days30 = [...Array(30)].map((_, i) => ymd(addDays(new Date(), -(29 - i))));
+  const msr = healthMoodSleepReading(days30);
+  if (msr && msr.includes('meilleure')) out.push('Sur le dernier mois, ton humeur est plutôt <b>meilleure les jours où tu dors plus</b> : protéger ton sommeil semble te faire du bien.');
+  else if (msr && msr.includes('plus basse')) out.push('Sur le dernier mois, tu as tendance à être d’<b>humeur plus basse les jours où tu dors beaucoup</b> — ça peut arriver dans les phases basses (beaucoup de sommeil sans que ça repose). À garder en tête, éventuellement à évoquer avec ton soignant.');
+  // 2) tendance générale haut / bas
+  if (s.avgEne != null && s.avgEne >= 6.5 && (s.upDays >= 2 || s.sleepTxt === 'en baisse'))
+    out.push('Ça penche plutôt <b>vers le haut</b> (activation en hausse). Le sommeil est souvent le premier signe — un bon repère à surveiller.');
+  else if (s.avgEne != null && s.avgEne <= 3.5 && s.avgHum != null && s.avgHum <= -1 && s.downDays >= 2)
+    out.push('Ça penche plutôt <b>vers le bas</b> (ressenti et énergie en baisse). Sois douce avec toi ; si ça dure, ça peut valoir un mot à ton soignant.');
+  // 3) nuits courtes
+  if (s.shortNights >= 3) out.push(`<b>${s.shortNights} nuits sous 6 h</b> cette semaine : le manque de sommeil pèse souvent sur l’humeur et l’énergie — un levier facile à surveiller.`);
+  // 4) régularité du traitement
+  if (s.medRatio != null && s.medRatio < 80) out.push(`Traitement suivi à <b>${s.medRatio}%</b> cette semaine : la régularité est un point d’appui important.`);
+  return out.slice(0, 3);
 }
 function healthReadingCardHtml() {
   const s = healthRecentSummary();
   if (!s) return `<div class="health-card health-reading"><div class="health-card-title">Lecture de tes derniers jours</div>
-    <div class="hr-read-empty">Renseigne quelques jours (humeur + énergie) et je te ferai ici un résumé en clair de la semaine.</div></div>`;
-  const parts = [];
-  if (s.avgEne != null) parts.push(`énergie <b>${esc(energyWord(s.avgEne).toLowerCase())}</b> et <b>${esc(s.eneTrend)}</b>`);
-  if (s.humWord) parts.push(`ressenti <b>${esc(s.humWord)}</b>`);
-  if (s.sleepTxt) parts.push(`sommeil <b>${esc(s.sleepTxt)}</b>${s.sleepTxt !== 'comme d\'habitude' ? ' par rapport à ton habitude' : ''}`);
-  let phrase = `Ces derniers jours (${s.nb} jour${s.nb > 1 ? 's' : ''} renseigné${s.nb > 1 ? 's' : ''}) : ` + parts.join(', ') + '.';
-  if (s.domQuad) phrase += ` Tes journées se placent surtout côté <b>${esc(s.domQuad)}</b>.`;
-  // note de tendance douce (jamais un diagnostic)
-  let lean = '';
-  if (s.avgEne != null && s.avgEne >= 6.5 && (s.upDays >= 2 || s.sleepTxt === 'en baisse'))
-    lean = `<div class="hr-read-lean up">Ça penche plutôt <b>vers le haut</b> (activation en hausse). Garde un œil sur ton sommeil — c'est souvent le premier signe. Ce n'est pas un diagnostic, juste un écart à surveiller.</div>`;
-  else if (s.avgEne != null && s.avgEne <= 3.5 && s.avgHum != null && s.avgHum <= -1 && s.downDays >= 2)
-    lean = `<div class="hr-read-lean down">Ça penche plutôt <b>vers le bas</b> (ressenti et énergie en baisse). Sois douce avec toi. Si ça dure, ça peut valoir un mot à ton soignant.</div>`;
+    <div class="hr-read-empty">Renseigne quelques jours (humeur, énergie, sommeil, signaux, notes…) et je te ferai ici une lecture complète de ta semaine.</div></div>`;
+  // bilan point par point de tout ce qui a été rempli
+  const li = [];
+  if (s.avgEne != null) li.push(`⚡ <b>Énergie</b> : ${esc(energyWord(s.avgEne).toLowerCase())}, ${esc(s.eneTrend)}`);
+  if (s.humWord) li.push(`🎭 <b>Ressenti</b> : ${esc(s.humWord)}${s.spectrumWord ? ` · tendance <b>${esc(s.spectrumWord.toLowerCase())}</b>` : ''}`);
+  if (s.sleepTxt) li.push(`🌙 <b>Sommeil</b> : ${esc(s.sleepTxt)}${s.sleepTxt !== 'comme d\'habitude' ? ' par rapport à ton habitude' : ''}${s.shortNights ? ` · ${s.shortNights} nuit${s.shortNights > 1 ? 's' : ''} sous 6 h` : ''}`);
+  if (s.domQuad) li.push(`🧭 <b>Journées</b> : surtout côté ${esc(s.domQuad.toLowerCase())}`);
+  if (s.topSignals && s.topSignals.length) li.push(`🔎 <b>Signaux fréquents</b> : ${s.topSignals.map(t => `${esc(t.label.toLowerCase())} (${t.count})`).join(', ')}`);
+  else if (s.anySignals) li.push(`🔎 <b>Signaux</b> : quelques-uns cochés cette semaine`);
+  if (s.medRatio != null) li.push(`💊 <b>Traitement</b> : suivi à ${s.medRatio}%`);
+  if (s.cyclePhase) li.push(`🩸 <b>Cycle</b> : ${esc(s.cyclePhase.toLowerCase())}`);
+  if (s.notesCount) li.push(`📝 <b>Notes</b> : tu as écrit quelque chose ${s.notesCount} jour${s.notesCount > 1 ? 's' : ''}`);
+  const insights = healthInsights(s);
+  const insightsHtml = insights.length
+    ? `<div class="hr-insights"><div class="hr-insights-t">💡 Ce que j’en retiens</div><ul class="hr-insights-list">${insights.map(i => `<li>${i}</li>`).join('')}</ul></div>`
+    : '';
   return `<div class="health-card health-reading">
-    <div class="health-card-title">Lecture de tes derniers jours</div>
-    <div class="hr-read-txt">${phrase}</div>${lean}</div>`;
+    <div class="health-card-title">Lecture de tes derniers jours<span class="health-card-hint">tout ce que tu as rempli sur les 7 derniers jours (${s.nb} renseigné${s.nb > 1 ? 's' : ''})</span></div>
+    <ul class="hr-read-list">${li.map(x => `<li>${x}</li>`).join('')}</ul>${insightsHtml}</div>`;
 }
 
 /* ---- SIGNAUX DE LA PÉRIODE : fréquence de chaque signal coché sur la fenêtre affichée ----
@@ -9957,7 +10010,7 @@ function healthWinDays() {
     const last = new Date(y, m + 1, 0).getDate();
     return [...Array(last)].map((_, i) => ymd(new Date(y, m, i + 1)));
   }
-  const n = healthChartMode === '90' ? 90 : 30;
+  const n = healthChartMode === '90' ? 90 : healthChartMode === '7' ? 7 : 30;
   const end = parseYmd(healthChartEnd);
   return [...Array(n)].map((_, i) => ymd(addDays(end, -(n - 1 - i))));
 }
@@ -9981,7 +10034,7 @@ function healthChartShift(dir) {
     const d = parseYmd(healthChartEnd);
     healthChartEnd = ymd(new Date(d.getFullYear(), d.getMonth() + dir, 1));
   } else {
-    const n = healthChartMode === '90' ? 90 : 30;
+    const n = healthChartMode === '90' ? 90 : healthChartMode === '7' ? 7 : 30;
     healthChartEnd = ymd(addDays(parseYmd(healthChartEnd), dir * n));
   }
   clampHealthChartEnd(); healthRerender();
@@ -10130,7 +10183,7 @@ function renderHealthSpace() {
       const atNow = healthChartAtPresent();
       const nav = `<div class="health-chart-nav">
         <div class="hcn-modes">
-          ${[['30','30 j'],['90','90 j'],['month','Mois']].map(([m,l]) => `<button type="button" class="hcn-mode ${healthChartMode===m?'on':''}" onclick="setHealthChartMode('${m}')">${l}</button>`).join('')}
+          ${[['7','7 j'],['30','30 j'],['90','90 j'],['month','Mois']].map(([m,l]) => `<button type="button" class="hcn-mode ${healthChartMode===m?'on':''}" onclick="setHealthChartMode('${m}')">${l}</button>`).join('')}
         </div>
         <div class="hcn-range">
           <button type="button" class="hcn-arrow" onclick="healthChartShift(-1)" title="Période précédente" aria-label="Période précédente">‹</button>
