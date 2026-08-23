@@ -1883,6 +1883,12 @@
   .cyc-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; }
   .cyc-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft); }
   .cyc-dot { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; opacity: 0.6; }
+  /* Sensibilité du graphique de tendance dépression ↔ hypomanie */
+  .spectrum-sens { display: flex; align-items: center; gap: 6px; margin: 2px 0 10px; flex-wrap: wrap; }
+  .spectrum-sens-lbl { font-size: 12px; color: var(--text-soft); margin-right: 2px; }
+  .spectrum-sens-btn { background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px; font-size: 12px; color: var(--text-soft); cursor: pointer; font-family: var(--font-sans); }
+  .spectrum-sens-btn:hover { background: var(--bg-soft); }
+  .spectrum-sens-btn.on { background: var(--accent-soft, var(--bg-soft)); border-color: var(--accent); color: var(--text); font-weight: 600; }
   /* ---- Espace Objectifs ---- */
   .obj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
   .obj-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 16px 14px; box-shadow: var(--shadow-sm); }
@@ -9282,7 +9288,12 @@ const moodInfo = v => MOOD_SCALE.find(m => m.v === v);
    dépression(−3) ↔ stable(0) ↔ hypomanie(+3). L'énergie porte l'activation
    (marqueur d'hypomanie/dépression), l'humeur la tonalité : on fait la moyenne
    des deux quand elles sont là. Repli sur l'ancienne saisie `mood` pour l'historique.
-   C'est une estimation de lecture, jamais un diagnostic. */
+   C'est une estimation de lecture, jamais un diagnostic.
+   ATTÉNUATION : on applique une courbe (exposant) qui ÉLARGIT la zone neutre —
+   se sentir en forme reste « un peu haut », seules les journées vraiment très hautes
+   atteignent l'hypomanie. Réglable par l'utilisatrice (douce / normale / marquée). */
+const SPECTRUM_EXP = { soft: 2.4, normal: 1.9, sharp: 1.4 };
+function healthSpectrumExp() { return SPECTRUM_EXP[state.healthSpectrumSens] || SPECTRUM_EXP.soft; }
 function moodSpectrumFor(l) {
   if (!l) return null;
   const hasM = l.moodVal != null, hasE = l.energy != null;
@@ -9290,12 +9301,15 @@ function moodSpectrumFor(l) {
     const parts = [];
     if (hasM) parts.push(l.moodVal / 5);        // −1..+1
     if (hasE) parts.push((l.energy - 5) / 5);   // −1..+1
-    const s = parts.reduce((a, b) => a + b, 0) / parts.length;
-    return Math.max(-3, Math.min(3, Math.round(s * 3)));
+    const s = parts.reduce((a, b) => a + b, 0) / parts.length;   // −1..+1
+    const curved = Math.sign(s) * Math.pow(Math.abs(s), healthSpectrumExp());
+    return Math.max(-3, Math.min(3, Math.round(curved * 3)));
   }
   if (l.mood != null) return l.mood;
   return null;
 }
+function setSpectrumSens(v) { state.healthSpectrumSens = v; save(); renderHealthSpace(); }
+window.setSpectrumSens = setSpectrumSens;
 const healthLogFor = date => (state.healthLogs || []).find(h => h.date === date);
 function healthUpsert(date, patch) {
   if (!state.healthLogs) state.healthLogs = [];
@@ -10049,8 +10063,12 @@ function renderHealthSpace() {
       const clickWrap = (key, svg) => `<div class="hr-chart-click" onclick="healthOpenChart('${key}')" title="Ouvrir en grand">${svg}</div>`;
       // tendance dépression ↔ hypomanie : DÉDUITE automatiquement de l'humeur + l'énergie du jour
       // (remplace l'ancienne échelle qu'on ne pouvait plus remplir). Toujours affichée.
+      const sens = state.healthSpectrumSens || 'soft';
+      const sensTitle = { soft: 'Zone neutre large : seules les journées très hautes atteignent l’hypomanie', normal: 'Réglage intermédiaire', sharp: 'Réagit plus vite aux variations' };
+      const sensCtrl = `<div class="spectrum-sens"><span class="spectrum-sens-lbl">Sensibilité</span>${[['soft', 'Atténuée'], ['normal', 'Normale'], ['sharp', 'Marquée']].map(([k, l]) => `<button type="button" class="spectrum-sens-btn ${sens === k ? 'on' : ''}" onclick="setSpectrumSens('${k}')" title="${sensTitle[k]}">${l}</button>`).join('')}</div>`;
       const spectrumCard = `<div class="health-card">
-        <div class="health-card-title">Tendance : dépression ↔ hypomanie<span class="health-card-hint">estimée automatiquement d'après ton humeur et ton énergie — repère de lecture, pas un diagnostic</span>${expandBtn('legacy')}</div>
+        <div class="health-card-title">Tendance : dépression ↔ hypomanie<span class="health-card-hint">estimée d'après ton humeur et ton énergie — repère de lecture, pas un diagnostic</span>${expandBtn('legacy')}</div>
+        ${sensCtrl}
         ${clickWrap('legacy', healthMoodChartHtml(days))}
       </div>`;
       return `${kpis}
