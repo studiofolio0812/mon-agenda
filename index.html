@@ -1861,16 +1861,13 @@
   .health-sig.on.up { background: #f6dfb5; }
   .health-sig.on.down { background: #cdd6e8; }
   .health-sig.on.neutral { background: #d3e8cf; }
-  /* Signaux de la période (onglet Mes tendances) */
-  .hsig-resume { font-size: 12.5px; color: var(--text-soft); margin: 4px 0 12px; }
-  .hsig-group { margin-bottom: 12px; }
-  .hsig-group-lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); margin-bottom: 6px; }
-  .hsig-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
-  .hsig-name { flex: 0 0 40%; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hsig-bar { flex: 1; height: 9px; background: var(--bg-soft); border-radius: 999px; overflow: hidden; }
-  .hsig-bar i { display: block; height: 100%; border-radius: 999px; min-width: 4px; }
-  .hsig-n { flex: 0 0 auto; font-size: 11.5px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
-  @media (max-width: 640px) { .hsig-name { flex-basis: 46%; } }
+  /* Signaux de la période (onglet Mes tendances) — puces compactes */
+  .hsig-resume { font-size: 12.5px; color: var(--text-soft); margin: 4px 0 10px; }
+  .hsig-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hsig-chip { display: inline-flex; align-items: center; gap: 7px; padding: 3px 5px 3px 11px; border-radius: 999px; font-size: 12px; color: #333; }
+  .hsig-chip-n { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: rgba(0,0,0,.12); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* petite ligne d'interprétation sous un graphique (ex. Humeur × Sommeil) */
+  .hc-reading-line { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; margin-top: 8px; }
   /* repère doux (jamais un diagnostic) */
   .health-alert { display: flex; align-items: flex-start; gap: 10px; background: #fbe7c2; border: 1px solid #eed6a0; border-radius: var(--radius-md); padding: 12px 14px; margin-top: 14px; }
   :root[data-theme="dark"] .health-alert { background: #3a3320; border-color: #5c4d22; }
@@ -9814,25 +9811,17 @@ function healthSignalTally(days) {
 }
 function healthSignalsCardHtml(days) {
   const tally = healthSignalTally(days);
-  const head = `<div class="health-card-title">Signaux de la période<span class="health-card-hint">à quelle fréquence tu les as cochés sur la période affichée</span></div>`;
+  const head = `<div class="health-card-title">Signaux de la période<span class="health-card-hint">chaque puce = un signal coché, avec le nombre de jours · couleur = côté (chaud = haut, vert = repère, froid = bas)</span></div>`;
   if (!tally.length) return `<div class="health-card">${head}<div class="hr-read-empty">Aucun signal coché sur cette période. Coche ce qui te parle dans « Ma journée » : tu verras ici lesquels reviennent le plus.</div></div>`;
-  const max = Math.max(...tally.map(s => s.count));
   const upDays = days.filter(k => { const l = healthLogFor(k); return l && Array.isArray(l.signals) && l.signals.some(sk => (HEALTH_SIGNALS.find(x => x.k === sk) || {}).type === 'up'); }).length;
   const downDays = days.filter(k => { const l = healthLogFor(k); return l && Array.isArray(l.signals) && l.signals.some(sk => (HEALTH_SIGNALS.find(x => x.k === sk) || {}).type === 'down'); }).length;
-  const tint = { up: '#e2985e', down: '#7fb3d5', neutral: '#8fcf9f' };
-  const groupOrder = [['up', 'Côté élan / activation'], ['neutral', 'Repères'], ['down', 'Versant bas']];
-  const groups = groupOrder.map(([type, label]) => {
-    const rows = tally.filter(s => s.type === type).sort((a, b) => b.count - a.count);
-    if (!rows.length) return '';
-    return `<div class="hsig-group"><div class="hsig-group-lbl">${esc(label)}</div>` + rows.map(s =>
-      `<div class="hsig-row" title="${esc(s.hint || '')}">
-        <span class="hsig-name">${esc(s.label)}</span>
-        <span class="hsig-bar"><i style="width:${Math.round(s.count / max * 100)}%;background:${tint[type]}"></i></span>
-        <span class="hsig-n">${s.count} j</span>
-      </div>`).join('') + `</div>`;
-  }).join('');
-  const resume = `<div class="hsig-resume">${upDays} jour${upDays > 1 ? 's' : ''} avec un signe côté haut · ${downDays} jour${downDays > 1 ? 's' : ''} côté bas</div>`;
-  return `<div class="health-card">${head}${resume}${groups}</div>`;
+  const bg = { up: '#f6dfb5', down: '#cdd6e8', neutral: '#d3e8cf' };
+  // puces compactes triées par fréquence ; la couleur porte le côté (haut/repère/bas)
+  const chips = tally.slice().sort((a, b) => b.count - a.count).map(s =>
+    `<span class="hsig-chip" style="background:${bg[s.type]}" title="${esc(s.hint || '')}">${esc(s.label)}<span class="hsig-chip-n">${s.count}</span></span>`
+  ).join('');
+  const resume = `<div class="hsig-resume">${upDays} jour${upDays > 1 ? 's' : ''} côté haut · ${downDays} jour${downDays > 1 ? 's' : ''} côté bas</div>`;
+  return `<div class="health-card">${head}${resume}<div class="hsig-chips">${chips}</div></div>`;
 }
 
 // ---- « Comment lire » dépliable sur la carte des journées ----
@@ -9904,6 +9893,36 @@ function healthMoodSleepChartHtml(days) {
     <text x="${x0 - 8}" y="${yAt(-5) + 3}" class="hc-axis" text-anchor="end">Désagréable</text>`;
   const xTitle = `<text x="${(x0 + x1) / 2}" y="${H - 3}" class="hc-axis" text-anchor="middle">Heures de sommeil</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" class="hc-corr">${grid}${yLabels}${trend}${dots}${xTitle}</svg>`;
+}
+// interprétation en clair de la tendance humeur × sommeil (pente de la régression)
+function healthMoodSleepReading(days) {
+  const pts = [];
+  days.forEach(k => { const l = healthLogFor(k); if (l && l.moodVal != null && l.sleepHours != null) pts.push({ x: l.sleepHours, y: l.moodVal }); });
+  if (pts.length < 4) return null;
+  const n = pts.length, sx = pts.reduce((s, p) => s + p.x, 0), sy = pts.reduce((s, p) => s + p.y, 0);
+  const sxx = pts.reduce((s, p) => s + p.x * p.x, 0), sxy = pts.reduce((s, p) => s + p.x * p.y, 0);
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-6) return null;
+  const a = (n * sxy - sx * sy) / denom;   // points d'humeur gagnés par heure de sommeil
+  const effet = a * 4;                       // effet sur ~4 h d'écart de sommeil
+  if (effet >= 0.8) return 'Sur cette période, les jours où tu <b>dors plus</b> vont plutôt avec une <b>humeur meilleure</b> (tendance, pas une certitude).';
+  if (effet <= -0.8) return 'Sur cette période, les jours où tu <b>dors plus</b> vont plutôt avec une <b>humeur plus basse</b> (tendance, pas une certitude).';
+  return 'Sur cette période, <b>pas de lien net</b> entre ton sommeil et ton humeur.';
+}
+let healthMoodSleepHelpOpen = false;
+function healthToggleMoodSleepHelp() { healthMoodSleepHelpOpen = !healthMoodSleepHelpOpen; if (typeof healthRerender === 'function') healthRerender(); else renderHealthSpace(); }
+window.healthToggleMoodSleepHelp = healthToggleMoodSleepHelp;
+function healthMoodSleepHelpHtml() {
+  if (!healthMoodSleepHelpOpen) return '';
+  return `<div class="hc-quad-help">
+    <p>Ce graphique regarde s'il existe un <b>lien entre ton sommeil et ton humeur</b>.</p>
+    <ul>
+      <li><b>Chaque point = une journée.</b> Sa position <b>de gauche à droite</b> = le nombre d'heures dormies (peu à gauche, beaucoup à droite). Sa position <b>de bas en haut</b> = ton humeur ce jour-là (désagréable en bas, neutre au milieu, agréable en haut).</li>
+      <li><b>La ligne</b> résume la tendance de tous tes points. Si elle <b>monte</b> vers la droite : plus tu dors, mieux tu te sens en général. Si elle <b>descend</b> : plus de sommeil va avec une humeur plus basse. Si elle est <b>plate</b> : pas de lien évident.</li>
+      <li>Survole un point pour voir la date, l'humeur et les heures de sommeil de ce jour-là.</li>
+    </ul>
+    <p>C'est une <b>tendance d'ensemble</b>, pas une règle : un point isolé ne veut rien dire.</p>
+  </div>`;
 }
 
 // ---- RÉCAP DES NOTES DU SUIVI : toutes les journées où une note libre existe ----
@@ -10156,8 +10175,11 @@ function renderHealthSpace() {
           ${clickWrap('sleep', healthSleepChartHtml(days))}
         </div>
         <div class="health-card">
-          <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">chaque point = une journée</span>${expandBtn('moodsleep')}</div>
+          <div class="health-card-title">Humeur × Sommeil<span class="health-card-hint">y a-t-il un lien entre ton sommeil et ton humeur ?</span>
+            <button type="button" class="hr-quad-help-btn" onclick="healthToggleMoodSleepHelp()">${healthMoodSleepHelpOpen ? 'Masquer' : 'Comment lire ?'}</button>${expandBtn('moodsleep')}</div>
+          ${healthMoodSleepHelpHtml()}
           ${clickWrap('moodsleep', healthMoodSleepChartHtml(days))}
+          ${(() => { const r = healthMoodSleepReading(days); return r ? `<div class="hc-reading-line">${r}</div>` : ''; })()}
         </div>
         <div class="health-card">
           <div class="health-card-title">Traitement et cycle${expandBtn('cyclemed')}</div>
