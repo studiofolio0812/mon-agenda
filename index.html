@@ -3015,6 +3015,22 @@
     .mail-rail-item .mail-rail-name { max-width: 120px; }
     .gmail-color-menu { left: auto; right: 0; }
   }
+  /* ---- Impression d'une note ---- */
+  #printArea { display: none; }
+  @media print {
+    /* pendant l'impression : on masque toute l'app et on ne montre que la note copiée */
+    body.printing > *:not(#printArea) { display: none !important; }
+    body.printing #printArea { display: block !important; }
+    #printArea { padding: 4mm 2mm; color: #1a1a1a; background: #fff; }
+    #printArea .note-print-title { font-size: 22px; font-weight: 700; margin: 0 0 16px; line-height: 1.25; }
+    /* la note reprend ses vrais styles (encadrés, checklists, tableaux…) car le CSS est global ;
+       on lève juste les contraintes de hauteur/défilement de l'éditeur pour tout imprimer */
+    #printArea .note-body { max-width: none !important; max-height: none !important; height: auto !important; overflow: visible !important; min-height: 0 !important; padding: 0 !important; }
+    #printArea img { max-width: 100% !important; }
+    /* garder les couleurs de fond (encadrés colorés, pilules) à l'impression */
+    #printArea, #printArea * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @page { margin: 14mm; }
+  }
 </style>
 </head>
 <body>
@@ -3214,6 +3230,9 @@
 
 <!-- champ caché pour choisir une couleur personnalisée (code hex) -->
 <input type="color" id="hexInput" class="hidden" value="#6c5ce7">
+
+<!-- zone d'impression : reçoit une copie de la note à imprimer (voir printNote / @media print) -->
+<div id="printArea" aria-hidden="true"></div>
 
 <!-- ============ MODAL: EVENT / TASK ============ -->
 <div class="overlay" id="itemOverlay">
@@ -3449,6 +3468,7 @@
       <button class="icon-btn" id="noteReadBtn" title="Aperçu"></button>
       <button class="icon-btn" id="noteZoomBtn" title="Ouvrir en grand"></button>
       <button class="icon-btn hidden" id="noteWideBtn" title="Élargir en paysage"></button>
+      <button class="icon-btn" id="notePrintBtn" title="Imprimer cette note" onclick="printNote()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg></button>
       <button class="icon-btn" data-close>✕</button>
     </div>
     <div id="noteTplBanner" class="tpl-banner hidden"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Tu modifies un modèle de note — les changements sont enregistrés dans le modèle, pas dans une vraie note.</span></div>
@@ -11153,6 +11173,31 @@ function toggleNoteRead() {
   noteAutosave(true);
   save(); applyNoteMode();
 }
+
+/* Imprimer la note ouverte. On copie son titre + son contenu dans #printArea :
+   grâce au CSS @media print, l'app est masquée et seule la note s'imprime, avec
+   ses vrais styles (encadrés, checklists, tableaux…) puisque le CSS reste global.
+   Un iframe caché n'est pas utilisé : rester dans le même document préserve la mise en forme. */
+function printNote() {
+  const src = document.getElementById('noteBody');
+  const area = document.getElementById('printArea');
+  if (!src || !area) return;
+  const title = (document.getElementById('noteTitle').value || 'Note').trim();
+  area.innerHTML = `<h1 class="note-print-title">${esc(title)}</h1>`
+    + `<div class="note-body note-print-body">${src.innerHTML}</div>`;
+  const cleanup = () => {
+    document.body.classList.remove('printing');
+    area.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  document.body.classList.add('printing');
+  // laisser le navigateur appliquer la mise en page avant d'ouvrir la boîte d'impression
+  setTimeout(() => { try { window.print(); } catch (e) { cleanup(); } }, 80);
+  // filet de sécurité si « afterprint » ne se déclenche pas (certains navigateurs)
+  setTimeout(cleanup, 120000);
+}
+window.printNote = printNote;
 
 /* Sauvegarde automatique : indispensable depuis que l'aperçu masque le bouton
    « Enregistrer ». Différée d'une seconde pour ne pas écrire à chaque frappe, et
