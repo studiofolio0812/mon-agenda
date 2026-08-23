@@ -1861,6 +1861,16 @@
   .health-sig.on.up { background: #f6dfb5; }
   .health-sig.on.down { background: #cdd6e8; }
   .health-sig.on.neutral { background: #d3e8cf; }
+  /* Signaux de la période (onglet Mes tendances) */
+  .hsig-resume { font-size: 12.5px; color: var(--text-soft); margin: 4px 0 12px; }
+  .hsig-group { margin-bottom: 12px; }
+  .hsig-group-lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); margin-bottom: 6px; }
+  .hsig-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; }
+  .hsig-name { flex: 0 0 40%; font-size: 12.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hsig-bar { flex: 1; height: 9px; background: var(--bg-soft); border-radius: 999px; overflow: hidden; }
+  .hsig-bar i { display: block; height: 100%; border-radius: 999px; min-width: 4px; }
+  .hsig-n { flex: 0 0 auto; font-size: 11.5px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) { .hsig-name { flex-basis: 46%; } }
   /* repère doux (jamais un diagnostic) */
   .health-alert { display: flex; align-items: flex-start; gap: 10px; background: #fbe7c2; border: 1px solid #eed6a0; border-radius: var(--radius-md); padding: 12px 14px; margin-top: 14px; }
   :root[data-theme="dark"] .health-alert { background: #3a3320; border-color: #5c4d22; }
@@ -9795,6 +9805,36 @@ function healthReadingCardHtml() {
     <div class="hr-read-txt">${phrase}</div>${lean}</div>`;
 }
 
+/* ---- SIGNAUX DE LA PÉRIODE : fréquence de chaque signal coché sur la fenêtre affichée ----
+   Rend visibles dans « Mes tendances » les signaux qu'elle coche jour après jour dans « Ma journée ». */
+function healthSignalTally(days) {
+  const counts = {};
+  days.forEach(k => { const l = healthLogFor(k); if (l && Array.isArray(l.signals)) l.signals.forEach(sk => { counts[sk] = (counts[sk] || 0) + 1; }); });
+  return HEALTH_SIGNALS.map(s => ({ ...s, count: counts[s.k] || 0 })).filter(s => s.count > 0);
+}
+function healthSignalsCardHtml(days) {
+  const tally = healthSignalTally(days);
+  const head = `<div class="health-card-title">Signaux de la période<span class="health-card-hint">à quelle fréquence tu les as cochés sur la période affichée</span></div>`;
+  if (!tally.length) return `<div class="health-card">${head}<div class="hr-read-empty">Aucun signal coché sur cette période. Coche ce qui te parle dans « Ma journée » : tu verras ici lesquels reviennent le plus.</div></div>`;
+  const max = Math.max(...tally.map(s => s.count));
+  const upDays = days.filter(k => { const l = healthLogFor(k); return l && Array.isArray(l.signals) && l.signals.some(sk => (HEALTH_SIGNALS.find(x => x.k === sk) || {}).type === 'up'); }).length;
+  const downDays = days.filter(k => { const l = healthLogFor(k); return l && Array.isArray(l.signals) && l.signals.some(sk => (HEALTH_SIGNALS.find(x => x.k === sk) || {}).type === 'down'); }).length;
+  const tint = { up: '#e2985e', down: '#7fb3d5', neutral: '#8fcf9f' };
+  const groupOrder = [['up', 'Côté élan / activation'], ['neutral', 'Repères'], ['down', 'Versant bas']];
+  const groups = groupOrder.map(([type, label]) => {
+    const rows = tally.filter(s => s.type === type).sort((a, b) => b.count - a.count);
+    if (!rows.length) return '';
+    return `<div class="hsig-group"><div class="hsig-group-lbl">${esc(label)}</div>` + rows.map(s =>
+      `<div class="hsig-row" title="${esc(s.hint || '')}">
+        <span class="hsig-name">${esc(s.label)}</span>
+        <span class="hsig-bar"><i style="width:${Math.round(s.count / max * 100)}%;background:${tint[type]}"></i></span>
+        <span class="hsig-n">${s.count} j</span>
+      </div>`).join('') + `</div>`;
+  }).join('');
+  const resume = `<div class="hsig-resume">${upDays} jour${upDays > 1 ? 's' : ''} avec un signe côté haut · ${downDays} jour${downDays > 1 ? 's' : ''} côté bas</div>`;
+  return `<div class="health-card">${head}${resume}${groups}</div>`;
+}
+
 // ---- « Comment lire » dépliable sur la carte des journées ----
 let healthQuadHelpOpen = false;
 function healthToggleQuadHelp() { healthQuadHelpOpen = !healthQuadHelpOpen; if (typeof healthRerender === 'function') healthRerender(); else renderHealthSpace(); }
@@ -10094,6 +10134,7 @@ function renderHealthSpace() {
       </div>`;
       return `${kpis}
       ${healthReadingCardHtml()}
+      ${healthSignalsCardHtml(days)}
       ${healthCycleSettingsHtml()}
       <div class="health-charts-wrap" id="healthChartsWrap">
       ${nav}
