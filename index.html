@@ -1532,7 +1532,9 @@
   .bl-wrap { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 10px; }
   .bl-chart-box { flex: 1 1 440px; min-width: 300px; }
   .bl-donut-box { flex: 0 0 290px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .bl-donut-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+  .bl-donut-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: wrap; }
+  .bl-sub-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-soft); cursor: pointer; }
+  .bl-sub-toggle input { cursor: pointer; }
   .bl-break-tabs { display: inline-flex; gap: 4px; }
   /* hauteur fixe plutôt que "auto" : avec un viewBox très large en vue Mois (~30 barres),
      "auto" calcule la hauteur depuis le ratio largeur/hauteur du viewBox et écrase le
@@ -10543,10 +10545,22 @@ function bilanGroupOf(e) {
   if (e.projectId) { const p = projById(e.projectId); if (p) return { key: 'p:' + p.id, label: p.name, color: p.color }; }
   if (e.catId) {
     const c = catById(e.catId);
-    if (c) { const top = catParent(c) || c; return { key: 'c:' + top.id, label: top.name, color: catColor(top) }; }
+    if (c) {
+      // option « détailler les sous-agendas » : on groupe par le sous-agenda lui-même (sa couleur),
+      // sinon (défaut) on regroupe tout sous l'agenda parent
+      if (state.bilanBySub) {
+        const top = catParent(c) || c;
+        const label = (top && top.id !== c.id) ? top.name + ' › ' + c.name : c.name;
+        return { key: 'c:' + c.id, label, color: catColor(c) };
+      }
+      const top = catParent(c) || c;
+      return { key: 'c:' + top.id, label: top.name, color: catColor(top) };
+    }
   }
   return { key: 'none', label: 'Sans agenda', color: '#cfcac2' };
 }
+function toggleBilanBySub() { state.bilanBySub = !state.bilanBySub; save(); renderBilanSpace(); }
+window.toggleBilanBySub = toggleBilanBySub;
 // répartition par sous-agenda (liste) à l'intérieur d'un agenda parent, sur la période affichée —
 // alimente le toggle de la légende, pour ne pas noyer le bilan global dans le détail par défaut
 function bilanSubBreakdown(days, topCatId) {
@@ -10928,7 +10942,8 @@ function renderBilanSpace() {
   // le donut ne montre plus que la répartition par agenda (l'onglet Priorité a été retiré)
   const donutGroups = groups;
   const donutTotal = donutGroups.reduce((s, g) => s + g.total, 0);
-  const allowExpand = true;
+  // quand on détaille déjà par sous-agenda, le dépliage de la légende n'a plus de sens
+  const allowExpand = !state.bilanBySub;
 
   const legend = donutGroups.length ? donutGroups.map(g => {
     const topId = allowExpand && g.key.startsWith('c:') ? g.key.slice(2) : null;
@@ -10979,7 +10994,8 @@ function renderBilanSpace() {
       </div>
       <div class="bl-donut-box">
         <div class="bl-donut-head">
-          <span class="space-sort-lbl">Répartition par agenda</span>
+          <span class="space-sort-lbl">Répartition par ${state.bilanBySub ? 'sous-agenda' : 'agenda'}</span>
+          <label class="bl-sub-toggle" title="Afficher chaque sous-agenda avec sa propre couleur"><input type="checkbox" ${state.bilanBySub ? 'checked' : ''} onchange="toggleBilanBySub()"> Détailler les sous-agendas</label>
         </div>
         ${bilanDonutHtml(donutGroups, donutTotal)}
         <div class="bl-legend">${legend}</div>
