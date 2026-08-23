@@ -1456,6 +1456,10 @@
   .cat-tc-btn.on { border-color: var(--accent); background: var(--accent-soft, var(--bg-soft)); font-weight: 600; }
   .cat-tc-dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto; }
   .cat-tc-rainbow { background: conic-gradient(from 0deg, #f2b8a2, #d9c94a, #8fcf9f, #a2c8f2, #c3b2e6, #e0a9c4, #f2b8a2); }
+  /* même choix de couleur de texte, version compacte sur la fiche d'un agenda */
+  .pg-tc { display: inline-flex; align-items: center; gap: 8px; }
+  .pg-tc .cat-tc-preview { width: 30px; height: 26px; font-size: 13px; }
+  .pg-tc input[type="color"] { width: 34px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
   /* réglage « couleur des priorités » : un libellé + une seule pastille cliquable par niveau */
   .prio-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
   .prio-row-label { font-size: 13px; width: 84px; flex: none; color: var(--text-soft); }
@@ -14891,7 +14895,7 @@ const PAGE_BUILTINS = {
   events:   [['date','Date','date'],['endDate','Dernier jour','date'],['allDay','Journée entière','check'],['start','Début','time'],['end','Fin','time'],['catId','Agenda','cat'],['projectId','Projet','proj'],['people','Personnes','people'],['color','Couleur','color'],['note','Note','longtext'],['tags','Étiquettes','tags']],
   tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext'],['tags','Étiquettes','tags']],
   projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color'],['tags','Étiquettes','tags']],
-  cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color']],
+  cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color'],['textColor','Couleur du texte','textcolor']],
   habits:   [['freq','Fréquence','hfreq'],['weekTarget','Objectif hebdo','num'],['color','Couleur','color']],
   health:   [['date','Date','date'],['mood','Humeur','mood'],['sleepHours','Sommeil (h)','num'],['cycle','Règles','check'],['note','Note','longtext']],
 };
@@ -14958,6 +14962,7 @@ function builtinField(c, rec, f) {
   if (f.kind === 'date')  return `<input type="date" value="${v||''}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'time')  return `<input type="time" value="${v||''}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'color') return `<input type="color" value="${v||PALETTE[0]}" onchange="updData(${b},this.value)">`;
+  if (f.kind === 'textcolor') { const bg = catColor(rec); return `<span class="pg-tc"><span class="cat-tc-preview" style="background:${bg};color:${v || catTextColor(catParent(rec) || {}) || inkOn(bg)}">Aa</span><button type="button" class="cat-tc-btn ${!v?'on':''}" onclick="updDataR(${b},'')">Auto</button><input type="color" value="${v||'#333333'}" onchange="updDataR(${b},this.value)" title="Choisir la couleur du texte"></span>`; }
   if (f.kind === 'check') return `<input type="checkbox" ${v?'checked':''} onchange="updDataR(${b},this.checked)">`;
   if (f.kind === 'num')   return `<input type="number" step="any" value="${v==null?'':v}" onchange="updDataNum(${b},this.value)">`;
   if (f.kind === 'mood')  return `<select onchange="updDataNum(${b},this.value)"><option value="">—</option>${MOOD_SCALE.map(m => `<option value="${m.v}" ${v===m.v?'selected':''}>${esc(m.label)}</option>`).join('')}</select>`;
