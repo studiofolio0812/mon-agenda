@@ -3709,7 +3709,9 @@
       <input id="projName" placeholder="Ex : Refonte site client X…" autocomplete="off">
       <label>Couleur</label>
       <div class="color-picker" id="projColorPicker"></div>
-      <label>Étiquettes</label>
+      <label style="margin-top:16px">Couleur du texte</label>
+      <div class="cat-textcolor" id="projTextPicker"></div>
+      <label style="margin-top:16px">Étiquettes</label>
       <div id="projTagsBox"></div>
     </div>
     <div class="modal-foot">
@@ -4839,9 +4841,10 @@ function projectsOn(d) {
 function eventLook(e) {
   const p = e.projectId ? projById(e.projectId) : null;
   if (p) {
-    // look « projet » : fond éclairci, toujours clair → encre foncée
-    const ink = 'var(--ink-on-pastel)';
-    return { style: `background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)};color:${ink}`, dot: dotOf(p.color), ink, isProject: true };
+    // look « projet » : fond éclairci ; encre foncée par défaut, ou la couleur de texte choisie sur le projet
+    const ink = projInk(p);
+    const extra = p.textColor ? `;--ev-ink:${p.textColor}` : '';
+    return { style: `background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)};color:${ink}${extra}`, dot: dotOf(p.color), ink, isProject: true };
   }
   // sinon la couleur vient de l'agenda choisi ; à défaut, de la couleur propre de l'événement
   const cat = e.catId ? catById(e.catId) : null;
@@ -4853,6 +4856,9 @@ function eventLook(e) {
   const extra = custom ? `;--ev-ink:${custom}` : '';
   return { style: `background:${col};border-left:3px solid ${dotOf(col)};color:${ink}${extra}`, dot: dotOf(col), ink, isProject: false };
 }
+// couleur d'écriture d'un projet dans le calendrier : celle choisie sur le projet, sinon l'encre auto (foncée)
+const projInk = p => (p && p.textColor) || 'var(--ink-on-pastel)';
+const projInkStyle = p => (p && p.textColor) ? `;color:${p.textColor}` : '';
 // couleur de la bande d'une tâche : son agenda, sinon son projet
 function taskStripe(t) {
   const c = catById(t.catId);
@@ -5042,7 +5048,7 @@ function dayEntries(d, styled) {
   projectsOn(d).forEach(p => {
     const inner = `${iconOf(p, 'projects', 13)}<span class="ag-title">${esc(p.name)}</span>`;
     const body = styled
-      ? `<span class="ag-chip" style="background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)};color:var(--ink-on-pastel)">${inner}</span>`
+      ? `<span class="ag-chip" style="background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)};color:${projInk(p)}">${inner}</span>`
       : `<span class="ag-dot" style="background:${dotOf(p.color)}"></span>${inner}`;
     entrees.push({ t: '', html:
       `<div class="ag-item" onclick="openPage('projects','${p.id}')"><span class="ag-time">projet</span>${body}</div>` });
@@ -5493,7 +5499,7 @@ function renderMonth() {
         if (s < 0 || e < 0) return;
         barres.push({ s, e, kind: 'project', id: p.id,
           cut: { l: projStart(p) < debut, r: projEnd(p) > fin },
-          style: `background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)}`,
+          style: `background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)}${projInkStyle(p)}`,
           open: `openPage('projects','${p.id}')`,
           html: `${iconOf(p, 'projects', 11)}${esc(p.name)}` });
       });
@@ -5620,7 +5626,7 @@ function renderAllDayRow(days, colTemplate) {
         kind: 'project', id: p.id, s, en,
         cut: { left: projStart(p) < first, right: projEnd(p) > last },
         html: `${iconOf(p,'projects',11)}${esc(p.name)}`,
-        style: `background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)}`,
+        style: `background:${lighten(p.color)};border:1.5px solid ${dotOf(p.color)}${projInkStyle(p)}`,
       });
     });
 
@@ -13149,6 +13155,7 @@ function pdOpenTask(id) { reopenProjDetail = pdProjId; openModal('task', id); }
 window.pdOpenTask = pdOpenTask;
 
 let projDraftColor = PALETTE[0];
+let projDraftTextColor = '';
 let editingProj = null;
 function openProjModal(id) {
   editingProj = id || null;
@@ -13159,9 +13166,10 @@ function openProjModal(id) {
   $('deleteProjBtn').classList.toggle('hidden', !isEdit);
   if (isEdit) {
     const p = projById(id);
-    $('projName').value = p.name; projDraftColor = p.color;
+    $('projName').value = p.name; projDraftColor = p.color; projDraftTextColor = p.textColor || '';
   } else {
     projDraftColor = allColors()[Math.floor(Math.random()*PALETTE.length)];
+    projDraftTextColor = '';
     $('projName').value = '';
   }
   tagFieldOpen('projTagsBox', tagsOf(isEdit ? projById(id) : null));
@@ -13171,18 +13179,34 @@ function openProjModal(id) {
 }
 function editProject(id, ev) { ev && ev.stopPropagation(); openProjModal(id); }
 window.editProject = editProject;
-function renderProjPicker() { $('projColorPicker').innerHTML = paletteHtml(projDraftColor, 'pickProjColor', 'proj'); }
+function renderProjPicker() { $('projColorPicker').innerHTML = paletteHtml(projDraftColor, 'pickProjColor', 'proj'); renderProjTextPicker(); }
 function pickProjColor(c) { projDraftColor = c; rememberColor(c); renderProjPicker(); }
 window.pickProjColor = pickProjColor;
+// couleur du texte d'un projet (aperçu Aa sur le fond éclairci du calendrier)
+function renderProjTextPicker() {
+  const box = $('projTextPicker'); if (!box) return;
+  const bg = lighten(projDraftColor || '#EDEDEB');
+  const tc = projDraftTextColor || '';
+  const eff = tc || 'var(--ink-on-pastel)';
+  const isCustom = !!tc && !['#ffffff', '#2a2a2a'].includes(tc.toLowerCase());
+  const opt = (val, label, sw, sel) => `<button type="button" class="cat-tc-btn ${sel ? 'on' : ''}" onclick="pickProjText('${val}')">${sw ? `<span class="cat-tc-dot" style="background:${sw}"></span>` : ''}${label}</button>`;
+  box.innerHTML = `<span class="cat-tc-preview" style="background:${bg};color:${eff}">Aa</span>`
+    + opt('', 'Auto', '', tc === '')
+    + opt('#ffffff', 'Blanc', '#ffffff', tc.toLowerCase() === '#ffffff')
+    + opt('#2a2a2a', 'Foncé', '#2a2a2a', tc.toLowerCase() === '#2a2a2a')
+    + `<button type="button" class="cat-tc-btn ${isCustom ? 'on' : ''}" onclick="addCustomColor('projtext')"><span class="cat-tc-dot cat-tc-rainbow"></span>Autre…${isCustom ? `<span class="cat-tc-dot" style="background:${tc};margin-left:4px;border:1px solid var(--border)"></span>` : ''}</button>`;
+}
+function pickProjText(v) { projDraftTextColor = v; renderProjTextPicker(); }
+window.pickProjText = pickProjText;
 function saveProj() {
   const name = $('projName').value.trim();
   if (!name) { $('projName').focus(); return; }
   if (editingProj) {
     const p = projById(editingProj);
-    if (p) { p.name = name; p.color = projDraftColor; p.tags = tagDraft.slice(); }
+    if (p) { p.name = name; p.color = projDraftColor; p.textColor = projDraftTextColor || ''; p.tags = tagDraft.slice(); }
   } else {
     const pid = uid();
-    state.projects.push({ id: pid, name, color: projDraftColor, tags: tagDraft.slice() });
+    state.projects.push({ id: pid, name, color: projDraftColor, textColor: projDraftTextColor || '', tags: tagDraft.slice() });
     // tâches embarquées par un modèle de projet
     if (projTplTasks && projTplTasks.length) projTplTasks.forEach(t => state.tasks.push({
       id: uid(), done: false, title: t.title, due: '', dueTime: '', dueEnd: '',
@@ -13922,6 +13946,7 @@ function addCustomColor(ctx) {
   const cur = ctx.startsWith('prio:') ? prioCol(ctx.slice(5))
             : ctx.startsWith('mailfolder:') ? gmailFolderColor(ctx.slice(11))
             : ctx === 'cattext' ? (catDraft.textColor || '#333333')
+            : ctx === 'projtext' ? (projDraftTextColor || '#333333')
             : ctx === 'item' ? draft.color : ctx === 'cat' ? catDraft.color : ctx === 'proj' ? projDraftColor
             : ctx === 'habit' ? habitDraft.color : ctx === 'note' ? noteDraftColor : ctx === 'folder' ? folderDraftColor
             : ctx === 'projtpl' ? projTplEditColor : state.accent;
@@ -14894,7 +14919,7 @@ const titleFieldOf = c => TITLE_FIELD[c] || 'title';
 const PAGE_BUILTINS = {
   events:   [['date','Date','date'],['endDate','Dernier jour','date'],['allDay','Journée entière','check'],['start','Début','time'],['end','Fin','time'],['catId','Agenda','cat'],['projectId','Projet','proj'],['people','Personnes','people'],['color','Couleur','color'],['note','Note','longtext'],['tags','Étiquettes','tags']],
   tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext'],['tags','Étiquettes','tags']],
-  projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color'],['tags','Étiquettes','tags']],
+  projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color'],['textColor','Couleur du texte','textcolor'],['tags','Étiquettes','tags']],
   cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color'],['textColor','Couleur du texte','textcolor']],
   habits:   [['freq','Fréquence','hfreq'],['weekTarget','Objectif hebdo','num'],['color','Couleur','color']],
   health:   [['date','Date','date'],['mood','Humeur','mood'],['sleepHours','Sommeil (h)','num'],['cycle','Règles','check'],['note','Note','longtext']],
@@ -14962,7 +14987,14 @@ function builtinField(c, rec, f) {
   if (f.kind === 'date')  return `<input type="date" value="${v||''}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'time')  return `<input type="time" value="${v||''}" onchange="updData(${b},this.value)">`;
   if (f.kind === 'color') return `<input type="color" value="${v||PALETTE[0]}" onchange="updData(${b},this.value)">`;
-  if (f.kind === 'textcolor') { const bg = catColor(rec); return `<span class="pg-tc"><span class="cat-tc-preview" style="background:${bg};color:${v || catTextColor(catParent(rec) || {}) || inkOn(bg)}">Aa</span><button type="button" class="cat-tc-btn ${!v?'on':''}" onclick="updDataR(${b},'')">Auto</button><input type="color" value="${v||'#333333'}" onchange="updDataR(${b},this.value)" title="Choisir la couleur du texte"></span>`; }
+  if (f.kind === 'textcolor') {
+    const isProj = c === 'projects';
+    const bg = isProj ? lighten(rec.color || '#EDEDEB') : catColor(rec);
+    const auto = isProj ? 'var(--ink-on-pastel)' : inkOn(bg);
+    const inherited = isProj ? '' : catTextColor(catParent(rec) || {});
+    const eff = v || inherited || auto;
+    return `<span class="pg-tc"><span class="cat-tc-preview" style="background:${bg};color:${eff}">Aa</span><button type="button" class="cat-tc-btn ${!v?'on':''}" onclick="updDataR(${b},'')">Auto</button><input type="color" value="${v||'#333333'}" onchange="updDataR(${b},this.value)" title="Choisir la couleur du texte"></span>`;
+  }
   if (f.kind === 'check') return `<input type="checkbox" ${v?'checked':''} onchange="updDataR(${b},this.checked)">`;
   if (f.kind === 'num')   return `<input type="number" step="any" value="${v==null?'':v}" onchange="updDataNum(${b},this.value)">`;
   if (f.kind === 'mood')  return `<select onchange="updDataNum(${b},this.value)"><option value="">—</option>${MOOD_SCALE.map(m => `<option value="${m.v}" ${v===m.v?'selected':''}>${esc(m.label)}</option>`).join('')}</select>`;
@@ -18639,6 +18671,7 @@ $('hexInput').onchange = e => {
   else if (colorCtx === 'item') { draft.color = c; renderColorPicker(); }
   else if (colorCtx === 'cat') { catDraft.color = c; catDraft.inherit = false; renderCatPicker(); syncCatIcon(); }
   else if (colorCtx === 'cattext') { catDraft.textColor = c; renderCatTextPicker(); }
+  else if (colorCtx === 'projtext') { projDraftTextColor = c; renderProjTextPicker(); }
   else if (colorCtx === 'proj') { projDraftColor = c; renderProjPicker(); }
   else if (colorCtx === 'habit') { habitDraft.color = c; renderHabitColor(); syncHabitIcon(); }
   else if (colorCtx === 'note') { noteDraftColor = c; renderNoteColorPicker(); }
