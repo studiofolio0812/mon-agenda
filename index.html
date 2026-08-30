@@ -1163,6 +1163,17 @@
   .hw-bar i { display: block; height: 100%; border-radius: 3px; transition: width .2s; }
   .hw-proj-sub { font-size: 11.5px; color: var(--text-faint); }
   .hw-late { color: #a4463f; }
+  /* widget « Relances du jour » */
+  .hw-crm-row { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-top: 1px solid var(--border); cursor: pointer; }
+  .hw-crm-row:first-child { border-top: none; }
+  .hw-crm-row:hover .hw-crm-name { color: var(--accent); }
+  .hw-crm-name { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hw-crm-meta { flex: 0 0 auto; font-size: 11.5px; color: var(--text-soft); }
+  .hw-crm-meta.urgent { color: #c0564f; font-weight: 600; }
+  .hw-crm-none { font-size: 13px; color: var(--text-soft); line-height: 1.5; padding: 6px 2px; }
+  .hw-crm-none span { font-size: 11.5px; color: var(--text-faint); }
+  /* conteneur des relances sur l'accueil mobile */
+  .ho-crm { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 2px 12px; margin-bottom: 10px; }
 
   /* Habitudes */
   .hw-habit { display: flex; align-items: center; gap: 9px; padding: 8px 4px; border-top: 1px solid var(--border); }
@@ -5188,6 +5199,10 @@ function renderHomeMobile() {
     </div>`;
   }
 
+  // relances CRM du jour (seulement s'il y en a)
+  const crmBody = hwCrm();
+  if (crmBody.includes('hw-crm-row')) html += `<div class="ho-sec-title">Relances du jour</div><div class="ho-crm">${crmBody}</div>`;
+
   const entrees = dayEntries(today, true);
   html += `<div class="ho-sec-title">Aujourd'hui</div>`;
   html += entrees.length
@@ -6435,13 +6450,14 @@ function showToast(msg) {
 const HOME_WIDGETS = {
   focus:    { label: 'Focus du jour', wide: true, body: () => hwFocus() },
   projects: { label: 'Projets',                   body: () => hwProjects() },
+  crm:      { label: 'Relances du jour',          body: () => hwCrm() },
   habits:   { label: 'Habitudes',                 body: () => hwHabits() },
   health:   { label: 'Suivi santé',               body: () => hwHealth() },
   notes:    { label: 'Notes récentes',            body: () => hwNotes() },
   bilan:    { label: 'Bilan express',             body: () => hwBilan() },
   horoscope:{ label: 'Horoscope du jour',         body: () => hwHoroscope() },
 };
-const HOME_ORDER_DEFAUT = ['focus', 'projects', 'habits', 'horoscope', 'health', 'notes', 'bilan'];
+const HOME_ORDER_DEFAUT = ['focus', 'projects', 'crm', 'habits', 'horoscope', 'health', 'notes', 'bilan'];
 // largeurs (px) des colonnes du Focus du jour — ajustables à la souris, mémorisées dans state.home.cols
 const HOME_COLS_DEFAUT = { projet: 152, agenda: 132, prio: 102, due: 96 };
 const HOME_COL_MIN = 62, HOME_COL_MAX = 340;
@@ -6654,6 +6670,33 @@ function hwProjects() {
       <div class="hw-proj-sub">${st.done}/${st.total} tâche${st.total > 1 ? 's' : ''}${st.next ? ` · prochaine ${esc(friendlyDate(st.next.due))}` : ''}${st.late ? ` · <b class="hw-late">${st.late} en retard</b>` : ''}</div>
     </div>`;
   }).join('');
+}
+
+// widget « Relances du jour » : qui recontacter (relances programmées dues + contacts perdus de vue)
+function hwCrm() {
+  const tid = state.crmTableId || peopleTableId();
+  if (!tid) return hwEmpty('Pas encore de contacts.', 'Ouvrir le CRM', "openSpace('crm')");
+  const all = crmRecords();
+  // relances PROGRAMMÉES dues ou proches (≤ 7 j), prioritaires
+  const prog = all.filter(r => { const n = crmFollowUpIn(r); return n !== null && n <= 7; }).sort((a, b) => crmFollowUpIn(a) - crmFollowUpIn(b));
+  const dejaLa = new Set(prog.map(r => r.id));
+  // puis relances PASSIVES : plus de 90 j sans contact
+  const passive = all.filter(r => !dejaLa.has(r.id) && crmSinceLast(r) >= 90).sort((a, b) => crmSinceLast(b) - crmSinceLast(a));
+  const list = prog.concat(passive).slice(0, 6);
+  if (!list.length) return `<div class="hw-crm-none">Personne à relancer aujourd'hui 🎉<br><span>Renseigne « À relancer le » sur une fiche, ou laisse « Dernier contact » alimenter la liste au bout de 90 jours.</span></div>`;
+  const jours = n => n <= 0 ? "aujourd'hui" : n === 1 ? 'demain' : 'dans ' + n + ' j';
+  const meta = r => {
+    const n = crmFollowUpIn(r);
+    if (n !== null && n <= 7) return n < 0 ? `en retard de ${-n} j` : (n === 0 ? "à relancer aujourd'hui" : `à relancer ${jours(n)}`);
+    const s = crmSinceLast(r);
+    return s >= 9999 ? 'jamais contacté' : `vu il y a ${s} j`;
+  };
+  const urgent = r => { const n = crmFollowUpIn(r); return n !== null && n <= 0; };
+  return list.map(r => `<div class="hw-crm-row" onclick="openPage('${tid}','${r.id}')">
+    <span class="person-av">${esc(initials(r.title))}</span>
+    <span class="hw-crm-name">${esc(r.title || 'Sans nom')}</span>
+    <span class="hw-crm-meta ${urgent(r) ? 'urgent' : ''}">${esc(meta(r))}</span>
+  </div>`).join('');
 }
 
 function hwHabits() {
