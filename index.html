@@ -1625,13 +1625,17 @@
   .tbl-title:hover { color: var(--accent); }
   .tbl-row.is-done .tbl-title { text-decoration: line-through; color: var(--text-faint); }
   /* tâches « ne sera pas fait » : barré + grisé + italique, distinct d'une tâche accomplie */
-  .tbl-row.cancelled .tbl-title, .ag-item.cancelled .ag-title, .chip.task.cancelled { font-style: italic; color: var(--text-faint); text-decoration: line-through; }
+  .tbl-row.cancelled .tbl-title, .ag-item.cancelled .ag-title, .chip.task.cancelled, .task-block.cancelled .tk-title, .dl-task.cancelled .dl-task-title { font-style: italic; color: var(--text-faint); text-decoration: line-through; }
+  .task-block.cancelled { opacity: .8; }
   .chip.task.cancelled { opacity: .75; }
   .t-cancel { font-style: normal; text-decoration: none; font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; color: #a4655e; background: rgba(164,101,94,.13); border-radius: 999px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
   .task-check.cancelled { color: var(--text-soft); }
   .task-check.cancelled::after { content: none !important; }
   .tbl-th-check .task-check.cancelled { background: var(--surface-2); border-color: var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
   .tick.cancelled { color: var(--text-faint); }
+  .tk-tick.cancelled { color: var(--text-faint); }
+  /* interrupteur « Ne sera pas fait » dans la fiche d'une tâche */
+  .fiche-cancel { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-soft); cursor: pointer; }
   .tbl-row.sub .tbl-title { padding-left: 26px; font-size: 13px; color: var(--text-soft); }
   .tbl-cell { cursor: pointer; white-space: nowrap; }
   .tbl-cell-inner { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 20px;
@@ -5865,12 +5869,12 @@ function renderTimeGrid(nDays) {
     timedTasksOn(d).forEach(t => {
       if (evTaskIds.has(t.id)) return;
       const border = taskStripe(t);
-      const label = `<span class="tk-tick" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher">${t.done?'✓':'○'}</span><span class="tk-title">${repIco(t)}${iconOf(t,'tasks',12)}${esc(t.title)}</span>`;
+      const label = `<span class="tk-tick ${t.cancelled?'cancelled':''}" onclick="toggleTask('${t.id}',event)" title="${t.cancelled?'Réactiver':'Cocher / décocher'}">${t.cancelled?'✕':(t.done?'✓':'○')}</span><span class="tk-title">${repIco(t)}${iconOf(t,'tasks',12)}${esc(t.title)}${cancelTag(t)}</span>`;
       const startMin = timeToMin(t.dueTime);
       const endMin = Math.max(startMin + 15, timeToMin(t.dueEnd || fmtMin(Math.min(1440, startMin + 30))));
       const top = startMin * 48/60;
       const height = Math.max(22, (endMin - startMin) * 48/60);
-      body += `<div class="task-block ${t.done?'done':''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${t.id}" style="top:${top}px;height:${height}px;border-left:3px solid ${border}" onclick="openEdit('task','${t.id}',event)" title="${esc(t.title)} · ${t.dueTime}–${fmtMin(endMin)}">
+      body += `<div class="task-block ${t.done?'done':''} ${t.cancelled?'cancelled':''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${t.id}" style="top:${top}px;height:${height}px;border-left:3px solid ${border}" onclick="openEdit('task','${t.id}',event)" title="${esc(t.title)} · ${t.dueTime}–${fmtMin(endMin)}">
         <div class="ev-resize top" data-edge="top"></div>
         ${label}
         <div class="ev-resize bottom" data-edge="bottom"></div>
@@ -15081,7 +15085,7 @@ const titleFieldOf = c => TITLE_FIELD[c] || 'title';
 // propriétés intégrées affichées dans la page (hors titre)
 const PAGE_BUILTINS = {
   events:   [['date','Date','date'],['endDate','Dernier jour','date'],['allDay','Journée entière','check'],['start','Début','time'],['end','Fin','time'],['catId','Agenda','cat'],['projectId','Projet','proj'],['people','Personnes','people'],['color','Couleur','color'],['note','Note','longtext'],['tags','Étiquettes','tags']],
-  tasks:    [['done','Terminée','check'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext'],['tags','Étiquettes','tags']],
+  tasks:    [['done','Terminée','check'],['cancelled','Ne sera pas fait','cancelcheck'],['start','Début','date'],['due','Échéance','date'],['dueTime','Heure','time'],['dueEnd','Fin','time'],['prio','Priorité','prio'],['catId','Agenda','cat'],['projectId','Projet','proj'],['parentId','Tâche parente','task'],['note','Note','longtext'],['tags','Étiquettes','tags']],
   projects: [['start','Début','date'],['end','Fin','date'],['people','Personnes','people'],['color','Couleur','color'],['textColor','Couleur du texte','textcolor'],['tags','Étiquettes','tags']],
   cats:     [['parentId','Rangé dans','catparent'],['color','Couleur','color'],['textColor','Couleur du texte','textcolor']],
   habits:   [['freq','Fréquence','hfreq'],['weekTarget','Objectif hebdo','num'],['color','Couleur','color']],
@@ -15091,7 +15095,7 @@ const BUILTIN_ICO = { date:'--:--', time:'--:--', color:'◉', text:'Aa', longte
 // sections des fiches (comme le CRM) : regroupe les champs par thème (les colonnes perso vont dans « Divers »)
 const PAGE_SECTIONS = {
   tasks: [
-    { t: 'État & priorité', c: '#16a766', keys: ['done', 'prio'] },
+    { t: 'État & priorité', c: '#16a766', keys: ['done', 'cancelled', 'prio'] },
     { t: 'Dates', c: '#4a86e8', keys: ['start', 'due', 'dueTime', 'dueEnd'] },
     { t: 'Classement', c: '#a479e2', keys: ['catId', 'projectId', 'parentId'] },
     { t: 'Contenu', c: '#ffad47', keys: ['note', 'tags'] },
@@ -15159,6 +15163,7 @@ function builtinField(c, rec, f) {
     return `<span class="pg-tc"><span class="cat-tc-preview" style="background:${bg};color:${eff}">Aa</span><button type="button" class="cat-tc-btn ${!v?'on':''}" onclick="updDataR(${b},'')">Auto</button><input type="color" value="${v||'#333333'}" onchange="updDataR(${b},this.value)" title="Choisir la couleur du texte"></span>`;
   }
   if (f.kind === 'check') return `<input type="checkbox" ${v?'checked':''} onchange="updDataR(${b},this.checked)">`;
+  if (f.kind === 'cancelcheck') return `<label class="fiche-cancel"><input type="checkbox" ${v?'checked':''} onchange="ficheSetCancel('${rec.id}',this.checked)"> <span>marquer abandonnée (sort des listes « à faire »)</span></label>`;
   if (f.kind === 'num')   return `<input type="number" step="any" value="${v==null?'':v}" onchange="updDataNum(${b},this.value)">`;
   if (f.kind === 'mood')  return `<select onchange="updDataNum(${b},this.value)"><option value="">—</option>${MOOD_SCALE.map(m => `<option value="${m.v}" ${v===m.v?'selected':''}>${esc(m.label)}</option>`).join('')}</select>`;
   if (f.kind === 'hfreq') return `<select onchange="updDataR(${b},this.value)"><option value="days" ${v!=='week'?'selected':''}>Jours fixes</option><option value="week" ${v==='week'?'selected':''}>Objectif hebdo</option></select>`;
@@ -16830,6 +16835,14 @@ function updData(c, id, field, value) {
   save(); render();
 }
 window.updData = updData;
+// bascule « Ne sera pas fait » depuis la fiche d'une tâche (passe par setTaskCancelled, jamais rec.cancelled brut)
+function ficheSetCancel(id, checked) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  setTaskCancelled(t, checked);
+  if (pageCtx) renderPage();
+}
+window.ficheSetCancel = ficheSetCancel;
 // variante qui rafraîchit aussi la page ouverte (pastilles, cases à cocher…)
 function updDataR(c, id, field, value) { updData(c, id, field, value); if (pageCtx) renderPage(); }
 window.updDataR = updDataR;
