@@ -1171,8 +1171,11 @@
   .hw-crm-meta { flex: 0 0 auto; font-size: 11.5px; color: var(--text-soft); }
   .hw-crm-meta.urgent { color: #c0564f; font-weight: 600; }
   /* widget Human Design du jour */
-  .hd-row { display: flex; align-items: center; gap: 8px; padding: 6px 2px; border-top: 1px solid var(--border); }
-  .hd-row:first-child { border-top: none; }
+  .hd-block { padding: 9px 2px; border-top: 1px solid var(--border); }
+  .hd-block:first-child { border-top: none; }
+  .hd-row { display: flex; align-items: center; gap: 8px; }
+  .hd-mean { font-size: 12px; color: var(--text-soft); line-height: 1.5; margin: 4px 0 0 27px; }
+  .hd-line { color: var(--text-faint); }
   .hd-ico { flex: 0 0 auto; }
   .hd-lbl { flex: 0 0 auto; font-size: 13px; color: var(--text-soft); width: 48px; }
   .hd-gate { flex: 0 0 auto; font-size: 13px; font-weight: 600; color: var(--text); }
@@ -16659,6 +16662,10 @@ const HD_NATAL = {
   cross: "Croix de gauche de la Séparation (5/35 | 47/22)",
 };
 const HD_GATE_NAMES = {1:'Expression de soi',2:'Direction de soi',3:'L’ordre (nouveauté)',4:'Réponses',5:'Rythmes',6:'Friction / intimité',7:'Le rôle du soi',8:'Contribution',9:'Focalisation',10:'Amour de soi',11:'Idées',12:'Prudence',13:'L’écoute',14:'Compétences / pouvoir',15:'Les extrêmes',16:'Talents',17:'Opinions',18:'Correction',19:'Sensibilité (besoin)',20:'L’instant présent',21:'Le contrôle',22:'Ouverture / grâce',23:'Assimilation',24:'Rationalisation',25:'Amour universel',26:'Le filou',27:'Le soin',28:'Le jeu de la vie',29:'Engagement',30:'Le désir',31:'L’influence',32:'Continuité',33:'Le retrait',34:'La puissance',35:'Le changement',36:'La crise',37:'L’amitié',38:'Le combattant',39:'La provocation',40:'La solitude / le déni',41:'L’imagination',42:'L’achèvement',43:'L’insight',44:'Le flair',45:'Le roi / la reine',46:'Amour du corps',47:'La réalisation',48:'La profondeur',49:'Les principes',50:'Les valeurs',51:'L’éveil (le choc)',52:'L’immobilité',53:'Les commencements',54:'L’ambition',55:'L’abondance (l’esprit)',56:'Le conteur',57:'L’intuition',58:'La joie',59:'La sexualité',60:'L’acceptation',61:'Le mystère',62:'Les détails',63:'Le doute',64:'La confusion'};
+// sens court de chaque porte (thème général, non prescriptif) — pour l'interprétation du jour
+const HD_GATE_MEAN = {1:'exprimer ta créativité à ta manière, sans copier',2:'ton sens intérieur de la direction, savoir où tu vas',3:'mettre de l’ordre dans le nouveau, apprivoiser le désordre du début',4:'chercher des réponses, patienter avant de conclure',5:'tes rythmes et rituels, rester dans ton propre timing',6:'la juste distance dans l’intimité et les émotions',7:'guider en douceur, montrer une direction',8:'apporter ta contribution unique et être vue pour ça',9:'te concentrer sur le détail qui compte',10:'être fidèle à toi et t’aimer telle que tu es',11:'un mental plein d’idées et d’images à partager',12:'parler au bon moment (ou choisir de te taire)',13:'recueillir les histoires et les confidences',14:'l’énergie et les ressources pour donner une direction concrète',15:'embrasser la diversité et l’humanité',16:'l’enthousiasme et le talent qui s’affinent par la pratique',17:'proposer tes opinions et ta logique (sans les imposer)',18:'voir ce qui peut être amélioré et le corriger',19:'ta sensibilité aux besoins et au groupe',20:'agir et dire dans l’instant présent',21:'garder la maîtrise de ton territoire et tes ressources',22:'ta grâce sociale et ton ouverture émotionnelle',23:'traduire l’intuition en mots simples',24:'revenir sur tes pensées pour les digérer',25:'l’amour du vivant, l’innocence',26:'transmettre avec habileté (l’intégrité est clé)',27:'prendre soin, nourrir, protéger',28:'chercher le sens, oser le risque qui en vaut la peine',29:'dire oui et t’engager pleinement (sans trop t’engager)',30:'le feu du désir et des envies',31:'porter une voix, influencer le collectif',32:'flairer ce qui durera, apprivoiser le changement',33:'te retirer pour digérer l’expérience et la partager',34:'ta grande énergie d’agir, à suivre selon ta réponse',35:'ta soif d’expériences et de progrès',36:'traverser les turbulences émotionnelles vers du neuf',37:'la chaleur des liens, les accords, la loyauté',38:'l’énergie de te battre pour ce qui a du sens',39:'provoquer pour révéler l’émotion et l’esprit',40:'ton besoin de solitude pour te ressourcer, et poser des limites',41:'l’étincelle d’un nouveau désir, le début d’un cycle',42:'mener les choses jusqu’au bout, boucler les cycles',43:'tes idées neuves et intérieures (timing pour les dire)',44:'ton flair des gens et des situations',45:'rassembler et gérer les ressources du groupe',46:'être bien dans ton corps, au bon endroit au bon moment',47:'trier mentalement jusqu’à la clarté',48:'ta profondeur et ton savoir-faire',49:'tes principes et ta sensibilité au juste',50:'tes valeurs, garder le cadre',51:'oser, être réveillée par les chocs',52:'ta capacité à rester immobile et concentrée',53:'lancer de nouveaux cycles',54:'ton ambition, ton désir de t’élever',55:'ton humeur, ta foi et ton abondance émotionnelle',56:'partager des histoires et des idées stimulantes',57:'ton intuition fine de l’instant',58:'ta vitalité et ta joie de vivre',59:'créer du lien intime, briser les barrières',60:'accepter les limites pour faire émerger le nouveau',61:'ton besoin de savoir, tes questions profondes',62:'mettre des mots et de l’ordre sur les détails',63:'le doute sain qui pousse à vérifier',64:'un flot d’images à laisser décanter'};
+// sens des 6 lignes (universel)
+const HD_LINE_MEAN = {1:'Fondation — besoin de comprendre et d’avoir des bases solides',2:'Naturel — un don spontané, besoin d’être appelée et d’avoir du temps à soi',3:'Expérimentation — apprendre par essais et erreurs (un « raté » fait partie du chemin)',4:'Réseau — avancer par les relations et les proches',5:'Projection — on attend beaucoup de toi ; tu proposes des solutions concrètes',6:'Modèle — prendre du recul et inspirer par l’exemple'};
 function hdReady() { return typeof Astronomy !== 'undefined' && Astronomy && typeof Astronomy.SunPosition === 'function'; }
 function hdLon(body, d) {
   if (body === 'Sun') return Astronomy.SunPosition(d).elon;
@@ -16693,16 +16700,22 @@ function hwHumanDesign() {
   if (!hdReady()) return hwEmpty('Le module Human Design se met en place…', 'Actualiser', 'render()');
   const t = hdToday();
   const gn = g => HD_GATE_NAMES[g] || ('porte ' + g);
-  const row = (ico, label, gl) => `<div class="hd-row"><span class="hd-ico">${ico}</span><span class="hd-lbl">${label}</span><span class="hd-gate">Porte ${gl.gate}.${gl.line}</span><span class="hd-gname">${esc(gn(gl.gate))}</span></div>`;
+  const gm = g => HD_GATE_MEAN[g] || '';
+  const lm = l => HD_LINE_MEAN[l] || '';
+  const block = (ico, label, sub, gl) => `<div class="hd-block">
+      <div class="hd-row"><span class="hd-ico">${ico}</span><span class="hd-lbl">${label}</span><span class="hd-gate">Porte ${gl.gate}.${gl.line}</span><span class="hd-gname">${esc(gn(gl.gate))}</span></div>
+      <div class="hd-mean">${esc(sub)} : ${esc(gm(gl.gate))}.<br><span class="hd-line">Ligne ${gl.line} · ${esc(lm(gl.line))}.</span></div>
+    </div>`;
   let html = `<div class="hd-widget">`;
-  html += row('☀️', 'Soleil', t.sun) + row('🌙', 'Lune', t.moon);
+  html += block('☀️', 'Soleil', "L'énergie de fond du jour", t.sun);
+  html += block('🌙', 'Lune', "L'ambiance qui passe (elle change vite)", t.moon);
   if (t.acts.length) {
-    html += `<div class="hd-acts-t">Activé chez toi aujourd'hui</div>`;
-    t.acts.forEach(a => { html += `<div class="hd-act"><b>Canal ${a.ch[0]}-${a.ch[1]}</b> — <b>${esc(gn(a.transit))}</b> (porte ${a.transit}, du jour) rencontre ta porte natale <b>${esc(gn(a.partner))}</b> (${a.partner}).</div>`; });
+    html += `<div class="hd-acts-t">Ce qui s'active chez toi aujourd'hui</div>`;
+    t.acts.forEach(a => { html += `<div class="hd-act"><b>Canal ${a.ch[0]}-${a.ch[1]}</b> — la porte du jour <b>${esc(gn(a.transit))}</b> rejoint ta porte natale <b>${esc(gn(a.partner))}</b> (${a.partner}). En clair : ${esc(gm(a.transit))} se mêle à ${esc(gm(a.partner))}.</div>`; });
   } else {
-    html += `<div class="hd-act hd-none">Aucun canal complété aujourd'hui : l'énergie des portes du jour te traverse sans former de canal avec ton design.</div>`;
+    html += `<div class="hd-act hd-none">Aucun canal complété aujourd'hui : l'énergie des portes du jour te traverse, sans former de circuit avec ton design.</div>`;
   }
-  if (t.reinforced.length) html += `<div class="hd-act hd-reinf">Ta/tes porte(s) natale(s) ${t.reinforced.join(', ')} sont aussi activées par le transit aujourd'hui — thème renforcé.</div>`;
+  if (t.reinforced.length) html += `<div class="hd-act hd-reinf">Ta porte natale ${t.reinforced.join(', ')} est aussi éclairée par le transit du jour — un thème qui t'est familier, renforcé aujourd'hui.</div>`;
   html += `<div class="hd-natal">${esc(HD_NATAL.type)} · ${esc(HD_NATAL.authority)} · ${esc(HD_NATAL.profile)}<br><span class="hd-natal-sub">${esc(HD_NATAL.strategy)} · ${esc(HD_NATAL.cross)}</span></div>`;
   html += `</div>`;
   return html;
