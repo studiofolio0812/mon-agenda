@@ -3067,8 +3067,43 @@
     #printArea img { max-width: 100% !important; }
     /* garder les couleurs de fond (encadrés colorés, pilules) à l'impression */
     #printArea, #printArea * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    /* ---- bilan santé imprimable ---- */
+    #printArea .hrpt-title { font-size: 22px; font-weight: 700; margin: 0 0 2px; }
+    #printArea .hrpt-period { font-size: 13px; color: #555; margin: 0 0 14px; }
+    #printArea .hrpt-kpis { display: flex; gap: 10px; margin: 0 0 14px; }
+    #printArea .hrpt-kpi { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 8px; text-align: center; }
+    #printArea .hrpt-kpi b { display: block; font-size: 17px; }
+    #printArea .hrpt-kpi span { font-size: 10.5px; color: #666; }
+    #printArea .hrpt-h, #printArea .hrpt-chart h3, #printArea .hrpt-notes h3 { font-size: 13.5px; font-weight: 700; margin: 16px 0 6px; }
+    #printArea .hrpt-chart { margin: 6px 0 4px; break-inside: avoid; }
+    #printArea .hrpt-chart svg { width: 100%; height: auto; }
+    #printArea .hrpt-sig { margin: 4px 0; padding-left: 18px; }
+    #printArea .hrpt-sig li { font-size: 12.5px; line-height: 1.6; }
+    #printArea .hrpt-sig-side { color: #777; font-size: 11px; }
+    #printArea .hrpt-note { font-size: 12px; line-height: 1.5; margin: 4px 0; }
+    #printArea .hrpt-empty { font-size: 12.5px; color: #777; }
+    #printArea .hrpt-foot { font-size: 10.5px; color: #888; margin-top: 18px; border-top: 1px solid #ddd; padding-top: 8px; }
+    #printArea .health-card { border: 1px solid #ddd !important; box-shadow: none !important; margin: 10px 0; padding: 12px; }
+    #printArea .hr-expand, #printArea .hr-quad-help-btn, #printArea .hrpt-actions { display: none !important; }
     @page { margin: 14mm; }
   }
+  /* bouton « Bilan pour mon médecin » (écran) */
+  .hrpt-actions { display: flex; align-items: center; gap: 10px; margin: 12px 0 2px; flex-wrap: wrap; }
+  .hrpt-actions-hint { font-size: 12px; color: var(--text-faint); }
+  /* ---- Recherche globale (palette Ctrl/Cmd+K) ---- */
+  #searchOverlay { align-items: flex-start; }
+  #searchOverlay .gs-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.28); width: min(620px, 94vw); margin: 10vh auto 0; display: flex; flex-direction: column; overflow: hidden; max-height: 70vh; }
+  .gs-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-soft); }
+  .gs-head input { flex: 1; border: none; background: transparent; color: var(--text); font-size: 15px; font-family: var(--font-sans); }
+  .gs-head input:focus { outline: none; }
+  .gs-esc { font-size: 11px; color: var(--text-soft); border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; cursor: pointer; font-family: var(--font-sans); }
+  .gs-results { overflow-y: auto; padding: 6px; }
+  .gs-hint, .gs-empty { padding: 18px 14px; font-size: 13px; color: var(--text-soft); line-height: 1.5; }
+  .gs-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: var(--radius-sm); cursor: pointer; }
+  .gs-row.sel { background: var(--accent-soft, var(--bg-soft)); }
+  .gs-type { flex: 0 0 auto; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-faint); background: var(--bg-soft); border-radius: 999px; padding: 2px 8px; }
+  .gs-title { flex: 1; font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gs-sub { flex: 0 0 auto; font-size: 11.5px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
 </style>
 </head>
 <body>
@@ -3224,6 +3259,8 @@
       <button class="icon-btn" id="sidebarToggle" title="Replier / afficher le panneau">☰</button>
       <button class="tb-logo" id="toolbarLogo" title="Réglages" aria-label="Réglages">M</button>
       <button class="sync-badge" id="syncBadge" title="Synchronisation"><span class="sync-dot"></span><span class="sync-txt"></span></button>
+      <!-- recherche globale (toujours visible) : Ctrl/Cmd+K aussi -->
+      <button class="icon-btn search-btn" id="searchBtn" title="Rechercher (Ctrl+K)" aria-label="Rechercher" onclick="openGlobalSearch()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
       <!-- accès aux mails sur téléphone (masqué sur ordinateur : le rail latéral sert d'accès) -->
       <button class="mail-top-btn" id="mailTopBtn" title="Mail" aria-label="Mail" onclick="openMailFromTop()">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
@@ -3271,6 +3308,18 @@
 
 <!-- zone d'impression : reçoit une copie de la note à imprimer (voir printNote / @media print) -->
 <div id="printArea" aria-hidden="true"></div>
+
+<!-- ============ RECHERCHE GLOBALE (Ctrl/Cmd+K) ============ -->
+<div class="overlay" id="searchOverlay">
+  <div class="gs-panel">
+    <div class="gs-head">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="globalSearch" type="text" placeholder="Rechercher un événement, une tâche, un projet, une note, un contact…" autocomplete="off" spellcheck="false">
+      <kbd class="gs-esc" onclick="closeModals()">Échap</kbd>
+    </div>
+    <div id="searchResults" class="gs-results"></div>
+  </div>
+</div>
 
 <!-- ============ MODAL: EVENT / TASK ============ -->
 <div class="overlay" id="itemOverlay">
@@ -9902,6 +9951,45 @@ function healthSignalsCardHtml(days) {
   return `<div class="health-card">${head}${resume}<div class="hsig-chips">${chips}</div></div>`;
 }
 
+/* ---- BILAN SANTÉ IMPRIMABLE (pour le médecin) ----
+   Compile, pour la période affichée, les indicateurs + les graphiques + les signaux
+   + la lecture récente, dans une page propre sans aucune commande interactive. */
+function healthReportHtml(days) {
+  const label = healthWinLabel(days);
+  const k = healthKpiData(days);
+  const tally = healthSignalTally(days).slice().sort((a, b) => b.count - a.count);
+  const notes = days.map(healthLogFor).filter(l => l && l.note && l.note.trim());
+  const kpi = (val, lbl) => `<div class="hrpt-kpi"><b>${val}</b><span>${lbl}</span></div>`;
+  const kpis = `<div class="hrpt-kpis">
+    ${kpi(k.avgHum != null ? (k.avgHum > 0 ? '+' : '') + k.avgHum : '—', 'humeur moy.')}
+    ${kpi(k.avgEne != null ? k.avgEne + '/10' : '—', 'énergie moy.')}
+    ${kpi(k.avgSleep != null ? k.avgSleep.toFixed(1) + ' h' : '—', 'sommeil moy.')}
+    ${kpi(k.nbSleep ? k.shortNights : '—', 'nuits sous 6 h')}
+  </div>`;
+  const chart = (t, svg) => `<div class="hrpt-chart"><h3>${esc(t)}</h3>${svg}</div>`;
+  const sigList = tally.length
+    ? `<ul class="hrpt-sig">${tally.map(s => `<li>${esc(s.label)} — <b>${s.count} j</b> <span class="hrpt-sig-side">(${s.type === 'up' ? 'côté haut' : s.type === 'down' ? 'côté bas' : 'repère'})</span></li>`).join('')}</ul>`
+    : `<p class="hrpt-empty">Aucun signal coché sur la période.</p>`;
+  const notesBlock = notes.length
+    ? `<div class="hrpt-notes"><h3>Notes de la période</h3>${notes.map(l => `<p class="hrpt-note"><b>${esc(fmtDateShort(l.date))}</b> — ${esc(l.note.trim())}</p>`).join('')}</div>`
+    : '';
+  return `<div class="hrpt">
+    <h1 class="hrpt-title">Bilan santé</h1>
+    <p class="hrpt-period">Période : ${esc(label)}</p>
+    ${kpis}
+    ${healthReadingCardHtml()}
+    <h3 class="hrpt-h">Signaux relevés sur la période</h3>${sigList}
+    ${chart('Humeur et énergie', healthMoodEnergyChartHtml(days))}
+    ${chart('Tendance dépression ↔ hypomanie (estimée)', healthMoodChartHtml(days))}
+    ${chart('Sommeil', healthSleepChartHtml(days))}
+    ${chart('Traitement et cycle', healthCycleMedChartHtml(days))}
+    ${notesBlock}
+    <p class="hrpt-foot">Document généré depuis « Mon Agenda » le ${esc(fmtDateShort(ymd(new Date())))}. Relevé personnel d'auto-observation, sans valeur de diagnostic.</p>
+  </div>`;
+}
+function printHealthReport() { printHtml(healthReportHtml(healthWinDays())); }
+window.printHealthReport = printHealthReport;
+
 // ---- « Comment lire » dépliable sur la carte des journées ----
 let healthQuadHelpOpen = false;
 function healthToggleQuadHelp() { healthQuadHelpOpen = !healthQuadHelpOpen; if (typeof healthRerender === 'function') healthRerender(); else renderHealthSpace(); }
@@ -10230,6 +10318,7 @@ function renderHealthSpace() {
         ${clickWrap('legacy', healthMoodChartHtml(days))}
       </div>`;
       return `${kpis}
+      <div class="hrpt-actions"><button type="button" class="btn ghost" onclick="printHealthReport()" title="Imprimer un bilan de la période affichée (à montrer à ton médecin)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>Bilan pour mon médecin</button><span class="hrpt-actions-hint">imprime la période affichée (${esc(healthWinLabel(days))})</span></div>
       ${healthReadingCardHtml()}
       ${healthSignalsCardHtml(days)}
       ${healthCycleSettingsHtml()}
@@ -11372,13 +11461,11 @@ function toggleNoteRead() {
    grâce au CSS @media print, l'app est masquée et seule la note s'imprime, avec
    ses vrais styles (encadrés, checklists, tableaux…) puisque le CSS reste global.
    Un iframe caché n'est pas utilisé : rester dans le même document préserve la mise en forme. */
-function printNote() {
-  const src = document.getElementById('noteBody');
+// coeur d'impression : dépose du HTML dans #printArea, masque l'app (CSS @media print), imprime, nettoie
+function printHtml(innerHtml) {
   const area = document.getElementById('printArea');
-  if (!src || !area) return;
-  const title = (document.getElementById('noteTitle').value || 'Note').trim();
-  area.innerHTML = `<h1 class="note-print-title">${esc(title)}</h1>`
-    + `<div class="note-body note-print-body">${src.innerHTML}</div>`;
+  if (!area) return;
+  area.innerHTML = innerHtml;
   const cleanup = () => {
     document.body.classList.remove('printing');
     area.innerHTML = '';
@@ -11390,6 +11477,12 @@ function printNote() {
   setTimeout(() => { try { window.print(); } catch (e) { cleanup(); } }, 80);
   // filet de sécurité si « afterprint » ne se déclenche pas (certains navigateurs)
   setTimeout(cleanup, 120000);
+}
+function printNote() {
+  const src = document.getElementById('noteBody');
+  if (!src) return;
+  const title = (document.getElementById('noteTitle').value || 'Note').trim();
+  printHtml(`<h1 class="note-print-title">${esc(title)}</h1><div class="note-body note-print-body">${src.innerHTML}</div>`);
 }
 window.printNote = printNote;
 
@@ -19673,8 +19766,16 @@ $('fDate').addEventListener('change', () => { syncRecurDaysToDate(); syncRecurFi
 $$('[data-close]').forEach(b => b.onclick = closeModals);
 $$('.overlay').forEach(o => o.addEventListener('mousedown', e => { if (e.target === o) closeModals(); }));
 document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openGlobalSearch(); return; }
   if (e.key === 'Escape') { closeCtxMenu(); closeModals(); }
   if (e.key === 'Enter' && $('itemOverlay').classList.contains('show') && e.target.id === 'fTitle') saveItem();
+});
+// recherche globale : saisie en direct + navigation clavier (↑ ↓ Entrée)
+$('globalSearch').addEventListener('input', e => renderSearchResults(e.target.value));
+$('globalSearch').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); searchMove(1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); searchMove(-1); }
+  else if (e.key === 'Enter') { e.preventDefault(); searchOpen(searchSel); }
 });
 
 /* ---------- Raccourcis clavier (ordinateur) ----------
@@ -20877,6 +20978,72 @@ function renderMailSpace() {
 }
 window.renderMailSpace = renderMailSpace;
 window.gmailAutoLoad = gmailAutoLoad;
+
+/* ============================================================
+   RECHERCHE GLOBALE (Ctrl/Cmd+K ou l'icône loupe) — retrouve n'importe quoi
+   ============================================================ */
+let searchResultsCache = [];
+let searchSel = 0;
+function openGlobalSearch() {
+  closeCtxMenu();
+  const ov = document.getElementById('searchOverlay'); if (!ov) return;
+  ov.classList.add('show');
+  const inp = document.getElementById('globalSearch');
+  inp.value = ''; searchSel = 0;
+  renderSearchResults('');
+  setTimeout(() => inp.focus(), 30);
+}
+window.openGlobalSearch = openGlobalSearch;
+function globalSearchData(q) {
+  q = (q || '').trim().toLowerCase();
+  if (!q) return [];
+  const res = [];
+  const add = (kind, type, id, title, sub, tableId) => res.push({ kind, type, id, title: title || 'Sans titre', sub: sub || '', tableId });
+  (state.events || []).forEach(e => { if ((e.title || '').toLowerCase().includes(q)) add('events', 'Événement', e.id, e.title, e.date ? fmtDateShort(e.date) : ''); });
+  (state.tasks || []).forEach(t => { if ((t.title || '').toLowerCase().includes(q)) add('tasks', 'Tâche', t.id, t.title, t.done ? 'terminée' : (t.due ? fmtDateShort(t.due) : '')); });
+  (state.projects || []).forEach(p => { if ((p.name || '').toLowerCase().includes(q)) add('projects', 'Projet', p.id, p.name, ''); });
+  (state.notes || []).forEach(n => { const hay = ((n.title || '') + ' ' + texteExtrait(n.body || '', 300)).toLowerCase(); if (hay.includes(q)) add('note', 'Note', n.id, n.title, folderLabelOf(n.folderId)); });
+  (state.categories || []).forEach(c => { if ((c.name || '').toLowerCase().includes(q)) add('cats', 'Agenda', c.id, catPath(c), ''); });
+  (state.habits || []).forEach(h => { if ((h.name || '').toLowerCase().includes(q)) add('habit', 'Habitude', h.id, h.name, ''); });
+  (state.customTables || []).forEach(t => { ((state.customRecords || {})[t.id] || []).forEach(r => { if ((r.title || '').toLowerCase().includes(q)) add('record', t.name, r.id, r.title, personSub(t.id, r), t.id); }); });
+  return res.slice(0, 50);
+}
+function renderSearchResults(q) {
+  const box = document.getElementById('searchResults'); if (!box) return;
+  const rs = globalSearchData(q);
+  searchResultsCache = rs; searchSel = 0;
+  if (!(q || '').trim()) { box.innerHTML = `<div class="gs-hint">Tape pour chercher dans tes événements, tâches, projets, notes, agendas, habitudes et contacts.</div>`; return; }
+  if (!rs.length) { box.innerHTML = `<div class="gs-empty">Aucun résultat pour « ${esc(q)} ».</div>`; return; }
+  box.innerHTML = rs.map((r, i) =>
+    `<div class="gs-row ${i === searchSel ? 'sel' : ''}" data-i="${i}" onmouseenter="searchHover(${i})" onclick="searchOpen(${i})">
+      <span class="gs-type">${esc(r.type)}</span>
+      <span class="gs-title">${esc(r.title)}</span>
+      ${r.sub ? `<span class="gs-sub">${esc(r.sub)}</span>` : ''}
+    </div>`).join('');
+}
+window.renderSearchResults = renderSearchResults;
+function searchHover(i) { searchSel = i; searchSyncSel(); }
+window.searchHover = searchHover;
+function searchSyncSel() {
+  document.querySelectorAll('#searchResults .gs-row').forEach(el => el.classList.toggle('sel', +el.dataset.i === searchSel));
+}
+function searchMove(dir) {
+  if (!searchResultsCache.length) return;
+  searchSel = (searchSel + dir + searchResultsCache.length) % searchResultsCache.length;
+  searchSyncSel();
+  const el = document.querySelector(`#searchResults .gs-row[data-i="${searchSel}"]`);
+  if (el) el.scrollIntoView({ block: 'nearest' });
+}
+window.searchMove = searchMove;
+function searchOpen(i) {
+  const r = searchResultsCache[i]; if (!r) return;
+  const ov = document.getElementById('searchOverlay'); if (ov) ov.classList.remove('show');
+  if (r.kind === 'note') openNote(r.id);
+  else if (r.kind === 'habit') openHabitDetail(r.id);
+  else if (r.kind === 'record') openPage(r.tableId, r.id);
+  else openPage(r.kind, r.id);   // events / tasks / projects / cats
+}
+window.searchOpen = searchOpen;
 
 /* ---------- Go ---------- */
 const _partageSlug = new URLSearchParams(location.search).get('partage');
