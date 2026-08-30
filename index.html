@@ -1183,6 +1183,7 @@
   .hd-acts-t { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); margin: 10px 0 4px; }
   .hd-act { font-size: 12.5px; line-height: 1.5; color: var(--text); background: var(--bg-soft); border-radius: var(--radius-sm); padding: 7px 10px; margin-top: 5px; }
   .hd-act.hd-none, .hd-act.hd-reinf { color: var(--text-soft); background: transparent; padding: 6px 2px; }
+  .hd-act-sub { font-size: 11.5px; color: var(--text-soft); line-height: 1.5; margin-top: 4px; }
   .hd-natal { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-soft); line-height: 1.5; }
   .hd-natal-sub { color: var(--text-faint); }
   .hw-crm-none { font-size: 13px; color: var(--text-soft); line-height: 1.5; padding: 6px 2px; }
@@ -16666,6 +16667,45 @@ const HD_GATE_NAMES = {1:'Expression de soi',2:'Direction de soi',3:'L’ordre (
 const HD_GATE_MEAN = {1:'exprimer ta créativité à ta manière, sans copier',2:'ton sens intérieur de la direction, savoir où tu vas',3:'mettre de l’ordre dans le nouveau, apprivoiser le désordre du début',4:'chercher des réponses, patienter avant de conclure',5:'tes rythmes et rituels, rester dans ton propre timing',6:'la juste distance dans l’intimité et les émotions',7:'guider en douceur, montrer une direction',8:'apporter ta contribution unique et être vue pour ça',9:'te concentrer sur le détail qui compte',10:'être fidèle à toi et t’aimer telle que tu es',11:'un mental plein d’idées et d’images à partager',12:'parler au bon moment (ou choisir de te taire)',13:'recueillir les histoires et les confidences',14:'l’énergie et les ressources pour donner une direction concrète',15:'embrasser la diversité et l’humanité',16:'l’enthousiasme et le talent qui s’affinent par la pratique',17:'proposer tes opinions et ta logique (sans les imposer)',18:'voir ce qui peut être amélioré et le corriger',19:'ta sensibilité aux besoins et au groupe',20:'agir et dire dans l’instant présent',21:'garder la maîtrise de ton territoire et tes ressources',22:'ta grâce sociale et ton ouverture émotionnelle',23:'traduire l’intuition en mots simples',24:'revenir sur tes pensées pour les digérer',25:'l’amour du vivant, l’innocence',26:'transmettre avec habileté (l’intégrité est clé)',27:'prendre soin, nourrir, protéger',28:'chercher le sens, oser le risque qui en vaut la peine',29:'dire oui et t’engager pleinement (sans trop t’engager)',30:'le feu du désir et des envies',31:'porter une voix, influencer le collectif',32:'flairer ce qui durera, apprivoiser le changement',33:'te retirer pour digérer l’expérience et la partager',34:'ta grande énergie d’agir, à suivre selon ta réponse',35:'ta soif d’expériences et de progrès',36:'traverser les turbulences émotionnelles vers du neuf',37:'la chaleur des liens, les accords, la loyauté',38:'l’énergie de te battre pour ce qui a du sens',39:'provoquer pour révéler l’émotion et l’esprit',40:'ton besoin de solitude pour te ressourcer, et poser des limites',41:'l’étincelle d’un nouveau désir, le début d’un cycle',42:'mener les choses jusqu’au bout, boucler les cycles',43:'tes idées neuves et intérieures (timing pour les dire)',44:'ton flair des gens et des situations',45:'rassembler et gérer les ressources du groupe',46:'être bien dans ton corps, au bon endroit au bon moment',47:'trier mentalement jusqu’à la clarté',48:'ta profondeur et ton savoir-faire',49:'tes principes et ta sensibilité au juste',50:'tes valeurs, garder le cadre',51:'oser, être réveillée par les chocs',52:'ta capacité à rester immobile et concentrée',53:'lancer de nouveaux cycles',54:'ton ambition, ton désir de t’élever',55:'ton humeur, ta foi et ton abondance émotionnelle',56:'partager des histoires et des idées stimulantes',57:'ton intuition fine de l’instant',58:'ta vitalité et ta joie de vivre',59:'créer du lien intime, briser les barrières',60:'accepter les limites pour faire émerger le nouveau',61:'ton besoin de savoir, tes questions profondes',62:'mettre des mots et de l’ordre sur les détails',63:'le doute sain qui pousse à vérifier',64:'un flot d’images à laisser décanter'};
 // sens des 6 lignes (universel)
 const HD_LINE_MEAN = {1:'Fondation — besoin de comprendre et d’avoir des bases solides',2:'Naturel — un don spontané, besoin d’être appelée et d’avoir du temps à soi',3:'Expérimentation — apprendre par essais et erreurs (un « raté » fait partie du chemin)',4:'Réseau — avancer par les relations et les proches',5:'Projection — on attend beaucoup de toi ; tu proposes des solutions concrètes',6:'Modèle — prendre du recul et inspirer par l’exemple'};
+// nom + thème court de chacun des 36 canaux (formulation maison, non copyright ; noms les plus courants)
+const HD_CHANNELS_INFO = {
+  '1-8':{name:'Inspiration',desc:'ton expression créative unique inspire les autres'},
+  '2-14':{name:'Le Battement',desc:'mettre ton énergie au service d’une direction juste'},
+  '3-60':{name:'La Mutation',desc:'le changement par à-coups, l’innovation qui naît des limites'},
+  '4-63':{name:'La Logique',desc:'le mental qui doute puis formule des hypothèses'},
+  '5-15':{name:'Le Rythme',desc:'trouver ton flow naturel dans le temps'},
+  '6-59':{name:'L’Intimité',desc:'créer du lien profond, briser les barrières'},
+  '7-31':{name:'Le Leader',desc:'guider et représenter le collectif vers l’avenir'},
+  '9-52':{name:'La Concentration',desc:'la focalisation soutenue sur ce qui compte'},
+  '10-20':{name:'L’Éveil',desc:'être pleinement toi dans l’instant, l’authenticité en action'},
+  '10-34':{name:'L’Exploration',desc:'suivre tes convictions par l’action'},
+  '10-57':{name:'La Forme parfaite',desc:'l’intuition au service du bien-être dans ton corps'},
+  '11-56':{name:'La Curiosité',desc:'nourrir et transmettre idées et histoires'},
+  '12-22':{name:'L’Ouverture',desc:'l’expression sociale/émotionnelle qui touche, au bon moment'},
+  '13-33':{name:'Le Témoin',desc:'recueillir les expériences puis les partager avec recul'},
+  '16-48':{name:'Le Talent',desc:'la maîtrise qui s’affine par la pratique et l’enthousiasme'},
+  '17-62':{name:'L’Organisation',desc:'structurer les opinions en détails communicables'},
+  '18-58':{name:'Le Jugement',desc:'l’énergie de corriger pour améliorer'},
+  '19-49':{name:'La Sensibilité',desc:'capter les besoins et ajuster les liens'},
+  '20-34':{name:'Le Charisme',desc:'l’énergie qui s’exprime et agit dans l’instant'},
+  '20-57':{name:'L’Onde du cerveau',desc:'l’intuition claire dans le présent'},
+  '21-45':{name:'L’Argent',desc:'diriger et gérer les ressources matérielles'},
+  '23-43':{name:'La Structuration',desc:'traduire une intuition singulière en langage'},
+  '24-61':{name:'La Conscience',desc:'l’inspiration et la réflexion sur le mystère'},
+  '25-51':{name:'L’Initiation',desc:'les chocs qui éveillent l’esprit, oser l’inconnu'},
+  '26-44':{name:'L’Entreprise',desc:'l’instinct et l’art de transmettre/« vendre »'},
+  '27-50':{name:'La Préservation',desc:'prendre soin et protéger selon tes valeurs'},
+  '28-38':{name:'La Lutte',desc:'te battre pour trouver un sens qui en vaut la peine'},
+  '29-46':{name:'La Découverte',desc:'t’engager et réussir là où d’autres renoncent'},
+  '30-41':{name:'La Reconnaissance',desc:'le feu du désir qui lance de nouvelles expériences'},
+  '32-54':{name:'La Transformation',desc:'l’ambition et l’instinct de durer et t’élever'},
+  '34-57':{name:'La Puissance',desc:'l’énergie pure guidée par l’intuition de l’instant'},
+  '35-36':{name:'La Transitoire',desc:'la soif d’expériences et de nouveauté'},
+  '37-40':{name:'La Communauté',desc:'donner et recevoir : accords, soutien et loyauté du groupe'},
+  '39-55':{name:'L’Émotivité',desc:'provoquer et vivre l’humeur, l’esprit, l’abondance émotionnelle'},
+  '42-53':{name:'La Maturation',desc:'commencer et mener les cycles jusqu’au bout'},
+  '47-64':{name:'L’Abstraction',desc:'le mental qui digère images et souvenirs jusqu’à la clarté'},
+};
 function hdReady() { return typeof Astronomy !== 'undefined' && Astronomy && typeof Astronomy.SunPosition === 'function'; }
 function hdLon(body, d) {
   if (body === 'Sun') return Astronomy.SunPosition(d).elon;
@@ -16711,7 +16751,10 @@ function hwHumanDesign() {
   html += block('🌙', 'Lune', "L'ambiance qui passe (elle change vite)", t.moon);
   if (t.acts.length) {
     html += `<div class="hd-acts-t">Ce qui s'active chez toi aujourd'hui</div>`;
-    t.acts.forEach(a => { html += `<div class="hd-act"><b>Canal ${a.ch[0]}-${a.ch[1]}</b> — la porte du jour <b>${esc(gn(a.transit))}</b> rejoint ta porte natale <b>${esc(gn(a.partner))}</b> (${a.partner}). En clair : ${esc(gm(a.transit))} se mêle à ${esc(gm(a.partner))}.</div>`; });
+    t.acts.forEach(a => {
+      const ci = HD_CHANNELS_INFO[a.ch[0] + '-' + a.ch[1]] || {};
+      html += `<div class="hd-act"><b>Canal ${a.ch[0]}-${a.ch[1]}${ci.name ? ' · ' + esc(ci.name) : ''}</b>${ci.desc ? ' — ' + esc(ci.desc) : ''}.<div class="hd-act-sub">La porte du jour <b>${esc(gn(a.transit))}</b> rejoint ta porte natale <b>${esc(gn(a.partner))}</b> (${a.partner}) : ${esc(gm(a.transit))} se mêle à ${esc(gm(a.partner))}.</div></div>`;
+    });
   } else {
     html += `<div class="hd-act hd-none">Aucun canal complété aujourd'hui : l'énergie des portes du jour te traverse, sans former de circuit avec ton design.</div>`;
   }
