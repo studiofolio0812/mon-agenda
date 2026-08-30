@@ -1624,6 +1624,14 @@
   .tbl-title .tbl-title-in { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .tbl-title:hover { color: var(--accent); }
   .tbl-row.is-done .tbl-title { text-decoration: line-through; color: var(--text-faint); }
+  /* tâches « ne sera pas fait » : barré + grisé + italique, distinct d'une tâche accomplie */
+  .tbl-row.cancelled .tbl-title, .ag-item.cancelled .ag-title, .chip.task.cancelled { font-style: italic; color: var(--text-faint); text-decoration: line-through; }
+  .chip.task.cancelled { opacity: .75; }
+  .t-cancel { font-style: normal; text-decoration: none; font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; color: #a4655e; background: rgba(164,101,94,.13); border-radius: 999px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+  .task-check.cancelled { color: var(--text-soft); }
+  .task-check.cancelled::after { content: none !important; }
+  .tbl-th-check .task-check.cancelled { background: var(--surface-2); border-color: var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+  .tick.cancelled { color: var(--text-faint); }
   .tbl-row.sub .tbl-title { padding-left: 26px; font-size: 13px; color: var(--text-soft); }
   .tbl-cell { cursor: pointer; white-space: nowrap; }
   .tbl-cell-inner { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 20px;
@@ -2272,6 +2280,11 @@
   .crm-sec-head:first-child { margin-top: 4px; }
   .crm-sec-head.foldable { cursor: pointer; user-select: none; border-radius: var(--radius-sm); padding: 3px 4px; margin-left: -4px; }
   .crm-sec-head.foldable:hover { background: var(--surface-2); }
+  /* bandeau coloré de section (remplace le petit point) : encadré clair teinté + bord coloré */
+  .crm-sec-head.band { padding: 6px 10px; margin: 18px 0 6px; border-radius: var(--radius-sm); color: var(--text); text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+  .crm-sec-head.band:first-child { margin-top: 6px; }
+  .crm-sec-head.band:hover { filter: brightness(0.98); background: inherit; }
+  .crm-sec-head.band .sec-count { margin-left: auto; background: rgba(0,0,0,.06); border-radius: 999px; padding: 1px 8px; color: var(--text-soft); }
   .sec-chev { font-size: 10px; color: var(--text-faint); width: 10px; flex: 0 0 auto; }
   .sec-count { margin-left: auto; font-weight: 400; color: var(--text-faint); text-transform: none; letter-spacing: 0; font-size: 11px; }
   .crm-sec-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
@@ -4133,6 +4146,7 @@
 <!-- ============ MENU CLIC DROIT (calendrier & barre latérale) ============ -->
 <div class="ctx-menu hidden" id="ctxMenu">
   <button data-act="open">Ouvrir</button>
+  <button data-act="cancel" id="ctxCancelBtn" class="hidden">Ne sera pas fait</button>
   <button data-act="dup">Dupliquer</button>
   <button data-act="del" class="danger">Supprimer</button>
 </div>
@@ -5130,7 +5144,7 @@ function dayEntries(d, styled) {
   tasksOn(d).forEach(t => {
     if (evTaskIds.has(t.id)) return;
     const pr = t.prio || 'med', pc = prioCol(pr);
-    const inner = `${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}</span>`;
+    const inner = `${repIco(t)}${iconOf(t, 'tasks', 13)}<span class="ag-title">${esc(t.title)}${cancelTag(t)}</span>`;
     const body = styled
       ? `<span class="ag-chip task-lite" style="border-left:3px solid ${taskStripe(t)}">${inner}</span>`
       : inner;
@@ -5138,9 +5152,9 @@ function dayEntries(d, styled) {
     // la priorité se lit sans rien ajouter à la ligne, le titre garde toute la largeur (idée de Clémence)
     const chkStyle = t.done ? `background:${pc};border-color:${pc}` : `border-color:${pc}`;
     entrees.push({ t: t.dueTime || '~', html:
-      `<div class="ag-item task ${t.done ? 'done' : ''}" data-task="${t.id}" onclick="openEdit('task','${t.id}',event)">
+      `<div class="ag-item task ${t.done ? 'done' : ''} ${t.cancelled ? 'cancelled' : ''}" data-task="${t.id}" onclick="openEdit('task','${t.id}',event)">
         <span class="ag-time">${t.dueTime || ''}</span>
-        <span class="task-check ${t.done ? 'done' : ''}" style="${chkStyle}" onclick="toggleTask('${t.id}',event)" title="Priorité ${PRIO_LABEL[pr].toLowerCase()} — cocher / décocher"></span>
+        <span class="task-check ${t.done ? 'done' : ''} ${t.cancelled ? 'cancelled' : ''}" style="${chkStyle}" onclick="toggleTask('${t.id}',event)" title="${t.cancelled ? 'Réactiver' : 'cocher / décocher'}">${t.cancelled ? '✕' : ''}</span>
         ${body}
       </div>` });
   });
@@ -5639,7 +5653,7 @@ function renderMonth() {
           const look = eventLook(it.o);
           chips += `<div class="chip event ${look.isProject ? 'as-project' : ''}" ${DRAG_ATTR} data-drag-kind="event" data-drag-id="${it.o.id}" style="${look.style}" onclick="openEdit('event','${it.o.id}',event)"><span class="ev-dot" style="background:${look.dot}"></span>${it.o.start ? `<span class="ev-h">${it.o.start}</span> ` : ''}${repIco(it.o)}${iconOf(it.o, 'events', 11)}${esc(it.o.title)}</div>`;
         } else {
-          chips += `<div class="chip task ${it.o.done ? 'done' : ''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${it.o.id}" style="border-left:3px solid ${taskStripe(it.o)}" onclick="openEdit('task','${it.o.id}',event)"><span class="tick" onclick="toggleTask('${it.o.id}',event)" title="Cocher / décocher">${it.o.done ? '✓' : '○'}</span>${repIco(it.o)}${iconOf(it.o, 'tasks', 11)}${esc(it.o.title)}</div>`;
+          chips += `<div class="chip task ${it.o.done ? 'done' : ''} ${it.o.cancelled ? 'cancelled' : ''}" ${DRAG_ATTR} data-drag-kind="task" data-drag-id="${it.o.id}" style="border-left:3px solid ${taskStripe(it.o)}" onclick="openEdit('task','${it.o.id}',event)"><span class="tick" onclick="toggleTask('${it.o.id}',event)" title="${it.o.cancelled ? 'Réactiver' : 'Cocher / décocher'}">${it.o.cancelled ? '✕' : (it.o.done ? '✓' : '○')}</span>${repIco(it.o)}${iconOf(it.o, 'tasks', 11)}${esc(it.o.title)}</div>`;
         }
       });
       if (extra > 0) chips += `<div class="more-link" onclick="goToDay('${k}')">+${extra} de plus</div>`;
@@ -6456,8 +6470,9 @@ const HOME_WIDGETS = {
   notes:    { label: 'Notes récentes',            body: () => hwNotes() },
   bilan:    { label: 'Bilan express',             body: () => hwBilan() },
   horoscope:{ label: 'Horoscope du jour',         body: () => hwHoroscope() },
+  humandesign:{ label: 'Human Design du jour',    body: () => hwNoteFeed('Human Design du jour') },
 };
-const HOME_ORDER_DEFAUT = ['focus', 'projects', 'crm', 'habits', 'horoscope', 'health', 'notes', 'bilan'];
+const HOME_ORDER_DEFAUT = ['focus', 'projects', 'crm', 'habits', 'horoscope', 'humandesign', 'health', 'notes', 'bilan'];
 // largeurs (px) des colonnes du Focus du jour — ajustables à la souris, mémorisées dans state.home.cols
 const HOME_COLS_DEFAUT = { projet: 152, agenda: 132, prio: 102, due: 96 };
 const HOME_COL_MIN = 62, HOME_COL_MAX = 340;
@@ -7113,10 +7128,10 @@ function renderTasksSpace() {
         ? `<span class="sub-chev ${plie ? '' : 'open'}" onclick="toggleSubtasks('${t.id}',event)" title="${plie ? 'Afficher' : 'Masquer'} les sous-tâches">${ICON_CHEV}</span>`
         : (sub ? '' : `<span class="sub-chev-gap"></span>`))
       : '';
-    return `<tr class="tbl-row ${t.done ? 'is-done' : ''} ${sub ? 'sub' : ''}" ondragover="listGrpOver(event,this)" ondragleave="this.classList.remove('grp-over')" ondrop="listGrpDrop(event,'${gkey}',this)">
+    return `<tr class="tbl-row ${t.done ? 'is-done' : ''} ${t.cancelled ? 'cancelled' : ''} ${sub ? 'sub' : ''}" ondragover="listGrpOver(event,this)" ondragleave="this.classList.remove('grp-over')" ondrop="listGrpDrop(event,'${gkey}',this)">
       <td class="tbl-th-drag">${sub ? '' : `<span class="row-drag" draggable="true" ondragstart="listRowDragStart(event,'${t.id}',this)" ondragend="listRowDragEnd(this)" title="Glisser vers un autre groupe">${ICON_GRIP}</span>`}</td>
-      <td class="tbl-th-check"><div class="task-check ${t.done ? 'done' : ''}" onclick="toggleTask('${t.id}',event)" title="Cocher / décocher"></div></td>
-      <td class="tbl-title" onclick="openPage('tasks','${t.id}')"><span class="tbl-title-in">${chev}${iconOf(t, 'tasks')} ${repIco(t)}${esc(t.title)}${(showSub && retards) ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}${(showSub && pr) ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}</span></td>
+      <td class="tbl-th-check"><div class="task-check ${t.done ? 'done' : ''} ${t.cancelled ? 'cancelled' : ''}" onclick="toggleTask('${t.id}',event)" title="${t.cancelled ? 'Réactiver' : 'Cocher / décocher'}">${t.cancelled ? '✕' : ''}</div></td>
+      <td class="tbl-title" onclick="openPage('tasks','${t.id}')"><span class="tbl-title-in">${chev}${iconOf(t, 'tasks')} ${repIco(t)}${esc(t.title)}${cancelTag(t)}${(showSub && retards) ? `<span class="sub-late" title="${retards} sous-tâche${retards > 1 ? 's' : ''} en retard">${retards} en retard</span>` : ''}${(showSub && pr) ? `<span class="sub-prog" title="${pr.done} sous-tâche${pr.done !== 1 ? 's' : ''} sur ${pr.total} terminée${pr.done !== 1 ? 's' : ''}">${pr.done}/${pr.total}</span>` : ''}</span></td>
       ${showProj ? projCell(t) : ''}
       ${showCat ? catCell(t) : ''}
       ${showDue ? `<td><input type="date" class="tbl-date ${late ? 'late' : ''}" value="${t.due || ''}" onclick="event.stopPropagation()" onchange="tblSetDue('${t.id}',event)"></td>` : ''}
@@ -7260,7 +7275,18 @@ function kbDrop(e, key, el) {
   applyGroupDrop(t, key);
 }
 /* Marque une tâche faite/à faire et garde la date de complétion (utile pour le bandeau KPI). */
-function setTaskDone(t, val) { t.done = val; t.doneAt = val ? new Date().toISOString() : null; applyAutomations('tasks', t); }
+function setTaskDone(t, val) { t.done = val; t.doneAt = val ? new Date().toISOString() : null; if (!val) t.cancelled = false; applyAutomations('tasks', t); }
+/* « Ne sera pas fait » : la tâche est classée (elle sort des listes « à faire »), mais marquée
+   ABANDONNÉE — distincte d'une tâche accomplie. On pose done=true SANS déclencher les
+   automatisations (pas de récurrence, pas de « refait » à la coche). La décocher la réactive. */
+function setTaskCancelled(t, val) {
+  t.cancelled = !!val;
+  if (val) { t.done = true; if (!t.doneAt) t.doneAt = new Date().toISOString(); }
+  else { t.done = false; t.doneAt = null; }
+  save(); render();
+}
+window.setTaskCancelled = setTaskCancelled;
+const cancelTag = t => (t && t.cancelled) ? ' <span class="t-cancel">✕ ne sera pas fait</span>' : '';
 /* Assigne à la tâche la valeur du groupe visé : logique partagée entre le kanban et la vue liste. */
 function applyGroupDrop(t, key) {
   const mode = tasksSpaceCfg().groupBy;
@@ -13196,7 +13222,8 @@ window.deleteNote = deleteNote;
    PROJETS (regrouper des tâches)
    ============================================================ */
 function projProgress(id) {
-  const ts = state.tasks.filter(t => t.projectId === id);
+  // les tâches « ne sera pas fait » (abandonnées) ne comptent NI au numérateur NI au dénominateur
+  const ts = state.tasks.filter(t => t.projectId === id && !t.cancelled);
   const done = ts.filter(t => t.done).length;
   return { done, total: ts.length, pct: ts.length ? Math.round(done/ts.length*100) : 0 };
 }
@@ -15336,8 +15363,8 @@ function renderPage() {
     if (!arr || !arr.length) return '';
     const folded = pageSecFolded(coll, title);
     const t = String(title).replace(/'/g, "\\'");
-    return `<div class="crm-sec-head foldable ${folded ? 'folded' : ''}" onclick="togglePageSec('${coll}','${t}')">`
-      + `<span class="sec-chev">${folded ? '▸' : '▾'}</span><span class="crm-sec-dot" style="background:${color}"></span>${esc(title)}`
+    return `<div class="crm-sec-head band foldable ${folded ? 'folded' : ''}" style="border-left:3px solid ${color};background:${tblTint(color, .12)}" onclick="togglePageSec('${coll}','${t}')">`
+      + `<span class="sec-chev">${folded ? '▸' : '▾'}</span>${esc(title)}`
       + `<span class="sec-count">${arr.length}</span></div>`
       + (folded ? '' : arr.map(f => ligne(f, true)).join(''));
   };
@@ -16966,6 +16993,13 @@ let ctxTarget = null;
 function openCtxMenu(x, y, coll, id) {
   ctxTarget = { coll, id };
   const m = $('ctxMenu');
+  // option « Ne sera pas fait » : seulement pour les tâches (libellé selon l'état)
+  const cbtn = $('ctxCancelBtn');
+  if (coll === 'tasks') {
+    const t = state.tasks.find(x => x.id === id);
+    cbtn.classList.remove('hidden');
+    cbtn.textContent = (t && t.cancelled) ? 'Réactiver la tâche' : 'Ne sera pas fait';
+  } else cbtn.classList.add('hidden');
   m.classList.remove('hidden');
   // on garde le menu dans l'écran
   const r = m.getBoundingClientRect();
@@ -19795,6 +19829,7 @@ $('ctxMenu').onclick = e => {
   if (b.dataset.act === 'open') openPage(coll, id);
   else if (b.dataset.act === 'dup') duplicateRecord(coll, id, false);
   else if (b.dataset.act === 'del') deleteRecord(coll, id);
+  else if (b.dataset.act === 'cancel') { const t = state.tasks.find(x => x.id === id); if (t) setTaskCancelled(t, !t.cancelled); }
 };
 document.addEventListener('mousedown', e => { if (!e.target.closest('#ctxMenu')) closeCtxMenu(); });
 document.addEventListener('scroll', closeCtxMenu, true);
