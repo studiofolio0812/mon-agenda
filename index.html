@@ -1198,6 +1198,13 @@
   .astro-nat { font-size: 12px; color: var(--text-soft); line-height: 1.5; padding: 4px 2px; }
   .astro-nat b { color: var(--text); font-weight: 600; }
   .astro-gen { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; padding: 6px 2px 0; font-style: italic; }
+  .astro-synth { font-size: 13px; line-height: 1.5; color: var(--text); background: var(--bg-soft); border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 4px; font-weight: 500; }
+  .astro-week-t { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); margin: 12px 0 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .astro-week-lead { font-size: 12.5px; line-height: 1.5; color: var(--text); margin: 0 2px 6px; }
+  .astro-week { font-size: 12px; line-height: 1.5; color: var(--text-soft); padding: 5px 2px; border-top: 1px dashed var(--border); }
+  .astro-week:first-of-type { border-top: none; }
+  .astro-week b { color: var(--text); font-weight: 600; }
+  .astro-week-day { color: var(--accent); font-weight: 600; text-transform: capitalize; }
   .hw-crm-none { font-size: 13px; color: var(--text-soft); line-height: 1.5; padding: 6px 2px; }
   .hw-crm-none span { font-size: 11.5px; color: var(--text-faint); }
   /* conteneur des relances sur l'accueil mobile */
@@ -16879,6 +16886,65 @@ function astroPhrase(h) {
   else sub = `Rencontre intense entre ${theme} (dans l’air du jour) et ${part} : c’est un point fort et sensible de ta journée.`;
   return { head: `${T.ico} <b>${esc(T.fr)}</b> ${esc(h.a.verb)} ta <b>${esc(N.fr)}</b> natale`, name: h.a.name, sub, tone: h.a.tone };
 }
+// phrase de synthèse de la journée (ton global déduit des aspects du jour)
+function astroDayMood(hits) {
+  if (!hits.length) return 'Journée neutre côté astro : pas d’aspect marquant, à toi de lui donner sa couleur.';
+  let fav = 0, ten = 0;
+  hits.forEach(h => { if (h.a.tone === 'favorable') fav++; else if (h.a.tone === 'tension') ten++; });
+  const part = ASTRO_NATAL_PART[hits[0].N];
+  let base;
+  if (fav > ten) base = 'Journée plutôt fluide et porteuse';
+  else if (ten > fav) base = 'Journée un peu exigeante, à prendre en souplesse';
+  else base = 'Journée contrastée, entre ouvertures et petites tensions';
+  return `${base} — l’accent du jour est sur ${part}.`;
+}
+// transits marquants de la semaine à venir (7 jours), planètes lentes seulement (pas la Lune)
+function astroWeek() {
+  const base = new Date(); base.setHours(12, 0, 0, 0);
+  const slow = ['Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn'];
+  const combos = {};
+  for (let dOff = 0; dOff < 7; dOff++) {
+    const day = new Date(base.getTime() + dOff * 86400000);
+    const tr = {}; slow.forEach(b => { tr[b] = hdLon(b, day); });
+    slow.forEach(T => ASTRO_TARGETS.forEach(N => {
+      if (T === N) return;
+      const sep = Math.abs(((tr[T] - ASTRO_NATAL[N] + 540) % 360) - 180);
+      ASTRO_ASPECTS.forEach(a => {
+        const e = Math.abs(sep - a.ang);
+        if (e > a.orb) return;
+        const key = T + '|' + N + '|' + a.name;
+        if (!combos[key] || e < combos[key].minOrb) combos[key] = { minOrb: e, dayOffset: dOff, T, N, a };
+      });
+    }));
+  }
+  const kept = Object.values(combos).filter(c => c.minOrb <= 2.5);
+  // une seule entrée (la plus serrée) par point natal touché → on varie les domaines de la semaine
+  const bestPerN = {};
+  kept.forEach(c => { if (!bestPerN[c.N] || c.minOrb < bestPerN[c.N].minOrb) bestPerN[c.N] = c; });
+  // on sélectionne les 4 plus serrés, puis on les affiche dans l'ordre des jours (fil de la semaine)
+  const list = Object.values(bestPerN).sort((x, y) => x.minOrb - y.minOrb).slice(0, 4)
+    .sort((x, y) => x.dayOffset - y.dayOffset);
+  return { base, list };
+}
+function astroWeekLead(list) {
+  if (!list.length) return 'Semaine plutôt calme côté astro : rien de très marqué, un terrain neutre où tu gardes la main.';
+  let fav = 0, ten = 0;
+  list.forEach(c => { if (c.a.tone === 'favorable') fav++; else if (c.a.tone === 'tension') ten++; });
+  if (fav > ten) return 'Une semaine plutôt porteuse : plus d’ouvertures que de frictions, de bons appuis à saisir.';
+  if (ten > fav) return 'Une semaine un peu exigeante : quelques tensions à traverser en douceur, sans forcer.';
+  return 'Une semaine contrastée : de belles ouvertures et quelques tensions mêlées, à doser au fil des jours.';
+}
+function astroWeekPhrase(c, base) {
+  const T = ASTRO_PLANETS[c.T], N = ASTRO_PLANETS[c.N];
+  const theme = ASTRO_TRANSIT_THEME[c.T], part = ASTRO_NATAL_PART[c.N];
+  const day = new Date(base.getTime() + c.dayOffset * 86400000)
+    .toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' });
+  let tail;
+  if (c.a.tone === 'favorable') tail = `une belle ouverture entre ${theme} et ${part} — un moment porteur de la semaine.`;
+  else if (c.a.tone === 'tension') tail = `un point de vigilance entre ${theme} et ${part} — à prendre en souplesse.`;
+  else tail = `un temps fort entre ${theme} et ${part} — ça comptera cette semaine.`;
+  return `<span class="astro-week-day">${esc(day)}</span> · ${T.ico} <b>${esc(T.fr)}</b> ${esc(c.a.verb)} ta <b>${esc(N.fr)}</b> : ${esc(tail)}`;
+}
 function hwAstro() {
   if (!hdReady()) return hwEmpty('Le module horoscope se met en place…', 'Actualiser', 'render()');
   const t = astroToday();
@@ -16889,6 +16955,7 @@ function hwAstro() {
       <div class="hd-mean">${esc(sub)} : ${esc(ASTRO_SIGN_MEAN[s.name] || '')}.</div>
     </div>`;
   let html = `<div class="hd-widget">`;
+  html += `<div class="astro-synth">${esc(astroDayMood(t.hits))}</div>`;
   html += block('☀️', 'Soleil', 'L’énergie de la saison', sSun);
   html += block('🌙', 'Lune', 'L’ambiance du jour (elle change vite)', sMoon);
   html += `<div class="hd-acts-t">Ce qui se joue pour toi aujourd’hui</div>`;
@@ -16899,6 +16966,14 @@ function hwAstro() {
     });
   } else {
     html += `<div class="astro-none">Ciel calme aujourd’hui : aucun aspect marquant entre les planètes du jour et ton thème. Une journée plutôt neutre, à toi de lui donner sa couleur.</div>`;
+  }
+  // vision de la semaine : automatiquement le dimanche et le lundi
+  const dow = now.getDay(); // 0 = dimanche, 1 = lundi
+  if (dow === 0 || dow === 1) {
+    const w = astroWeek();
+    html += `<div class="astro-week-t">Ta semaine à venir</div>`;
+    html += `<div class="astro-week-lead">${esc(astroWeekLead(w.list))}</div>`;
+    w.list.forEach(c => { html += `<div class="astro-week">${astroWeekPhrase(c, w.base)}</div>`; });
   }
   html += `<div class="astro-natal-t">Ton thème de naissance</div>`;
   ASTRO_NATAL_ORDER.forEach(k => {
