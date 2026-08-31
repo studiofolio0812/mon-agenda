@@ -1198,7 +1198,8 @@
   .astro-nat { font-size: 12px; color: var(--text-soft); line-height: 1.5; padding: 4px 2px; }
   .astro-nat b { color: var(--text); font-weight: 600; }
   .astro-gen { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; padding: 6px 2px 0; font-style: italic; }
-  .astro-synth { font-size: 13px; line-height: 1.5; color: var(--text); background: var(--bg-soft); border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 4px; font-weight: 500; }
+  .astro-synth, .hd-synth { font-size: 13px; line-height: 1.5; color: var(--text); background: var(--bg-soft); border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 4px; font-weight: 500; }
+  .hd-synth { margin-bottom: 8px; }
   .astro-week-t { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); margin: 12px 0 4px; padding-top: 10px; border-top: 1px solid var(--border); }
   .astro-week-lead { font-size: 12.5px; line-height: 1.5; color: var(--text); margin: 0 2px 6px; }
   .astro-week { font-size: 12px; line-height: 1.5; color: var(--text-soft); padding: 5px 2px; border-top: 1px dashed var(--border); }
@@ -1262,7 +1263,12 @@
   .ds-sub { font-size: 13px; color: var(--text-faint); margin-top: 2px; }
   .dw { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm); padding: 13px 15px; margin-bottom: 12px; }
-  .dw-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
+  .dw-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .dw-label { flex: 1; min-width: 0; }
+  .dw.is-collapsed .dw-title { margin-bottom: 0; }
+  .dw-chev { border: none; background: none; color: var(--text-faint); cursor: pointer; display: grid; place-items: center; padding: 0; flex: none; transition: transform .12s, color .12s; }
+  .dw:not(.is-collapsed) .dw-chev { transform: rotate(90deg); }
+  .dw-chev:hover { color: var(--accent); }
   .dw-body .hw-horo-txt { font-size: 14px; }
   .dw-add { width: 100%; margin-top: 4px; }
 
@@ -15787,6 +15793,15 @@ const DAY_ASIDE_MIN = 240, DAY_ASIDE_MAX = 620, DAY_ASIDE_DEF = 340;
 const DAY_LEFT_MIN = 220, DAY_LEFT_MAX = 460, DAY_LEFT_DEF = 300;
 // COLONNE DROITE : les mêmes widgets quotidiens que l'onglet mobile « Widgets »
 const DA_EYE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+// widget de la colonne « du jour » (vue jour bureau + espace widgets mobile), repliable
+// (état partagé avec l'accueil via c.collapsed[key]) ; eye = bouton masquer (bureau seulement)
+function dwCard(key, opts) {
+  const w = homeW(key); if (!w) return '';
+  const replie = !!homeCfg().collapsed[key];
+  const chev = `<button class="dw-chev" onclick="homeToggleCollapse('${key}',event)" title="${replie ? 'Déplier' : 'Replier'}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>`;
+  const eye = (opts && opts.eye) ? `<button class="dw-eye" onclick="homeHide('${key}',event)" title="Masquer ce widget">${DA_EYE}</button>` : '';
+  return `<section class="dw ${replie ? 'is-collapsed' : ''}"><div class="dw-title">${chev}<span class="dw-label">${esc(w.label)}</span>${eye}</div>${replie ? '' : `<div class="dw-body">${w.body()}</div>`}</section>`;
+}
 function dayAsideHtml() {
   const c = homeCfg();
   const dailyKeys = c.order.filter(k => k === 'horoscope' || k === 'humandesign' || (typeof k === 'string' && k.startsWith('feed:')));
@@ -15798,7 +15813,7 @@ function dayAsideHtml() {
   if (!keys.length && !hiddenDaily.length) {
     inner += `<div class="da-empty">Aucun widget quotidien pour l'instant.<br>Ajoute-en un ci-dessous ou depuis le tableau de bord.</div>`;
   } else {
-    inner += keys.map(k => { const w = homeW(k); if (!w) return ''; return `<section class="dw"><div class="dw-title">${esc(w.label)}<button class="dw-eye" onclick="homeHide('${k}',event)" title="Masquer ce widget">${DA_EYE}</button></div><div class="dw-body">${w.body()}</div></section>`; }).join('');
+    inner += keys.map(k => dwCard(k, { eye: true })).join('');
   }
   if (hiddenDaily.length) {
     inner += `<div class="da-hidden"><span class="da-hidden-lbl">Masqués :</span>${hiddenDaily.map(k => `<button class="hw-chip" onclick="homeShow('${k}',event)" title="Réafficher">${esc((homeW(k) || {}).label || '')} <span>＋</span></button>`).join('')}</div>`;
@@ -16755,6 +16770,20 @@ function hdToday() {
   const reinforced = [sun, moon].filter(gl => natal.has(gl.gate)).map(gl => gl.gate);
   return { now, sun, moon, acts, reinforced };
 }
+// phrase de synthèse du jour pour le Human Design (ambiance globale déduite du transit)
+function hdDayMood(t) {
+  const gm = g => HD_GATE_MEAN[g] || '';
+  let s = `Aujourd’hui, l’énergie de fond t’invite à ${gm(t.sun.gate)}.`;
+  if (t.acts.length) {
+    const names = [...new Set(t.acts.map(a => { const ci = HD_CHANNELS_INFO[a.ch[0] + '-' + a.ch[1]] || {}; return ci.name || ('canal ' + a.ch[0] + '-' + a.ch[1]); }))];
+    s += ` Un circuit s’active en toi : ${names.join(', ')}.`;
+  } else if (t.reinforced.length) {
+    s += ` Ta porte natale ${t.reinforced.join(', ')} est éclairée : un thème familier, renforcé aujourd’hui.`;
+  } else {
+    s += ` Aucun canal ne se complète : une journée pour observer et laisser venir, plutôt que pour t’engager.`;
+  }
+  return s;
+}
 function hwHumanDesign() {
   if (!hdReady()) return hwEmpty('Le module Human Design se met en place…', 'Actualiser', 'render()');
   const t = hdToday();
@@ -16766,6 +16795,7 @@ function hwHumanDesign() {
       <div class="hd-mean">${esc(sub)} : ${esc(gm(gl.gate))}.<br><span class="hd-line">Ligne ${gl.line} · ${esc(lm(gl.line))}.</span></div>
     </div>`;
   let html = `<div class="hd-widget">`;
+  html += `<div class="hd-synth">${esc(hdDayMood(t))}</div>`;
   html += block('☀️', 'Soleil', "L'énergie de fond du jour", t.sun);
   html += block('🌙', 'Lune', "L'ambiance qui passe (elle change vite)", t.moon);
   if (t.acts.length) {
@@ -17105,10 +17135,7 @@ function renderDailySpace() {
   if (!keys.length) {
     html += `<div class="mm-empty">Aucun widget quotidien pour l'instant.<br>Ajoute-en un ici, ou depuis le tableau de bord sur ordinateur. Ta routine Claude les remplira ensuite chaque matin.</div>`;
   } else {
-    html += keys.map(k => {
-      const w = homeW(k); if (!w) return '';
-      return `<section class="dw"><div class="dw-title">${esc(w.label)}</div><div class="dw-body">${w.body()}</div></section>`;
-    }).join('');
+    html += keys.map(k => dwCard(k, { eye: false })).join('');
   }
   html += `<button class="hw-cta dw-add" onclick="homeAddFeedMenu(event)">＋ Widget quotidien</button>`;
   html += `</div>`;
