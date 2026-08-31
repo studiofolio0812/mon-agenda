@@ -1186,6 +1186,18 @@
   .hd-act-sub { font-size: 11.5px; color: var(--text-soft); line-height: 1.5; margin-top: 4px; }
   .hd-natal { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-soft); line-height: 1.5; }
   .hd-natal-sub { color: var(--text-faint); }
+  /* widget Horoscope du jour (transits calculés) */
+  .astro-asp { font-size: 12.5px; line-height: 1.5; color: var(--text); background: var(--bg-soft); border-radius: var(--radius-sm); padding: 7px 10px; margin-top: 5px; border-left: 3px solid var(--border); }
+  .astro-asp.astro-favorable { border-left-color: #6f9e78; }
+  .astro-asp.astro-tension   { border-left-color: #c79a5a; }
+  .astro-asp.astro-intense   { border-left-color: #9a7bb0; }
+  .astro-asp-name { font-size: 11px; color: var(--text-faint); font-weight: 600; text-transform: lowercase; }
+  .astro-asp-sub { font-size: 11.5px; color: var(--text-soft); line-height: 1.5; margin-top: 4px; }
+  .astro-none { font-size: 12.5px; color: var(--text-soft); line-height: 1.5; padding: 6px 2px; }
+  .astro-natal-t { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); margin: 12px 0 4px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .astro-nat { font-size: 12px; color: var(--text-soft); line-height: 1.5; padding: 4px 2px; }
+  .astro-nat b { color: var(--text); font-weight: 600; }
+  .astro-gen { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; padding: 6px 2px 0; font-style: italic; }
   .hw-crm-none { font-size: 13px; color: var(--text-soft); line-height: 1.5; padding: 6px 2px; }
   .hw-crm-none span { font-size: 11.5px; color: var(--text-faint); }
   /* conteneur des relances sur l'accueil mobile */
@@ -16303,7 +16315,7 @@ const HOME_WIDGETS = {
   health:   { label: 'Suivi santé',               body: () => hwHealth() },
   notes:    { label: 'Notes récentes',            body: () => hwNotes() },
   bilan:    { label: 'Bilan express',             body: () => hwBilan() },
-  horoscope:{ label: 'Horoscope du jour',         body: () => hwHoroscope() },
+  horoscope:{ label: 'Horoscope du jour',         body: () => hwAstro() },
   humandesign:{ label: 'Human Design du jour',    body: () => hwHumanDesign() },
 };
 const HOME_ORDER_DEFAUT = ['focus', 'projects', 'crm', 'habits', 'horoscope', 'humandesign', 'health', 'notes', 'bilan'];
@@ -16760,6 +16772,140 @@ function hwHumanDesign() {
   }
   if (t.reinforced.length) html += `<div class="hd-act hd-reinf">Ta porte natale ${t.reinforced.join(', ')} est aussi éclairée par le transit du jour — un thème qui t'est familier, renforcé aujourd'hui.</div>`;
   html += `<div class="hd-natal">${esc(HD_NATAL.type)} · ${esc(HD_NATAL.authority)} · ${esc(HD_NATAL.profile)}<br><span class="hd-natal-sub">${esc(HD_NATAL.strategy)} · ${esc(HD_NATAL.cross)}</span></div>`;
+  html += `</div>`;
+  return html;
+}
+
+/* ============================================================
+   HOROSCOPE DU JOUR — transits calculés (astronomy-engine inlinée → window.Astronomy),
+   croisés avec le thème natal réel de Clémence (8 déc. 1994, 03:50 Rouen ; positions
+   vérifiées : Soleil Sagittaire, Ascendant Balance, Uranus/Neptune Capricorne…).
+   Interprétation en langage clair : le sens des aspects (trigone, carré…) relève de la
+   tradition astrologique publique, la formulation est maison (rien de copyright).
+   ============================================================ */
+const ASTRO_SIGNS = ['Bélier','Taureau','Gémeaux','Cancer','Lion','Vierge','Balance','Scorpion','Sagittaire','Capricorne','Verseau','Poissons'];
+// longitudes écliptiques natales réelles (degrés), calculées au degré près
+const ASTRO_NATAL = {
+  Sun:255.781, Moon:324.707, Mercury:252.446, Venus:216.293, Mars:148.897,
+  Jupiter:239.71, Saturn:336.394, Uranus:294.182, Neptune:291.732, Pluto:238.666,
+  NNode:223.5, ASC:201.826,
+};
+const ASTRO_PLANETS = {
+  Sun:{fr:'Soleil',ico:'☀️'}, Moon:{fr:'Lune',ico:'🌙'}, Mercury:{fr:'Mercure',ico:'☿'},
+  Venus:{fr:'Vénus',ico:'♀'}, Mars:{fr:'Mars',ico:'♂'}, Jupiter:{fr:'Jupiter',ico:'♃'},
+  Saturn:{fr:'Saturne',ico:'♄'}, Uranus:{fr:'Uranus',ico:'♅'}, Neptune:{fr:'Neptune',ico:'♆'},
+  Pluto:{fr:'Pluton',ico:'♇'}, NNode:{fr:'Nœud Nord',ico:'☊'}, ASC:{fr:'Ascendant',ico:'↑'},
+};
+// planètes en transit prises en compte pour le jour (les plus parlantes au quotidien)
+const ASTRO_TRANSIT_BODIES = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn'];
+// points natals « visés » par les transits
+const ASTRO_TARGETS = ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','ASC','NNode'];
+// ce que « porte » une planète en transit (l'air du jour)
+const ASTRO_TRANSIT_THEME = {
+  Sun:'la vitalité et ce qui est mis en lumière', Moon:'les émotions et l’humeur',
+  Mercury:'le mental, les mots et les échanges', Venus:'l’amour, la douceur et les plaisirs',
+  Mars:'l’élan, l’action et le désir', Jupiter:'l’expansion, la confiance et la chance',
+  Saturn:'le sérieux, les limites et le sens des responsabilités',
+};
+// la part de toi touchée (planète natale)
+const ASTRO_NATAL_PART = {
+  Sun:'ton identité et ton élan de vie', Moon:'ta sensibilité et ton monde intérieur',
+  Mercury:'ta façon de penser et de communiquer', Venus:'ta manière d’aimer et ce qui te plaît',
+  Mars:'ton énergie et ta capacité à agir', Jupiter:'ton goût du sens et de l’aventure',
+  Saturn:'ta structure et tes responsabilités', ASC:'ton image et ta manière de te présenter',
+  NNode:'ta direction d’évolution',
+};
+// aspects : angle exact, orbe (tolérance), tonalité, verbe pour la phrase
+const ASTRO_ASPECTS = [
+  {name:'conjonction', ang:0,   orb:6, tone:'intense',    verb:'rejoint'},
+  {name:'sextile',     ang:60,  orb:4, tone:'favorable',  verb:'tend la main à'},
+  {name:'carré',       ang:90,  orb:5, tone:'tension',    verb:'vient bousculer'},
+  {name:'trigone',     ang:120, orb:5, tone:'favorable',  verb:'soutient'},
+  {name:'opposition',  ang:180, orb:6, tone:'tension',    verb:'fait face à'},
+];
+// sens court de chaque signe (pour le Soleil/Lune du jour)
+const ASTRO_SIGN_MEAN = {
+  'Bélier':'de l’élan, de l’initiative et de l’action directe', 'Taureau':'du calme, du concret et le goût des plaisirs simples',
+  'Gémeaux':'de la curiosité, des échanges et de la légèreté', 'Cancer':'de la sensibilité et le besoin de cocon et de proximité',
+  'Lion':'de la chaleur, de la créativité et l’envie de rayonner', 'Vierge':'le sens du détail, de l’utile et de l’organisation',
+  'Balance':'la recherche d’harmonie, de lien et d’équilibre', 'Scorpion':'de l’intensité, de la profondeur et de la vérité',
+  'Sagittaire':'un souffle d’aventure, de sens et de liberté', 'Capricorne':'du sérieux, de la structure et de l’ambition',
+  'Verseau':'de l’originalité, du recul et l’esprit de liberté', 'Poissons':'de la douceur, de l’imaginaire et de la sensibilité',
+};
+// lecture perso de ton thème natal (formulation maison), placement calculé en direct
+const ASTRO_NATAL_READ = {
+  ASC:'tu renvoies de la douceur, du tact et le sens de l’harmonie ; tu cherches l’équilibre et le lien juste avec les autres.',
+  Sun:'au fond de toi, une exploratrice : besoin de liberté, de sens et d’horizons larges, avec franchise et optimisme.',
+  Moon:'côté cœur, un besoin d’indépendance affective ; tu vis tes émotions avec un peu de recul, attachée à ta liberté et à tes idées.',
+  Mercury:'tu penses en grand et tu parles franc, plus à l’aise avec le sens et les idées d’ensemble qu’avec les petits détails.',
+  Venus:'tu aimes de façon entière, intense et loyale ; l’attirance passe par la profondeur et la vérité, jamais le superficiel.',
+  Mars:'tu agis avec cœur, fierté et générosité ; tu as besoin de créer et d’être reconnue dans ce que tu entreprends.',
+  Jupiter:'tu grandis par l’intensité et la transformation ; ce qui est profond et vrai t’ouvre des portes.',
+  Saturn:'ta leçon de vie : apprendre à structurer ta sensibilité et ta compassion, sans t’y noyer.',
+  NNode:'ton chemin d’évolution t’invite à oser la profondeur et l’intimité, plutôt que de rester dans le connu confortable.',
+};
+const ASTRO_NATAL_ORDER = ['ASC','Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','NNode'];
+function astroSign(L) { L = ((L % 360) + 360) % 360; return { name: ASTRO_SIGNS[Math.floor(L / 30)], deg: L % 30 }; }
+function astroToday() {
+  const now = new Date();
+  const tr = {};
+  ASTRO_TRANSIT_BODIES.forEach(b => { tr[b] = hdLon(b, now); });
+  const hits = [];
+  ASTRO_TRANSIT_BODIES.forEach(T => {
+    ASTRO_TARGETS.forEach(N => {
+      if (T === N) return; // un transit sur son propre point natal = « retour », on n'en fait pas un aspect
+      const sep = Math.abs(((tr[T] - ASTRO_NATAL[N] + 540) % 360) - 180); // 0..180
+      ASTRO_ASPECTS.forEach(a => {
+        const orbErr = Math.abs(sep - a.ang);
+        if (orbErr <= a.orb) hits.push({ T, N, a, orbErr });
+      });
+    });
+  });
+  hits.sort((x, y) => x.orbErr - y.orbErr);
+  // on garantit l'aspect de la Lune (le plus « du jour »), puis on complète par les plus serrés
+  const chosen = [];
+  const moon = hits.find(h => h.T === 'Moon');
+  if (moon) chosen.push(moon);
+  for (const h of hits) { if (chosen.length >= 5) break; if (!chosen.includes(h)) chosen.push(h); }
+  chosen.sort((x, y) => x.orbErr - y.orbErr);
+  return { now, sun: tr.Sun, moon: tr.Moon, hits: chosen };
+}
+function astroPhrase(h) {
+  const T = ASTRO_PLANETS[h.T], N = ASTRO_PLANETS[h.N];
+  const theme = ASTRO_TRANSIT_THEME[h.T], part = ASTRO_NATAL_PART[h.N];
+  let sub;
+  if (h.a.tone === 'favorable') sub = `Belle circulation entre ${theme} (dans l’air du jour) et ${part} : ça se passe en douceur, c’est le bon moment pour t’appuyer là-dessus.`;
+  else if (h.a.tone === 'tension') sub = `Petit frottement entre ${theme} (dans l’air du jour) et ${part} : rien de grave, une tension à accueillir en souplesse, sans forcer.`;
+  else sub = `Rencontre intense entre ${theme} (dans l’air du jour) et ${part} : c’est un point fort et sensible de ta journée.`;
+  return { head: `${T.ico} <b>${esc(T.fr)}</b> ${esc(h.a.verb)} ta <b>${esc(N.fr)}</b> natale`, name: h.a.name, sub, tone: h.a.tone };
+}
+function hwAstro() {
+  if (!hdReady()) return hwEmpty('Le module horoscope se met en place…', 'Actualiser', 'render()');
+  const t = astroToday();
+  const now = new Date();
+  const sSun = astroSign(t.sun), sMoon = astroSign(t.moon);
+  const block = (ico, label, sub, s) => `<div class="hd-block">
+      <div class="hd-row"><span class="hd-ico">${ico}</span><span class="hd-lbl">${label}</span><span class="hd-gate">${esc(s.name)}</span><span class="hd-gname">${Math.floor(s.deg)}°</span></div>
+      <div class="hd-mean">${esc(sub)} : ${esc(ASTRO_SIGN_MEAN[s.name] || '')}.</div>
+    </div>`;
+  let html = `<div class="hd-widget">`;
+  html += block('☀️', 'Soleil', 'L’énergie de la saison', sSun);
+  html += block('🌙', 'Lune', 'L’ambiance du jour (elle change vite)', sMoon);
+  html += `<div class="hd-acts-t">Ce qui se joue pour toi aujourd’hui</div>`;
+  if (t.hits.length) {
+    t.hits.forEach(h => {
+      const p = astroPhrase(h);
+      html += `<div class="astro-asp astro-${p.tone}">${p.head} <span class="astro-asp-name">· ${esc(p.name)}</span><div class="astro-asp-sub">${esc(p.sub)}</div></div>`;
+    });
+  } else {
+    html += `<div class="astro-none">Ciel calme aujourd’hui : aucun aspect marquant entre les planètes du jour et ton thème. Une journée plutôt neutre, à toi de lui donner sa couleur.</div>`;
+  }
+  html += `<div class="astro-natal-t">Ton thème de naissance</div>`;
+  ASTRO_NATAL_ORDER.forEach(k => {
+    const P = ASTRO_PLANETS[k], s = astroSign(ASTRO_NATAL[k]);
+    html += `<div class="astro-nat"><b>${esc(P.fr)} ${P.ico} en ${esc(s.name)} (${Math.floor(s.deg)}°)</b> — ${esc(ASTRO_NATAL_READ[k])}</div>`;
+  });
+  html += `<div class="astro-gen">Uranus et Neptune (Capricorne) et Pluton (Scorpion) sont partagés par toute ta génération : ils parlent de ton époque plus que de toi en particulier.</div>`;
   html += `</div>`;
   return html;
 }
